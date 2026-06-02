@@ -10,7 +10,7 @@ import type { MarketAnalysis } from './marketAnalysis';
 import type { SignalCounts } from './signalCounts';
 
 export interface ScanResult {
-  binance: BinanceData;
+  binanceAssets: BinanceData[];
   markets: MarketAnalysis[];
   scannedAt: string;
   totalMarkets: number;

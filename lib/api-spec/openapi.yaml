@@ -31,8 +31,8 @@ paths:
     get:
       operationId: getBinanceData
       tags: [crypto]
-      summary: Get Binance Futures data for BTC
-      description: Returns current mark price and funding rate for BTCUSDT
+      summary: Get Binance Futures data for a single asset
+      description: Returns current mark price and funding rate for a given symbol
       parameters:
         - in: query
           name: symbol
@@ -40,7 +40,7 @@ paths:
             type: string
             default: BTCUSDT
           required: false
-          description: Trading symbol (default BTCUSDT)
+          description: Trading symbol (e.g. BTCUSDT, ETHUSDT)
       responses:
         "200":
           description: Binance futures data
@@ -55,15 +55,52 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /crypto/binance/multi:
+    get:
+      operationId: getBinanceMulti
+      tags: [crypto]
+      summary: Get Binance Futures data for multiple assets
+      description: Returns current mark price and funding rate for BTC, ETH, SOL, and BNB
+      responses:
+        "200":
+          description: Array of Binance futures data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BinanceData"
+        "502":
+          description: Failed to fetch from Binance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /crypto/polymarket:
     get:
       operationId: getPolymarketMarkets
       tags: [crypto]
-      summary: Get active Polymarket BTC markets
-      description: Returns active Bitcoin prediction markets from Polymarket with crowd probability
+      summary: Get active Polymarket crypto markets
+      description: Returns active crypto prediction markets from Polymarket
+      parameters:
+        - in: query
+          name: asset
+          schema:
+            type: string
+            enum: [BTC, ETH, SOL, BNB, ALL]
+            default: ALL
+          required: false
+          description: Filter by crypto asset
+        - in: query
+          name: search
+          schema:
+            type: string
+          required: false
+          description: Free-text search within question text
       responses:
         "200":
-          description: List of active BTC markets
+          description: List of active crypto markets
           content:
             application/json:
               schema:
@@ -83,6 +120,21 @@ paths:
       tags: [crypto]
       summary: Run full arbitrage/sentiment scan
       description: Fetches Binance and Polymarket data, cross-references them, and returns arbitrage signals
+      parameters:
+        - in: query
+          name: asset
+          schema:
+            type: string
+            enum: [BTC, ETH, SOL, BNB, ALL]
+            default: ALL
+          required: false
+          description: Asset(s) to scan
+        - in: query
+          name: search
+          schema:
+            type: string
+          required: false
+          description: Free-text filter on market questions
       responses:
         "200":
           description: Scan results with signals
@@ -90,6 +142,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScanResult"
+        "502":
+          description: Failed to fetch external data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /crypto/recommendations:
+    get:
+      operationId: getRecommendations
+      tags: [crypto]
+      summary: Get top-ranked arbitrage recommendations
+      description: Returns the top actionable signals ranked by severity and confidence across all assets
+      responses:
+        "200":
+          description: Ranked recommendations list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recommendation"
         "502":
           description: Failed to fetch external data
           content:
@@ -119,6 +193,7 @@ components:
       type: object
       required:
         - symbol
+        - asset
         - markPrice
         - fundingRate
         - fundingRatePercent
@@ -126,6 +201,9 @@ components:
       properties:
         symbol:
           type: string
+        asset:
+          type: string
+          description: Short asset name e.g. BTC
         markPrice:
           type: number
         fundingRate:
@@ -145,6 +223,7 @@ components:
         - targetPrice
         - conditionId
         - active
+        - assetTag
       properties:
         conditionId:
           type: string
@@ -164,6 +243,9 @@ components:
           type: ["string", "null"]
         volume:
           type: ["number", "null"]
+        assetTag:
+          type: string
+          description: Which asset this market relates to e.g. BTC, ETH
 
     ArbitrageSignal:
       type: object
@@ -187,6 +269,8 @@ components:
         - market
         - distanceToTargetPercent
         - signal
+        - binanceSymbol
+        - markPrice
       properties:
         market:
           $ref: "#/components/schemas/PolymarketMarket"
@@ -194,18 +278,24 @@ components:
           type: number
         signal:
           $ref: "#/components/schemas/ArbitrageSignal"
+        binanceSymbol:
+          type: string
+        markPrice:
+          type: number
 
     ScanResult:
       type: object
       required:
-        - binance
+        - binanceAssets
         - markets
         - scannedAt
         - totalMarkets
         - signalCounts
       properties:
-        binance:
-          $ref: "#/components/schemas/BinanceData"
+        binanceAssets:
+          type: array
+          items:
+            $ref: "#/components/schemas/BinanceData"
         markets:
           type: array
           items:
@@ -230,3 +320,37 @@ components:
           type: integer
         neutral:
           type: integer
+
+    Recommendation:
+      type: object
+      required:
+        - rank
+        - action
+        - rationale
+        - market
+        - signal
+        - binanceSymbol
+        - markPrice
+        - distanceToTargetPercent
+        - confidence
+      properties:
+        rank:
+          type: integer
+        action:
+          type: string
+          enum: [BUY_YES, BUY_NO, WATCH]
+        rationale:
+          type: string
+        market:
+          $ref: "#/components/schemas/PolymarketMarket"
+        signal:
+          $ref: "#/components/schemas/ArbitrageSignal"
+        binanceSymbol:
+          type: string
+        markPrice:
+          type: number
+        distanceToTargetPercent:
+          type: number
+        confidence:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]

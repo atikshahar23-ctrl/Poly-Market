@@ -18,17 +18,18 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Returns current mark price and funding rate for BTCUSDT
- * @summary Get Binance Futures data for BTC
+ * Returns current mark price and funding rate for a given symbol
+ * @summary Get Binance Futures data for a single asset
  */
 export const getBinanceDataQuerySymbolDefault = `BTCUSDT`;
 
 export const GetBinanceDataQueryParams = zod.object({
-  "symbol": zod.coerce.string().default(getBinanceDataQuerySymbolDefault).describe('Trading symbol (default BTCUSDT)')
+  "symbol": zod.coerce.string().default(getBinanceDataQuerySymbolDefault).describe('Trading symbol (e.g. BTCUSDT, ETHUSDT)')
 })
 
 export const GetBinanceDataResponse = zod.object({
   "symbol": zod.string(),
+  "asset": zod.string().describe('Short asset name e.g. BTC'),
   "markPrice": zod.number(),
   "fundingRate": zod.number(),
   "fundingRatePercent": zod.number(),
@@ -37,9 +38,31 @@ export const GetBinanceDataResponse = zod.object({
 
 
 /**
- * Returns active Bitcoin prediction markets from Polymarket with crowd probability
- * @summary Get active Polymarket BTC markets
+ * Returns current mark price and funding rate for BTC, ETH, SOL, and BNB
+ * @summary Get Binance Futures data for multiple assets
  */
+export const GetBinanceMultiResponseItem = zod.object({
+  "symbol": zod.string(),
+  "asset": zod.string().describe('Short asset name e.g. BTC'),
+  "markPrice": zod.number(),
+  "fundingRate": zod.number(),
+  "fundingRatePercent": zod.number(),
+  "fetchedAt": zod.string()
+})
+export const GetBinanceMultiResponse = zod.array(GetBinanceMultiResponseItem)
+
+
+/**
+ * Returns active crypto prediction markets from Polymarket
+ * @summary Get active Polymarket crypto markets
+ */
+export const getPolymarketMarketsQueryAssetDefault = `ALL`;
+
+export const GetPolymarketMarketsQueryParams = zod.object({
+  "asset": zod.enum(['BTC', 'ETH', 'SOL', 'BNB', 'ALL']).default(getPolymarketMarketsQueryAssetDefault).describe('Filter by crypto asset'),
+  "search": zod.coerce.string().optional().describe('Free-text search within question text')
+})
+
 export const GetPolymarketMarketsResponseItem = zod.object({
   "conditionId": zod.string(),
   "question": zod.string(),
@@ -49,7 +72,8 @@ export const GetPolymarketMarketsResponseItem = zod.object({
   "targetPrice": zod.number().nullable(),
   "active": zod.boolean(),
   "endDate": zod.string().nullish(),
-  "volume": zod.number().nullish()
+  "volume": zod.number().nullish(),
+  "assetTag": zod.string().describe('Which asset this market relates to e.g. BTC, ETH')
 })
 export const GetPolymarketMarketsResponse = zod.array(GetPolymarketMarketsResponseItem)
 
@@ -58,14 +82,22 @@ export const GetPolymarketMarketsResponse = zod.array(GetPolymarketMarketsRespon
  * Fetches Binance and Polymarket data, cross-references them, and returns arbitrage signals
  * @summary Run full arbitrage/sentiment scan
  */
+export const getScanResultsQueryAssetDefault = `ALL`;
+
+export const GetScanResultsQueryParams = zod.object({
+  "asset": zod.enum(['BTC', 'ETH', 'SOL', 'BNB', 'ALL']).default(getScanResultsQueryAssetDefault).describe('Asset(s) to scan'),
+  "search": zod.coerce.string().optional().describe('Free-text filter on market questions')
+})
+
 export const GetScanResultsResponse = zod.object({
-  "binance": zod.object({
+  "binanceAssets": zod.array(zod.object({
   "symbol": zod.string(),
+  "asset": zod.string().describe('Short asset name e.g. BTC'),
   "markPrice": zod.number(),
   "fundingRate": zod.number(),
   "fundingRatePercent": zod.number(),
   "fetchedAt": zod.string()
-}),
+})),
   "markets": zod.array(zod.object({
   "market": zod.object({
   "conditionId": zod.string(),
@@ -76,14 +108,17 @@ export const GetScanResultsResponse = zod.object({
   "targetPrice": zod.number().nullable(),
   "active": zod.boolean(),
   "endDate": zod.string().nullish(),
-  "volume": zod.number().nullish()
+  "volume": zod.number().nullish(),
+  "assetTag": zod.string().describe('Which asset this market relates to e.g. BTC, ETH')
 }),
   "distanceToTargetPercent": zod.number(),
   "signal": zod.object({
   "type": zod.enum(['overbought_sentiment', 'underpriced_probability', 'neutral']),
   "message": zod.string(),
   "severity": zod.enum(['low', 'medium', 'high'])
-})
+}),
+  "binanceSymbol": zod.string(),
+  "markPrice": zod.number()
 })),
   "scannedAt": zod.string(),
   "totalMarkets": zod.number(),
@@ -93,5 +128,38 @@ export const GetScanResultsResponse = zod.object({
   "neutral": zod.number()
 })
 })
+
+
+/**
+ * Returns the top actionable signals ranked by severity and confidence across all assets
+ * @summary Get top-ranked arbitrage recommendations
+ */
+export const GetRecommendationsResponseItem = zod.object({
+  "rank": zod.number(),
+  "action": zod.enum(['BUY_YES', 'BUY_NO', 'WATCH']),
+  "rationale": zod.string(),
+  "market": zod.object({
+  "conditionId": zod.string(),
+  "question": zod.string(),
+  "yesPrice": zod.number(),
+  "noPrice": zod.number(),
+  "yesProbabilityPercent": zod.number(),
+  "targetPrice": zod.number().nullable(),
+  "active": zod.boolean(),
+  "endDate": zod.string().nullish(),
+  "volume": zod.number().nullish(),
+  "assetTag": zod.string().describe('Which asset this market relates to e.g. BTC, ETH')
+}),
+  "signal": zod.object({
+  "type": zod.enum(['overbought_sentiment', 'underpriced_probability', 'neutral']),
+  "message": zod.string(),
+  "severity": zod.enum(['low', 'medium', 'high'])
+}),
+  "binanceSymbol": zod.string(),
+  "markPrice": zod.number(),
+  "distanceToTargetPercent": zod.number(),
+  "confidence": zod.enum(['HIGH', 'MEDIUM', 'LOW'])
+})
+export const GetRecommendationsResponse = zod.array(GetRecommendationsResponseItem)
 
 

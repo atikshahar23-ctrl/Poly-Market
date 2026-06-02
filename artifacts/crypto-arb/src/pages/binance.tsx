@@ -1,70 +1,70 @@
-import { useGetBinanceData, getGetBinanceDataQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useGetBinanceMulti, getGetBinanceMultiQueryKey } from "@workspace/api-client-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 export default function Binance() {
-  const { data: binance, isLoading } = useGetBinanceData({}, {
+  const { data: binanceAssets, isLoading } = useGetBinanceMulti({
     query: {
-      queryKey: getGetBinanceDataQueryKey({}),
+      queryKey: getGetBinanceMultiQueryKey(),
       refetchInterval: 10000,
     }
   });
 
   return (
-    <div className="p-8 space-y-8 max-w-4xl mx-auto">
+    <div className="p-8 space-y-8 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Binance Futures</h1>
-        <p className="text-muted-foreground mt-1">Live perpetual contract data.</p>
+        <p className="text-muted-foreground mt-1">Live perpetual contract data across major assets.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-border bg-card/50 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="text-lg">BTCUSDT Mark Price</CardTitle>
-            <CardDescription>Current index price used for liquidations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-12 w-48" />
-            ) : (
-              <div>
-                <div className="text-5xl font-bold font-mono text-primary">
-                  ${binance?.markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="border-border bg-card/50 backdrop-blur">
+              <CardHeader>
+                <Skeleton className="h-6 w-24 mb-2" />
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {binanceAssets?.map((asset) => (
+            <Card key={asset.symbol} className="border-border bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>{asset.asset}</span>
+                  <span className="text-xs font-mono text-muted-foreground">{asset.symbol}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-2">
+                <div>
+                  <div className="text-sm text-muted-foreground font-mono mb-1">MARK PRICE</div>
+                  <div className="text-2xl font-bold font-mono text-primary">
+                    ${asset.markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
                 </div>
-                <div className="mt-4 text-sm text-muted-foreground font-mono">
-                  LAST FETCH: {binance?.fetchedAt ? format(new Date(binance.fetchedAt), "HH:mm:ss.SSS") : '-'}
+                <div>
+                  <div className="text-sm text-muted-foreground font-mono mb-1">FUNDING RATE</div>
+                  <div className={`text-xl font-bold font-mono flex items-center gap-1 ${asset.fundingRatePercent > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {asset.fundingRatePercent > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                    {asset.fundingRatePercent.toFixed(4)}%
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {asset.fundingRatePercent > 0 ? 'Bullish (Longs pay)' : 'Bearish (Shorts pay)'}
+                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border bg-card/50 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="text-lg">Funding Rate</CardTitle>
-            <CardDescription>Current period funding cost</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-12 w-32" />
-            ) : (
-              <div>
-                <div className={`text-5xl font-bold font-mono ${(binance?.fundingRatePercent || 0) > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {binance?.fundingRatePercent.toFixed(4)}%
-                </div>
-                <div className="mt-4 text-sm text-muted-foreground">
-                  {(binance?.fundingRatePercent || 0) > 0 ? (
-                    <span>Longs pay shorts. Market leans bullish.</span>
-                  ) : (
-                    <span>Shorts pay longs. Market leans bearish.</span>
-                  )}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Card className="border-border">
         <CardHeader>

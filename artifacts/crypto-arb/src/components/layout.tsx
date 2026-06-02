@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-react";
-import { Activity, LayoutDashboard, LineChart, CandlestickChart } from "lucide-react";
+import { Activity, LayoutDashboard, LineChart, CandlestickChart, Zap } from "lucide-react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -13,6 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const links = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/recommendations", label: "Recommendations", icon: Zap },
     { href: "/markets", label: "Polymarket", icon: LineChart },
     { href: "/binance", label: "Binance", icon: CandlestickChart },
   ];

@@ -8,7 +8,7 @@
 
 export type GetBinanceDataParams = {
 /**
- * Trading symbol (default BTCUSDT)
+ * Trading symbol (e.g. BTCUSDT, ETHUSDT)
  */
 symbol?: string;
 };

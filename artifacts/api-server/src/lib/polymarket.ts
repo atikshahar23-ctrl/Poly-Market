@@ -10,14 +10,34 @@ export interface PolymarketMarket {
   active: boolean;
   endDate: string | null;
   volume: number | null;
+  assetTag: string;
 }
 
 const POLYMARKET_API = "https://clob.polymarket.com/markets";
 
+export type AssetFilter = "BTC" | "ETH" | "SOL" | "BNB" | "ALL";
+
+const ASSET_KEYWORDS: Record<AssetFilter, string[]> = {
+  BTC: ["Bitcoin", "BTC"],
+  ETH: ["Ethereum", "ETH"],
+  SOL: ["Solana", "SOL"],
+  BNB: ["BNB", "Binance Coin"],
+  ALL: ["Bitcoin", "BTC", "Ethereum", "ETH", "Solana", "SOL", "BNB", "Binance Coin"],
+};
+
+/** Detect which asset tag applies to a question */
+function detectAssetTag(question: string): string {
+  if (/bitcoin|btc/i.test(question)) return "BTC";
+  if (/ethereum|eth/i.test(question)) return "ETH";
+  if (/solana|\bsol\b/i.test(question)) return "SOL";
+  if (/\bbnb\b|binance coin/i.test(question)) return "BNB";
+  return "CRYPTO";
+}
+
 /** Extract a dollar target price from a contract question using regex */
 function extractTargetPrice(question: string): number | null {
-  // Matches patterns like $100,000 or $65k or $65K
-  const match = /\$(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+[kK])/.exec(question);
+  // Matches $100,000 or $65k or $65K or $1.5k
+  const match = /\$(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?[kK])/.exec(question);
   if (!match) return null;
 
   const raw = match[1].replace(/,/g, "").toLowerCase();
@@ -27,8 +47,16 @@ function extractTargetPrice(question: string): number | null {
   return parseFloat(raw);
 }
 
-export async function fetchBtcPolymarketMarkets(): Promise<PolymarketMarket[]> {
-  const url = `${POLYMARKET_API}?active=true&limit=100`;
+export interface FetchPolymarketOptions {
+  asset?: AssetFilter;
+  search?: string;
+}
+
+export async function fetchPolymarketMarkets(opts: FetchPolymarketOptions = {}): Promise<PolymarketMarket[]> {
+  const { asset = "ALL", search } = opts;
+  const keywords = ASSET_KEYWORDS[asset];
+
+  const url = `${POLYMARKET_API}?active=true&limit=200`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -44,10 +72,14 @@ export async function fetchBtcPolymarketMarkets(): Promise<PolymarketMarket[]> {
   for (const market of rawMarkets) {
     const question = (market["question"] as string) ?? "";
 
-    // Filter only BTC/Bitcoin markets
-    if (!question.includes("Bitcoin") && !question.includes("BTC")) {
-      continue;
-    }
+    // Match any of the keywords for the selected asset(s)
+    const matchesAsset = keywords.some((kw) =>
+      question.toLowerCase().includes(kw.toLowerCase()),
+    );
+    if (!matchesAsset) continue;
+
+    // Apply optional text search
+    if (search && !question.toLowerCase().includes(search.toLowerCase())) continue;
 
     const tokens = (market["tokens"] as Record<string, unknown>[]) ?? [];
     if (tokens.length < 2) continue;
@@ -72,6 +104,7 @@ export async function fetchBtcPolymarketMarkets(): Promise<PolymarketMarket[]> {
       active: (market["active"] as boolean) ?? true,
       endDate: (market["end_date_iso"] as string) ?? (market["endDate"] as string) ?? null,
       volume: market["volume"] != null ? parseFloat(market["volume"] as string) : null,
+      assetTag: detectAssetTag(question),
     });
   }
 

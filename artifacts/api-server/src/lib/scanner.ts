@@ -1,8 +1,10 @@
-import { fetchBinanceData, type BinanceData } from "./binance";
-import { fetchBtcPolymarketMarkets, type PolymarketMarket } from "./polymarket";
+import { fetchBinanceData, fetchAllBinanceData, ASSET_SYMBOLS, type BinanceData } from "./binance";
+import { fetchPolymarketMarkets, type PolymarketMarket, type AssetFilter } from "./polymarket";
 
 export type SignalType = "overbought_sentiment" | "underpriced_probability" | "neutral";
 export type SignalSeverity = "low" | "medium" | "high";
+export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
+export type ActionType = "BUY_YES" | "BUY_NO" | "WATCH";
 
 export interface ArbitrageSignal {
   type: SignalType;
@@ -14,6 +16,8 @@ export interface MarketAnalysis {
   market: PolymarketMarket;
   distanceToTargetPercent: number;
   signal: ArbitrageSignal;
+  binanceSymbol: string;
+  markPrice: number;
 }
 
 export interface SignalCounts {
@@ -23,18 +27,29 @@ export interface SignalCounts {
 }
 
 export interface ScanResult {
-  binance: BinanceData;
+  binanceAssets: BinanceData[];
   markets: MarketAnalysis[];
   scannedAt: string;
   totalMarkets: number;
   signalCounts: SignalCounts;
 }
 
+export interface Recommendation {
+  rank: number;
+  action: ActionType;
+  rationale: string;
+  market: PolymarketMarket;
+  signal: ArbitrageSignal;
+  binanceSymbol: string;
+  markPrice: number;
+  distanceToTargetPercent: number;
+  confidence: ConfidenceLevel;
+}
+
 function classifySignal(
   distanceToTargetPercent: number,
   yesProbabilityPercent: number,
 ): ArbitrageSignal {
-  // Target is far but crowd gives high probability → overbought sentiment
   if (distanceToTargetPercent > 10 && yesProbabilityPercent > 30) {
     const severity: SignalSeverity =
       distanceToTargetPercent > 25 && yesProbabilityPercent > 50
@@ -49,13 +64,12 @@ function classifySignal(
     };
   }
 
-  // Target is close but crowd gives very low probability → underpriced
   if (distanceToTargetPercent < 2 && yesProbabilityPercent < 10) {
     const severity: SignalSeverity =
       distanceToTargetPercent < 0.5 && yesProbabilityPercent < 5 ? "high" : "medium";
     return {
       type: "underpriced_probability",
-      message: `Target is only ${distanceToTargetPercent.toFixed(1)}% away but crowd only assigns ${yesProbabilityPercent.toFixed(1)}% probability — market may be underpriced.`,
+      message: `Target is only ${distanceToTargetPercent.toFixed(1)}% away but crowd assigns just ${yesProbabilityPercent.toFixed(1)}% — market may be underpriced.`,
       severity,
     };
   }
@@ -67,35 +81,60 @@ function classifySignal(
   };
 }
 
-export async function runScan(): Promise<ScanResult> {
-  const [binance, markets] = await Promise.all([
-    fetchBinanceData("BTCUSDT"),
-    fetchBtcPolymarketMarkets(),
+/** Map a market's assetTag to the closest Binance mark price */
+function resolveMarkPrice(assetTag: string, binanceAssets: BinanceData[]): BinanceData | undefined {
+  const symbol = ASSET_SYMBOLS[assetTag];
+  return symbol
+    ? binanceAssets.find((b) => b.symbol === symbol)
+    : binanceAssets.find((b) => b.symbol === "BTCUSDT");
+}
+
+function computeConfidence(signal: ArbitrageSignal, distanceToTargetPercent: number): ConfidenceLevel {
+  if (signal.severity === "high") return "HIGH";
+  if (signal.severity === "medium") return "MEDIUM";
+  if (signal.type !== "neutral" && distanceToTargetPercent < 5) return "MEDIUM";
+  return "LOW";
+}
+
+export async function runScan(opts: { asset?: AssetFilter; search?: string } = {}): Promise<ScanResult> {
+  const { asset = "ALL" } = opts;
+
+  const [binanceAssets, polymarkets] = await Promise.all([
+    asset === "ALL"
+      ? fetchAllBinanceData()
+      : fetchBinanceData(ASSET_SYMBOLS[asset] ?? "BTCUSDT").then((d) => [d]),
+    fetchPolymarketMarkets(opts),
   ]);
 
-  const analyzed: MarketAnalysis[] = markets.map((market) => {
+  const analyzed: MarketAnalysis[] = [];
+
+  for (const market of polymarkets) {
+    const binanceEntry = resolveMarkPrice(market.assetTag, binanceAssets);
+    if (!binanceEntry) continue;
+
     const distanceToTargetPercent = market.targetPrice != null
-      ? ((market.targetPrice - binance.markPrice) / binance.markPrice) * 100
+      ? ((market.targetPrice - binanceEntry.markPrice) / binanceEntry.markPrice) * 100
       : 0;
 
-    const signal = classifySignal(
-      Math.abs(distanceToTargetPercent),
-      market.yesProbabilityPercent,
-    );
+    const signal = classifySignal(Math.abs(distanceToTargetPercent), market.yesProbabilityPercent);
 
-    return { market, distanceToTargetPercent, signal };
-  });
+    analyzed.push({
+      market,
+      distanceToTargetPercent,
+      signal,
+      binanceSymbol: binanceEntry.symbol,
+      markPrice: binanceEntry.markPrice,
+    });
+  }
 
-  // Sort: high signals first, then by absolute distance
   analyzed.sort((a, b) => {
     const severityOrder = { high: 0, medium: 1, low: 2 };
-    const aSev = severityOrder[a.signal.severity];
-    const bSev = severityOrder[b.signal.severity];
-    if (aSev !== bSev) return aSev - bSev;
+    const diff = severityOrder[a.signal.severity] - severityOrder[b.signal.severity];
+    if (diff !== 0) return diff;
     return Math.abs(a.distanceToTargetPercent) - Math.abs(b.distanceToTargetPercent);
   });
 
-  const signalCounts: SignalCounts = analyzed.reduce(
+  const signalCounts = analyzed.reduce(
     (acc, m) => {
       if (m.signal.type === "overbought_sentiment") acc.overbought++;
       else if (m.signal.type === "underpriced_probability") acc.underpriced++;
@@ -106,10 +145,44 @@ export async function runScan(): Promise<ScanResult> {
   );
 
   return {
-    binance,
+    binanceAssets,
     markets: analyzed,
     scannedAt: new Date().toISOString(),
     totalMarkets: analyzed.length,
     signalCounts,
   };
+}
+
+export async function buildRecommendations(): Promise<Recommendation[]> {
+  const scan = await runScan({ asset: "ALL" });
+
+  const actionable = scan.markets.filter((m) => m.signal.type !== "neutral");
+
+  const recommendations: Recommendation[] = actionable.map((m, i) => {
+    const action: ActionType =
+      m.signal.type === "overbought_sentiment" ? "BUY_NO" : "BUY_YES";
+
+    const rationale = m.signal.type === "overbought_sentiment"
+      ? `Crowd assigns ${m.market.yesProbabilityPercent.toFixed(1)}% to a target ${Math.abs(m.distanceToTargetPercent).toFixed(1)}% away from the ${m.market.assetTag} mark price. Buying NO shares exploits this overconfidence.`
+      : `Target is only ${Math.abs(m.distanceToTargetPercent).toFixed(1)}% from current ${m.market.assetTag} price but the crowd only gives ${m.market.yesProbabilityPercent.toFixed(1)}% probability. YES shares appear underpriced.`;
+
+    return {
+      rank: i + 1,
+      action,
+      rationale,
+      market: m.market,
+      signal: m.signal,
+      binanceSymbol: m.binanceSymbol,
+      markPrice: m.markPrice,
+      distanceToTargetPercent: m.distanceToTargetPercent,
+      confidence: computeConfidence(m.signal, Math.abs(m.distanceToTargetPercent)),
+    };
+  });
+
+  // Final rank: HIGH confidence first, then by severity
+  const confidenceOrder: Record<ConfidenceLevel, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+  recommendations.sort((a, b) => confidenceOrder[a.confidence] - confidenceOrder[b.confidence]);
+  recommendations.forEach((r, i) => { r.rank = i + 1; });
+
+  return recommendations.slice(0, 20);
 }

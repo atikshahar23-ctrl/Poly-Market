@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Markets from "@/pages/markets";
 import Binance from "@/pages/binance";
+import Recommendations from "@/pages/recommendations";
 import Layout from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -17,6 +18,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/markets" component={Markets} />
         <Route path="/binance" component={Binance} />
+        <Route path="/recommendations" component={Recommendations} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

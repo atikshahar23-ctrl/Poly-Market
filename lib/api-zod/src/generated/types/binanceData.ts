@@ -8,6 +8,8 @@
 
 export interface BinanceData {
   symbol: string;
+  /** Short asset name e.g. BTC */
+  asset: string;
   markPrice: number;
   fundingRate: number;
   fundingRatePercent: number;

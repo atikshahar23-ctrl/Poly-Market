@@ -15,6 +15,8 @@ export interface ErrorResponse {
 
 export interface BinanceData {
   symbol: string;
+  /** Short asset name e.g. BTC */
+  asset: string;
   markPrice: number;
   fundingRate: number;
   fundingRatePercent: number;
@@ -34,6 +36,8 @@ export interface PolymarketMarket {
   endDate?: string | null;
   /** @nullable */
   volume?: number | null;
+  /** Which asset this market relates to e.g. BTC, ETH */
+  assetTag: string;
 }
 
 export type ArbitrageSignalType = typeof ArbitrageSignalType[keyof typeof ArbitrageSignalType];
@@ -64,6 +68,8 @@ export interface MarketAnalysis {
   market: PolymarketMarket;
   distanceToTargetPercent: number;
   signal: ArbitrageSignal;
+  binanceSymbol: string;
+  markPrice: number;
 }
 
 export interface SignalCounts {
@@ -73,17 +79,91 @@ export interface SignalCounts {
 }
 
 export interface ScanResult {
-  binance: BinanceData;
+  binanceAssets: BinanceData[];
   markets: MarketAnalysis[];
   scannedAt: string;
   totalMarkets: number;
   signalCounts: SignalCounts;
 }
 
+export type RecommendationAction = typeof RecommendationAction[keyof typeof RecommendationAction];
+
+
+export const RecommendationAction = {
+  BUY_YES: 'BUY_YES',
+  BUY_NO: 'BUY_NO',
+  WATCH: 'WATCH',
+} as const;
+
+export type RecommendationConfidence = typeof RecommendationConfidence[keyof typeof RecommendationConfidence];
+
+
+export const RecommendationConfidence = {
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+} as const;
+
+export interface Recommendation {
+  rank: number;
+  action: RecommendationAction;
+  rationale: string;
+  market: PolymarketMarket;
+  signal: ArbitrageSignal;
+  binanceSymbol: string;
+  markPrice: number;
+  distanceToTargetPercent: number;
+  confidence: RecommendationConfidence;
+}
+
 export type GetBinanceDataParams = {
 /**
- * Trading symbol (default BTCUSDT)
+ * Trading symbol (e.g. BTCUSDT, ETHUSDT)
  */
 symbol?: string;
 };
+
+export type GetPolymarketMarketsParams = {
+/**
+ * Filter by crypto asset
+ */
+asset?: GetPolymarketMarketsAsset;
+/**
+ * Free-text search within question text
+ */
+search?: string;
+};
+
+export type GetPolymarketMarketsAsset = typeof GetPolymarketMarketsAsset[keyof typeof GetPolymarketMarketsAsset];
+
+
+export const GetPolymarketMarketsAsset = {
+  BTC: 'BTC',
+  ETH: 'ETH',
+  SOL: 'SOL',
+  BNB: 'BNB',
+  ALL: 'ALL',
+} as const;
+
+export type GetScanResultsParams = {
+/**
+ * Asset(s) to scan
+ */
+asset?: GetScanResultsAsset;
+/**
+ * Free-text filter on market questions
+ */
+search?: string;
+};
+
+export type GetScanResultsAsset = typeof GetScanResultsAsset[keyof typeof GetScanResultsAsset];
+
+
+export const GetScanResultsAsset = {
+  BTC: 'BTC',
+  ETH: 'ETH',
+  SOL: 'SOL',
+  BNB: 'BNB',
+  ALL: 'ALL',
+} as const;
 

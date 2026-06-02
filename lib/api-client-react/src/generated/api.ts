@@ -19,8 +19,11 @@ import type {
   BinanceData,
   ErrorResponse,
   GetBinanceDataParams,
+  GetPolymarketMarketsParams,
+  GetScanResultsParams,
   HealthStatus,
   PolymarketMarket,
+  Recommendation,
   ScanResult
 } from './api.schemas';
 
@@ -130,8 +133,8 @@ export const getGetBinanceDataUrl = (params?: GetBinanceDataParams,) => {
 }
 
 /**
- * Returns current mark price and funding rate for BTCUSDT
- * @summary Get Binance Futures data for BTC
+ * Returns current mark price and funding rate for a given symbol
+ * @summary Get Binance Futures data for a single asset
  */
 export const getBinanceData = async (params?: GetBinanceDataParams, options?: RequestInit): Promise<BinanceData> => {
 
@@ -178,7 +181,7 @@ export type GetBinanceDataQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Get Binance Futures data for BTC
+ * @summary Get Binance Futures data for a single asset
  */
 
 export function useGetBinanceData<TData = Awaited<ReturnType<typeof getBinanceData>>, TError = ErrorType<ErrorResponse>>(
@@ -199,21 +202,21 @@ export function useGetBinanceData<TData = Awaited<ReturnType<typeof getBinanceDa
 
 
 
-export const getGetPolymarketMarketsUrl = () => {
+export const getGetBinanceMultiUrl = () => {
 
 
 
 
-  return `/api/crypto/polymarket`
+  return `/api/crypto/binance/multi`
 }
 
 /**
- * Returns active Bitcoin prediction markets from Polymarket with crowd probability
- * @summary Get active Polymarket BTC markets
+ * Returns current mark price and funding rate for BTC, ETH, SOL, and BNB
+ * @summary Get Binance Futures data for multiple assets
  */
-export const getPolymarketMarkets = async ( options?: RequestInit): Promise<PolymarketMarket[]> => {
+export const getBinanceMulti = async ( options?: RequestInit): Promise<BinanceData[]> => {
 
-  return customFetch<PolymarketMarket[]>(getGetPolymarketMarketsUrl(),
+  return customFetch<BinanceData[]>(getGetBinanceMultiUrl(),
   {
     ...options,
     method: 'GET'
@@ -226,23 +229,108 @@ export const getPolymarketMarkets = async ( options?: RequestInit): Promise<Poly
 
 
 
-export const getGetPolymarketMarketsQueryKey = () => {
+export const getGetBinanceMultiQueryKey = () => {
     return [
-    `/api/crypto/polymarket`
+    `/api/crypto/binance/multi`
     ] as const;
     }
 
 
-export const getGetPolymarketMarketsQueryOptions = <TData = Awaited<ReturnType<typeof getPolymarketMarkets>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPolymarketMarkets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetBinanceMultiQueryOptions = <TData = Awaited<ReturnType<typeof getBinanceMulti>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceMulti>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetPolymarketMarketsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetBinanceMultiQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPolymarketMarkets>>> = ({ signal }) => getPolymarketMarkets({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBinanceMulti>>> = ({ signal }) => getBinanceMulti({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBinanceMulti>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBinanceMultiQueryResult = NonNullable<Awaited<ReturnType<typeof getBinanceMulti>>>
+export type GetBinanceMultiQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get Binance Futures data for multiple assets
+ */
+
+export function useGetBinanceMulti<TData = Awaited<ReturnType<typeof getBinanceMulti>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceMulti>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBinanceMultiQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetPolymarketMarketsUrl = (params?: GetPolymarketMarketsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/crypto/polymarket?${stringifiedParams}` : `/api/crypto/polymarket`
+}
+
+/**
+ * Returns active crypto prediction markets from Polymarket
+ * @summary Get active Polymarket crypto markets
+ */
+export const getPolymarketMarkets = async (params?: GetPolymarketMarketsParams, options?: RequestInit): Promise<PolymarketMarket[]> => {
+
+  return customFetch<PolymarketMarket[]>(getGetPolymarketMarketsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPolymarketMarketsQueryKey = (params?: GetPolymarketMarketsParams,) => {
+    return [
+    `/api/crypto/polymarket`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPolymarketMarketsQueryOptions = <TData = Awaited<ReturnType<typeof getPolymarketMarkets>>, TError = ErrorType<ErrorResponse>>(params?: GetPolymarketMarketsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPolymarketMarkets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPolymarketMarketsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPolymarketMarkets>>> = ({ signal }) => getPolymarketMarkets(params, { signal, ...requestOptions });
 
 
 
@@ -256,15 +344,15 @@ export type GetPolymarketMarketsQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Get active Polymarket BTC markets
+ * @summary Get active Polymarket crypto markets
  */
 
 export function useGetPolymarketMarkets<TData = Awaited<ReturnType<typeof getPolymarketMarkets>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPolymarketMarkets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetPolymarketMarketsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPolymarketMarkets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetPolymarketMarketsQueryOptions(options)
+  const queryOptions = getGetPolymarketMarketsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -277,21 +365,28 @@ export function useGetPolymarketMarkets<TData = Awaited<ReturnType<typeof getPol
 
 
 
-export const getGetScanResultsUrl = () => {
+export const getGetScanResultsUrl = (params?: GetScanResultsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/crypto/scan`
+  return stringifiedParams.length > 0 ? `/api/crypto/scan?${stringifiedParams}` : `/api/crypto/scan`
 }
 
 /**
  * Fetches Binance and Polymarket data, cross-references them, and returns arbitrage signals
  * @summary Run full arbitrage/sentiment scan
  */
-export const getScanResults = async ( options?: RequestInit): Promise<ScanResult> => {
+export const getScanResults = async (params?: GetScanResultsParams, options?: RequestInit): Promise<ScanResult> => {
 
-  return customFetch<ScanResult>(getGetScanResultsUrl(),
+  return customFetch<ScanResult>(getGetScanResultsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -304,23 +399,23 @@ export const getScanResults = async ( options?: RequestInit): Promise<ScanResult
 
 
 
-export const getGetScanResultsQueryKey = () => {
+export const getGetScanResultsQueryKey = (params?: GetScanResultsParams,) => {
     return [
-    `/api/crypto/scan`
+    `/api/crypto/scan`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetScanResultsQueryOptions = <TData = Awaited<ReturnType<typeof getScanResults>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScanResults>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetScanResultsQueryOptions = <TData = Awaited<ReturnType<typeof getScanResults>>, TError = ErrorType<ErrorResponse>>(params?: GetScanResultsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScanResults>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetScanResultsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetScanResultsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScanResults>>> = ({ signal }) => getScanResults({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScanResults>>> = ({ signal }) => getScanResults(params, { signal, ...requestOptions });
 
 
 
@@ -338,11 +433,89 @@ export type GetScanResultsQueryError = ErrorType<ErrorResponse>
  */
 
 export function useGetScanResults<TData = Awaited<ReturnType<typeof getScanResults>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScanResults>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetScanResultsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScanResults>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetScanResultsQueryOptions(options)
+  const queryOptions = getGetScanResultsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetRecommendationsUrl = () => {
+
+
+
+
+  return `/api/crypto/recommendations`
+}
+
+/**
+ * Returns the top actionable signals ranked by severity and confidence across all assets
+ * @summary Get top-ranked arbitrage recommendations
+ */
+export const getRecommendations = async ( options?: RequestInit): Promise<Recommendation[]> => {
+
+  return customFetch<Recommendation[]>(getGetRecommendationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRecommendationsQueryKey = () => {
+    return [
+    `/api/crypto/recommendations`
+    ] as const;
+    }
+
+
+export const getGetRecommendationsQueryOptions = <TData = Awaited<ReturnType<typeof getRecommendations>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecommendations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRecommendationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecommendations>>> = ({ signal }) => getRecommendations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRecommendations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRecommendationsQueryResult = NonNullable<Awaited<ReturnType<typeof getRecommendations>>>
+export type GetRecommendationsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get top-ranked arbitrage recommendations
+ */
+
+export function useGetRecommendations<TData = Awaited<ReturnType<typeof getRecommendations>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecommendations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRecommendationsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

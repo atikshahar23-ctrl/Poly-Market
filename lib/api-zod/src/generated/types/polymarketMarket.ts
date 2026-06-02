@@ -19,4 +19,6 @@ export interface PolymarketMarket {
   endDate?: string | null;
   /** @nullable */
   volume?: number | null;
+  /** Which asset this market relates to e.g. BTC, ETH */
+  assetTag: string;
 }

@@ -7,11 +7,17 @@
  */
 import type { ArbitrageSignal } from './arbitrageSignal';
 import type { PolymarketMarket } from './polymarketMarket';
+import type { RecommendationAction } from './recommendationAction';
+import type { RecommendationConfidence } from './recommendationConfidence';
 
-export interface MarketAnalysis {
+export interface Recommendation {
+  rank: number;
+  action: RecommendationAction;
+  rationale: string;
   market: PolymarketMarket;
-  distanceToTargetPercent: number;
   signal: ArbitrageSignal;
   binanceSymbol: string;
   markPrice: number;
+  distanceToTargetPercent: number;
+  confidence: RecommendationConfidence;
 }
