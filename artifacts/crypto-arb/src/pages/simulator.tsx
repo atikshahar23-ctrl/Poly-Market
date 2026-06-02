@@ -9,6 +9,7 @@ import {
 import {
   usePortfolio, STARTING_BALANCE,
 } from "@/contexts/portfolio-context";
+import { useRefresh } from "@/contexts/refresh-context";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -613,12 +614,14 @@ function StockRecommendationsStrip({
 /* ─── Stocks Tab ─── */
 function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices: Record<string, number> }) {
   const { stockPositions, cash, openStockPosition, closeStockPosition } = usePortfolio();
+  const { intervalFor } = useRefresh();
   const { data: stockRecs } = useGetStockRecommendations({
-    query: { queryKey: getGetStockRecommendationsQueryKey(), refetchInterval: 30000 },
+    query: { queryKey: getGetStockRecommendationsQueryKey(), refetchInterval: intervalFor(30000, 30000) },
   });
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<"ALL" | StockQuote["category"]>("ALL");
   const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [leverages, setLeverages] = useState<Record<string, Leverage>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const CATEGORIES: ("ALL" | StockQuote["category"])[] = ["ALL", "TECH", "ENERGY", "RESOURCES", "LARGE_CAP", "INDEX"];
@@ -646,7 +649,8 @@ function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices:
       setErrors(e => ({ ...e, [stock.symbol]: "Price unavailable" }));
       return;
     }
-    const err = openStockPosition({ symbol: stock.symbol, name: stock.name, entryPrice: price }, amt);
+    const leverage = leverages[stock.symbol] ?? 1;
+    const err = openStockPosition({ symbol: stock.symbol, name: stock.name, entryPrice: price }, amt, leverage);
     if (err) {
       setErrors(e => ({ ...e, [stock.symbol]: err }));
     } else {
@@ -673,8 +677,8 @@ function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices:
           </div>
           {stockPositions.map((pos) => {
             const currentPrice = stockPrices[pos.symbol] ?? pos.entryPrice;
-            const value = pos.shares * currentPrice;
-            const pnl = value - pos.cost;
+            const pnl = pos.shares * (currentPrice - pos.entryPrice);
+            const equity = Math.max(0, pos.cost + pnl);
             const pnlPct = pos.cost > 0 ? (pnl / pos.cost) * 100 : 0;
 
             return (
@@ -682,9 +686,9 @@ function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices:
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="text-xs font-black font-mono text-emerald-400">LONG</div>
                   <div className="min-w-0">
-                    <div className="text-sm font-bold font-mono truncate">{pos.symbol} <span className="text-muted-foreground font-normal">{fmt(pos.shares, 4)} sh</span></div>
+                    <div className="text-sm font-bold font-mono truncate">{pos.symbol} {pos.leverage > 1 && <span className="text-primary font-normal">{pos.leverage}x</span>} <span className="text-muted-foreground font-normal">{fmt(pos.shares, 4)} sh</span></div>
                     <div className="text-[10px] text-muted-foreground font-mono">
-                      Entry ${pos.entryPrice.toFixed(2)} → Now ${currentPrice.toFixed(2)} · Cost {fmtUsd(pos.cost)}
+                      Entry ${pos.entryPrice.toFixed(2)} → Now ${currentPrice.toFixed(2)} · Margin {fmtUsd(pos.cost)}
                     </div>
                   </div>
                 </div>
@@ -693,7 +697,7 @@ function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices:
                     {pnl >= 0 ? "+" : ""}{fmtUsd(pnl)}
                   </div>
                   <div className={`text-[10px] font-mono ${pnlColor(pnl)}`}>
-                    {pnlPct >= 0 ? "+" : ""}{fmt(pnlPct)}% · Value {fmtUsd(value)}
+                    {pnlPct >= 0 ? "+" : ""}{fmt(pnlPct)}% · Equity {fmtUsd(equity)}
                   </div>
                 </div>
                 <button
@@ -740,6 +744,7 @@ function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices:
           const price = stockPrices[stock.symbol] ?? stock.price;
           const up = stock.changePercent >= 0;
           const amt = parseFloat(amounts[stock.symbol] ?? "0") || 0;
+          const lev = leverages[stock.symbol] ?? 1;
           const tvUrl = `https://www.tradingview.com/symbols/${stock.tradingViewSymbol}/`;
 
           return (
@@ -765,8 +770,23 @@ function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices:
                   {up ? '+' : ''}{stock.changePercent.toFixed(2)}%
                 </div>
               </div>
+              {/* Leverage */}
               <div className="space-y-1">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Amount (USD)</span>
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Leverage</span>
+                <div className="flex gap-1">
+                  {LEVERAGE_OPTIONS.map(l => (
+                    <button
+                      key={l}
+                      onClick={() => setLeverages(lv => ({ ...lv, [stock.symbol]: l }))}
+                      className={`flex-1 py-1 text-[11px] font-mono font-bold rounded transition-all ${lev === l ? 'bg-primary text-primary-foreground' : 'bg-secondary/50 text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {l}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Margin (USD)</span>
                 <Input
                   type="number"
                   placeholder="e.g. 500"
@@ -776,7 +796,7 @@ function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices:
                 />
                 {amt > 0 && (
                   <div className="text-[10px] text-muted-foreground font-mono">
-                    {price > 0 ? `${fmt(amt / price, 4)} shares` : ''} · {cash < amt ? <span className="text-red-400">Insufficient cash</span> : <span className="text-emerald-400">OK</span>}
+                    {price > 0 ? `${fmt((amt * lev) / price, 4)} shares${lev > 1 ? ` · ${fmtUsd(amt * lev)} exposure` : ''}` : ''} · {cash < amt ? <span className="text-red-400">Insufficient cash</span> : <span className="text-emerald-400">OK</span>}
                   </div>
                 )}
               </div>
@@ -834,18 +854,19 @@ function TradeHistoryPanel() {
 export default function SimulatorPage() {
   const [tab, setTab] = useState<"futures" | "prediction" | "stocks">("futures");
   const { polyPositions, binancePositions, stockPositions, cash } = usePortfolio();
+  const { intervalFor } = useRefresh();
 
   const { data: binanceData, isLoading: binanceLoading } = useGetBinanceMulti({
-    query: { queryKey: getGetBinanceMultiQueryKey(), refetchInterval: 5000 }
+    query: { queryKey: getGetBinanceMultiQueryKey(), refetchInterval: intervalFor(5000) }
   });
 
   const { data: allMarketsData, isLoading: marketsLoading } = useGetAllMarkets(
     {},
-    { query: { queryKey: getGetAllMarketsQueryKey({}), refetchInterval: 30000 } }
+    { query: { queryKey: getGetAllMarketsQueryKey({}), refetchInterval: intervalFor(30000, 30000) } }
   );
 
   const { data: stocksData, isLoading: stocksLoading } = useGetStocks({
-    query: { queryKey: getGetStocksQueryKey(), refetchInterval: 30000 }
+    query: { queryKey: getGetStocksQueryKey(), refetchInterval: intervalFor(30000, 30000) }
   });
 
   const binancePrices = useMemo(() => {
@@ -894,7 +915,7 @@ export default function SimulatorPage() {
 
     const stockPnl = stockPositions.reduce((sum, pos) => {
       const currentPrice = stockPrices[pos.symbol] ?? pos.entryPrice;
-      return sum + (pos.shares * currentPrice - pos.cost);
+      return sum + pos.shares * (currentPrice - pos.entryPrice);
     }, 0);
 
     return binancePnl + polyPnl + stockPnl;
@@ -918,7 +939,7 @@ export default function SimulatorPage() {
     }, 0);
     const stockValue = stockPositions.reduce((sum, pos) => {
       const currentPrice = stockPrices[pos.symbol] ?? pos.entryPrice;
-      return sum + pos.shares * currentPrice;
+      return sum + Math.max(0, pos.cost + pos.shares * (currentPrice - pos.entryPrice));
     }, 0);
     return binanceMargin + binancePnl + polyValue + stockValue;
   }, [binancePositions, polyPositions, stockPositions, binancePrices, stockPrices, allMarkets]);

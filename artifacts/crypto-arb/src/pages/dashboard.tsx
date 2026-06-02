@@ -9,6 +9,7 @@ import { RefreshCw, TrendingUp, TrendingDown, Search, Zap, ArrowRight, AlertTria
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRefresh } from "@/contexts/refresh-context";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -83,7 +84,9 @@ function TopAlertCard({ rec }: { rec: Recommendation }) {
 }
 
 export default function Dashboard() {
-  const [countdown, setCountdown] = useState(30);
+  const { intervalFor } = useRefresh();
+  const scanInterval = intervalFor(30000, 30000);
+  const [countdown, setCountdown] = useState(Math.round(scanInterval / 1000));
   const [search, setSearch] = useState("");
   const [assetFilter, setAssetFilter] = useState<GetScanResultsAsset>("ALL");
 
@@ -92,7 +95,7 @@ export default function Dashboard() {
     {
       query: {
         queryKey: getGetScanResultsQueryKey({ asset: assetFilter }),
-        refetchInterval: 30000,
+        refetchInterval: scanInterval,
       }
     }
   );
@@ -100,7 +103,7 @@ export default function Dashboard() {
   const { data: topRecs, isLoading: recsLoading } = useGetRecommendations({
     query: {
       queryKey: getGetRecommendationsQueryKey(),
-      refetchInterval: 60000,
+      refetchInterval: intervalFor(60000, 30000),
     }
   });
 
@@ -109,14 +112,14 @@ export default function Dashboard() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isFetching) {
-      setCountdown(30);
+      setCountdown(Math.round(scanInterval / 1000));
     } else {
       timer = setInterval(() => {
         setCountdown((c) => Math.max(0, c - 1));
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isFetching]);
+  }, [isFetching, scanInterval]);
 
   const btcAsset = data?.binanceAssets?.find(b => b.asset === 'BTC');
   const filteredMarkets = data?.markets?.filter(m =>

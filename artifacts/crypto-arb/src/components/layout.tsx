@@ -3,6 +3,7 @@ import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-re
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { LayoutDashboard, LineChart, CandlestickChart, Zap, Globe, Trophy, TrendingUp } from "lucide-react";
 import { Jarvis } from "@/components/jarvis";
+import { TopControls } from "@/components/top-controls";
 import logoUrl from "@/assets/logo-heavy-guard.png";
 
 function PortfolioMiniBalance() {
@@ -112,6 +113,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* Global top-right controls: refresh speed, manual refresh, notifications */}
+      <TopControls />
 
       {/* JARVIS advisory assistant */}
       <Jarvis />

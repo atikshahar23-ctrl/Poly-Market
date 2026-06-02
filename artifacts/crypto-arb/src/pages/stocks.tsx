@@ -3,6 +3,7 @@ import {
   useGetStocks, getGetStocksQueryKey, StockQuote,
 } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
+import { useRefresh } from "@/contexts/refresh-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   TrendingUp, TrendingDown, Search, RefreshCw, ExternalLink, LineChart, Newspaper, Sparkles,
@@ -165,23 +166,26 @@ function StockRow({ s }: { s: StockQuote }) {
 }
 
 export default function StocksPage() {
+  const { intervalFor } = useRefresh();
+  const stocksInterval = intervalFor(30000, 30000);
+  const intervalSeconds = Math.round(stocksInterval / 1000);
   const [category, setCategory] = useState<CategoryKey>("ALL");
   const [search, setSearch] = useState("");
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(intervalSeconds);
 
   const { data: stocks, isLoading, isFetching } = useGetStocks({
-    query: { queryKey: getGetStocksQueryKey(), refetchInterval: 30000 },
+    query: { queryKey: getGetStocksQueryKey(), refetchInterval: stocksInterval },
   });
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
     if (isFetching) {
-      setCountdown(30);
+      setCountdown(intervalSeconds);
     } else {
       timer = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
     }
     return () => clearInterval(timer);
-  }, [isFetching]);
+  }, [isFetching, intervalSeconds]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

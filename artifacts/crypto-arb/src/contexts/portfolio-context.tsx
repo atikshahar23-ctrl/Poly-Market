@@ -31,6 +31,7 @@ export interface StockPosition {
   name: string;
   shares: number;
   entryPrice: number;
+  leverage: number;
   cost: number;
   openedAt: string;
 }
@@ -66,8 +67,9 @@ interface PortfolioContextValue extends PortfolioState {
   ) => string | null;
   closeBinancePosition: (id: string, currentPrice: number) => void;
   openStockPosition: (
-    stock: Omit<StockPosition, "id" | "shares" | "cost" | "openedAt">,
-    amountUsd: number
+    stock: Omit<StockPosition, "id" | "shares" | "cost" | "openedAt" | "leverage">,
+    amountUsd: number,
+    leverage?: number
   ) => string | null;
   closeStockPosition: (id: string, currentPrice: number) => void;
   resetPortfolio: () => void;
@@ -93,7 +95,7 @@ function loadState(): PortfolioState {
         totalDeposited: parsed.totalDeposited ?? STARTING_BALANCE,
         polyPositions: parsed.polyPositions ?? [],
         binancePositions: parsed.binancePositions ?? [],
-        stockPositions: parsed.stockPositions ?? [],
+        stockPositions: (parsed.stockPositions ?? []).map((p) => ({ ...p, leverage: p.leverage ?? 1 })),
         tradeHistory: parsed.tradeHistory ?? [],
       };
     }
@@ -238,20 +240,22 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   );
 
   const openStockPosition = useCallback(
-    (stock: Omit<StockPosition, "id" | "shares" | "cost" | "openedAt">, amountUsd: number) => {
+    (stock: Omit<StockPosition, "id" | "shares" | "cost" | "openedAt" | "leverage">, amountUsd: number, leverage: number = 1) => {
       if (amountUsd <= 0) return "Amount must be positive";
       if (stock.entryPrice <= 0) return "Price unavailable";
+      const lev = leverage >= 1 ? leverage : 1;
       let error: string | null = null;
       setState((prev) => {
         if (prev.cash < amountUsd) {
           error = "Insufficient balance";
           return prev;
         }
-        const shares = amountUsd / stock.entryPrice;
+        const shares = (amountUsd * lev) / stock.entryPrice;
         const position: StockPosition = {
           ...stock,
           id: crypto.randomUUID(),
           shares,
+          leverage: lev,
           cost: amountUsd,
           openedAt: new Date().toISOString(),
         };
@@ -270,12 +274,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const pos = prev.stockPositions.find((p) => p.id === id);
       if (!pos) return prev;
-      const proceeds = pos.shares * currentPrice;
-      const pnl = proceeds - pos.cost;
+      const pnl = pos.shares * (currentPrice - pos.entryPrice);
+      const proceeds = Math.max(0, pos.cost + pnl);
       const closed: ClosedTrade = {
         id: crypto.randomUUID(),
         type: "STOCK",
-        description: `${pos.symbol} ${pos.shares.toFixed(2)} sh @ $${pos.entryPrice.toFixed(2)} → $${currentPrice.toFixed(2)}`,
+        description: `${pos.symbol}${pos.leverage > 1 ? ` ${pos.leverage}x` : ""} ${pos.shares.toFixed(2)} sh @ $${pos.entryPrice.toFixed(2)} → $${currentPrice.toFixed(2)}`,
         cost: pos.cost,
         proceeds,
         pnl,

@@ -12,6 +12,7 @@ import Simulator from "@/pages/simulator";
 import Stocks from "@/pages/stocks";
 import Layout from "@/components/layout";
 import { PortfolioProvider } from "@/contexts/portfolio-context";
+import { RefreshProvider } from "@/contexts/refresh-context";
 
 const queryClient = new QueryClient();
 
@@ -39,14 +40,16 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <PortfolioProvider>
+      <RefreshProvider>
+        <PortfolioProvider>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
           <Toaster />
         </TooltipProvider>
-      </PortfolioProvider>
+        </PortfolioProvider>
+      </RefreshProvider>
     </QueryClientProvider>
   );
 }
