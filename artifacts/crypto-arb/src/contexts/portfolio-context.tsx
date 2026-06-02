@@ -25,9 +25,19 @@ export interface BinancePosition {
   openedAt: string;
 }
 
+export interface StockPosition {
+  id: string;
+  symbol: string;
+  name: string;
+  shares: number;
+  entryPrice: number;
+  cost: number;
+  openedAt: string;
+}
+
 export interface ClosedTrade {
   id: string;
-  type: "POLYMARKET" | "BINANCE";
+  type: "POLYMARKET" | "BINANCE" | "STOCK";
   description: string;
   cost: number;
   proceeds: number;
@@ -39,6 +49,7 @@ interface PortfolioState {
   cash: number;
   polyPositions: PolyPosition[];
   binancePositions: BinancePosition[];
+  stockPositions: StockPosition[];
   tradeHistory: ClosedTrade[];
 }
 
@@ -53,22 +64,38 @@ interface PortfolioContextValue extends PortfolioState {
     pos: Omit<BinancePosition, "id" | "openedAt">
   ) => string | null;
   closeBinancePosition: (id: string, currentPrice: number) => void;
+  openStockPosition: (
+    stock: Omit<StockPosition, "id" | "shares" | "cost" | "openedAt">,
+    amountUsd: number
+  ) => string | null;
+  closeStockPosition: (id: string, currentPrice: number) => void;
   resetPortfolio: () => void;
 }
 
 const STORAGE_KEY = "arb_scan_portfolio";
 
 function loadState(): PortfolioState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as PortfolioState;
-  } catch {}
-  return {
+  const fresh: PortfolioState = {
     cash: STARTING_BALANCE,
     polyPositions: [],
     binancePositions: [],
+    stockPositions: [],
     tradeHistory: [],
   };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<PortfolioState>;
+      return {
+        cash: parsed.cash ?? STARTING_BALANCE,
+        polyPositions: parsed.polyPositions ?? [],
+        binancePositions: parsed.binancePositions ?? [],
+        stockPositions: parsed.stockPositions ?? [],
+        tradeHistory: parsed.tradeHistory ?? [],
+      };
+    }
+  } catch {}
+  return fresh;
 }
 
 function saveState(state: PortfolioState) {
@@ -196,11 +223,65 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const openStockPosition = useCallback(
+    (stock: Omit<StockPosition, "id" | "shares" | "cost" | "openedAt">, amountUsd: number) => {
+      if (amountUsd <= 0) return "Amount must be positive";
+      if (stock.entryPrice <= 0) return "Price unavailable";
+      let error: string | null = null;
+      setState((prev) => {
+        if (prev.cash < amountUsd) {
+          error = "Insufficient balance";
+          return prev;
+        }
+        const shares = amountUsd / stock.entryPrice;
+        const position: StockPosition = {
+          ...stock,
+          id: crypto.randomUUID(),
+          shares,
+          cost: amountUsd,
+          openedAt: new Date().toISOString(),
+        };
+        return {
+          ...prev,
+          cash: prev.cash - amountUsd,
+          stockPositions: [...prev.stockPositions, position],
+        };
+      });
+      return error;
+    },
+    []
+  );
+
+  const closeStockPosition = useCallback((id: string, currentPrice: number) => {
+    setState((prev) => {
+      const pos = prev.stockPositions.find((p) => p.id === id);
+      if (!pos) return prev;
+      const proceeds = pos.shares * currentPrice;
+      const pnl = proceeds - pos.cost;
+      const closed: ClosedTrade = {
+        id: crypto.randomUUID(),
+        type: "STOCK",
+        description: `${pos.symbol} ${pos.shares.toFixed(2)} sh @ $${pos.entryPrice.toFixed(2)} → $${currentPrice.toFixed(2)}`,
+        cost: pos.cost,
+        proceeds,
+        pnl,
+        closedAt: new Date().toISOString(),
+      };
+      return {
+        ...prev,
+        cash: prev.cash + proceeds,
+        stockPositions: prev.stockPositions.filter((p) => p.id !== id),
+        tradeHistory: [closed, ...prev.tradeHistory].slice(0, 50),
+      };
+    });
+  }, []);
+
   const resetPortfolio = useCallback(() => {
     const fresh: PortfolioState = {
       cash: STARTING_BALANCE,
       polyPositions: [],
       binancePositions: [],
+      stockPositions: [],
       tradeHistory: [],
     };
     setState(fresh);
@@ -215,6 +296,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         closePolyPosition,
         openBinancePosition,
         closeBinancePosition,
+        openStockPosition,
+        closeStockPosition,
         resetPortfolio,
       }}
     >

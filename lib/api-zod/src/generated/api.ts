@@ -166,6 +166,52 @@ export const GetAllMarketsResponse = zod.array(GetAllMarketsResponseItem)
 
 
 /**
+ * Returns live quotes for a curated universe of ~100 stocks (tech, energy, resources, large caps) plus common indices/ETFs
+ * @summary Get live stock and index quotes
+ */
+export const GetStocksResponseItem = zod.object({
+  "symbol": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['TECH', 'ENERGY', 'RESOURCES', 'LARGE_CAP', 'INDEX']),
+  "price": zod.number(),
+  "previousClose": zod.number(),
+  "change": zod.number(),
+  "changePercent": zod.number(),
+  "dayHigh": zod.number().nullish(),
+  "dayLow": zod.number().nullish(),
+  "monthHigh": zod.number().nullish(),
+  "monthLow": zod.number().nullish(),
+  "momentum5dPercent": zod.number().nullish(),
+  "volume": zod.number().nullish(),
+  "currency": zod.string(),
+  "tradingViewSymbol": zod.string().describe('Symbol formatted for TradingView links (dot notation for class shares)'),
+  "fetchedAt": zod.string()
+})
+export const GetStocksResponse = zod.array(GetStocksResponseItem)
+
+
+/**
+ * Returns momentum-based BUY/SELL recommendations across the stock universe, ranked by conviction
+ * @summary Get ranked stock trade recommendations
+ */
+export const GetStockRecommendationsResponseItem = zod.object({
+  "rank": zod.number(),
+  "symbol": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['TECH', 'ENERGY', 'RESOURCES', 'LARGE_CAP', 'INDEX']),
+  "action": zod.enum(['BUY', 'SELL', 'HOLD']),
+  "confidence": zod.enum(['HIGH', 'MEDIUM', 'LOW']),
+  "rationale": zod.string(),
+  "price": zod.number(),
+  "changePercent": zod.number(),
+  "momentum5dPercent": zod.number(),
+  "rangePositionPercent": zod.number().describe('Where the price sits within its 1-month range (0 = monthly low, 100 = monthly high)'),
+  "tradingViewSymbol": zod.string()
+})
+export const GetStockRecommendationsResponse = zod.array(GetStockRecommendationsResponseItem)
+
+
+/**
  * Returns the top actionable signals ranked by severity and confidence across all assets
  * @summary Get top-ranked arbitrage recommendations
  */

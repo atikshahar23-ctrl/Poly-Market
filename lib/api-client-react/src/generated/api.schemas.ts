@@ -134,6 +134,88 @@ export interface Recommendation {
   entryPrice: number;
 }
 
+export type StockQuoteCategory = typeof StockQuoteCategory[keyof typeof StockQuoteCategory];
+
+
+export const StockQuoteCategory = {
+  TECH: 'TECH',
+  ENERGY: 'ENERGY',
+  RESOURCES: 'RESOURCES',
+  LARGE_CAP: 'LARGE_CAP',
+  INDEX: 'INDEX',
+} as const;
+
+export interface StockQuote {
+  symbol: string;
+  name: string;
+  category: StockQuoteCategory;
+  price: number;
+  previousClose: number;
+  change: number;
+  changePercent: number;
+  /** @nullable */
+  dayHigh?: number | null;
+  /** @nullable */
+  dayLow?: number | null;
+  /** @nullable */
+  monthHigh?: number | null;
+  /** @nullable */
+  monthLow?: number | null;
+  /** @nullable */
+  momentum5dPercent?: number | null;
+  /** @nullable */
+  volume?: number | null;
+  currency: string;
+  /** Symbol formatted for TradingView links (dot notation for class shares) */
+  tradingViewSymbol: string;
+  fetchedAt: string;
+}
+
+export type StockRecommendationCategory = typeof StockRecommendationCategory[keyof typeof StockRecommendationCategory];
+
+
+export const StockRecommendationCategory = {
+  TECH: 'TECH',
+  ENERGY: 'ENERGY',
+  RESOURCES: 'RESOURCES',
+  LARGE_CAP: 'LARGE_CAP',
+  INDEX: 'INDEX',
+} as const;
+
+export type StockRecommendationAction = typeof StockRecommendationAction[keyof typeof StockRecommendationAction];
+
+
+export const StockRecommendationAction = {
+  BUY: 'BUY',
+  SELL: 'SELL',
+  HOLD: 'HOLD',
+} as const;
+
+export type StockRecommendationConfidence = typeof StockRecommendationConfidence[keyof typeof StockRecommendationConfidence];
+
+
+export const StockRecommendationConfidence = {
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+} as const;
+
+export interface StockRecommendation {
+  rank: number;
+  symbol: string;
+  name: string;
+  category: StockRecommendationCategory;
+  action: StockRecommendationAction;
+  confidence: StockRecommendationConfidence;
+  rationale: string;
+  price: number;
+  changePercent: number;
+  momentum5dPercent: number;
+  /** Where the price sits within its 1-month range (0 = monthly low, 100 = monthly high) */
+  rangePositionPercent: number;
+  tradingViewSymbol: string;
+}
+
 export type GetBinanceDataParams = {
 /**
  * Trading symbol (e.g. BTCUSDT, ETHUSDT)

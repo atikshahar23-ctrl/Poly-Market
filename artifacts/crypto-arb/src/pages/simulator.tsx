@@ -2,18 +2,20 @@ import { useState, useMemo } from "react";
 import {
   useGetBinanceMulti, getGetBinanceMultiQueryKey,
   useGetAllMarkets, getGetAllMarketsQueryKey,
+  useGetStocks, getGetStocksQueryKey,
+  useGetStockRecommendations, getGetStockRecommendationsQueryKey,
+  StockRecommendation, StockQuote,
 } from "@workspace/api-client-react";
 import {
-  usePortfolio, PolyPosition, BinancePosition, STARTING_BALANCE,
+  usePortfolio, STARTING_BALANCE,
 } from "@/contexts/portfolio-context";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   TrendingUp, TrendingDown, Wallet, RotateCcw, Search,
   ChartCandlestick, BarChart3, Trophy, History, X,
-  ArrowUpRight, ArrowDownRight,
+  ArrowUpRight, ArrowDownRight, LineChart, Lightbulb, ExternalLink,
 } from "lucide-react";
 
 const LEVERAGE_OPTIONS = [1, 2, 3, 5, 10] as const;
@@ -32,7 +34,7 @@ function pnlBg(n: number) {
   return n > 0 ? "bg-emerald-500/10 border-emerald-500/20" : n < 0 ? "bg-red-500/10 border-red-500/20" : "bg-secondary/30 border-border";
 }
 
-/* ─── Portfolio Summary ─── */
+/* ─── Portfolio Summary — wallet-style overview ─── */
 function PortfolioSummary({
   unrealizedPnl,
   totalPositionValue,
@@ -40,62 +42,99 @@ function PortfolioSummary({
   unrealizedPnl: number;
   totalPositionValue: number;
 }) {
-  const { cash, tradeHistory, resetPortfolio, polyPositions, binancePositions } = usePortfolio();
+  const { cash, tradeHistory, resetPortfolio, polyPositions, binancePositions, stockPositions } = usePortfolio();
   const totalValue = cash + totalPositionValue;
   const totalPnl = totalValue - STARTING_BALANCE;
+  const totalPnlPct = (totalPnl / STARTING_BALANCE) * 100;
   const realizedPnl = tradeHistory.reduce((s, t) => s + t.pnl, 0);
-  const openCount = polyPositions.length + binancePositions.length;
+  const openCount = polyPositions.length + binancePositions.length + stockPositions.length;
+  const wins = tradeHistory.filter(t => t.pnl > 0).length;
+  const winRate = tradeHistory.length === 0 ? 0 : (wins / tradeHistory.length) * 100;
+  const invested = totalPositionValue;
+  const investedPct = totalValue > 0 ? (invested / totalValue) * 100 : 0;
+
+  // progress toward / against the $10k baseline (visualised 0%..200% of starting)
+  const progress = Math.min(100, Math.max(0, (totalValue / (STARTING_BALANCE * 2)) * 100));
+  const gain = totalPnl >= 0;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-      {/* Total value — hero */}
-      <div className="col-span-2 md:col-span-1 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
-        <div className="text-[10px] font-mono text-primary/70 uppercase tracking-wider flex items-center gap-1.5">
-          <Wallet className="h-3 w-3" /> Portfolio Value
-        </div>
-        <div className="text-2xl font-black font-mono text-primary mt-0.5">{fmtUsd(totalValue)}</div>
-        <div className={`text-xs font-mono mt-0.5 ${pnlColor(totalPnl)}`}>
-          {totalPnl >= 0 ? "+" : ""}{fmtUsd(totalPnl)} total
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-border bg-card px-4 py-3">
-        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Cash</div>
-        <div className="text-2xl font-black font-mono text-foreground mt-0.5">{fmtUsd(cash)}</div>
-        <div className="text-[10px] text-muted-foreground mt-0.5">available</div>
-      </div>
-
-      <div className={`rounded-lg border px-4 py-3 ${pnlBg(unrealizedPnl)}`}>
-        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Unrealized</div>
-        <div className={`text-2xl font-black font-mono mt-0.5 ${pnlColor(unrealizedPnl)}`}>
-          {unrealizedPnl >= 0 ? "+" : ""}{fmtUsd(unrealizedPnl)}
-        </div>
-        <div className="text-[10px] text-muted-foreground mt-0.5">{openCount} open pos.</div>
-      </div>
-
-      <div className={`rounded-lg border px-4 py-3 ${pnlBg(realizedPnl)}`}>
-        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Realized</div>
-        <div className={`text-2xl font-black font-mono mt-0.5 ${pnlColor(realizedPnl)}`}>
-          {realizedPnl >= 0 ? "+" : ""}{fmtUsd(realizedPnl)}
-        </div>
-        <div className="text-[10px] text-muted-foreground mt-0.5">{tradeHistory.length} closed</div>
-      </div>
-
-      <div className="rounded-lg border border-border bg-card px-4 py-3 flex flex-col justify-between">
-        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Win Rate</div>
-        <div className="text-2xl font-black font-mono text-foreground mt-0.5">
-          {tradeHistory.length === 0
-            ? "—"
-            : `${Math.round((tradeHistory.filter(t => t.pnl > 0).length / tradeHistory.length) * 100)}%`}
+    <div className="rounded-2xl border border-border bg-gradient-to-br from-card to-background p-5 md:p-6 space-y-5">
+      {/* Hero: estimated balance */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+            <Wallet className="h-3.5 w-3.5 text-primary" /> Estimated Balance
+          </div>
+          <div className="flex items-baseline gap-3 mt-1">
+            <span className="text-4xl md:text-5xl font-black font-mono text-foreground tracking-tight">{fmtUsd(totalValue)}</span>
+            <span className={`text-sm font-bold font-mono px-2 py-0.5 rounded ${gain ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+              {gain ? '+' : ''}{fmt(totalPnlPct)}%
+            </span>
+          </div>
+          <div className={`text-sm font-mono mt-1 ${pnlColor(totalPnl)}`}>
+            {totalPnl >= 0 ? '+' : '-'}{fmtUsd(totalPnl)} all-time PnL
+          </div>
         </div>
         <button
-          onClick={() => {
-            if (confirm("Reset all positions and balance to $10,000?")) resetPortfolio();
-          }}
-          className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-red-400 transition-colors mt-1"
+          onClick={() => { if (confirm("Reset all positions and balance to $10,000?")) resetPortfolio(); }}
+          className="self-start lg:self-auto flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground hover:text-red-400 transition-colors border border-border rounded-md px-3 py-1.5"
         >
-          <RotateCcw className="h-2.5 w-2.5" /> Reset
+          <RotateCcw className="h-3 w-3" /> Reset Account
         </button>
+      </div>
+
+      {/* Progress vs starting balance */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+          <span>Progress vs ${fmt(STARTING_BALANCE, 0)} start</span>
+          <span>{fmt((totalValue / STARTING_BALANCE) * 100, 0)}%</span>
+        </div>
+        <div className="relative h-2.5 rounded-full bg-secondary overflow-hidden">
+          {/* baseline marker at 50% (== starting balance) */}
+          <div className="absolute top-0 bottom-0 left-1/2 w-px bg-muted-foreground/40 z-10" />
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${gain ? 'bg-gradient-to-r from-emerald-500/70 to-emerald-400' : 'bg-gradient-to-r from-red-500/70 to-red-400'}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-[9px] font-mono text-muted-foreground/60">
+          <span>$0</span><span>${fmt(STARTING_BALANCE, 0)}</span><span>${fmt(STARTING_BALANCE * 2, 0)}</span>
+        </div>
+      </div>
+
+      {/* Stat tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="rounded-lg border border-border bg-card/60 px-3 py-2.5">
+          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Available</div>
+          <div className="text-lg font-black font-mono text-foreground mt-0.5">{fmtUsd(cash)}</div>
+          <div className="text-[9px] text-muted-foreground mt-0.5">cash</div>
+        </div>
+        <div className="rounded-lg border border-border bg-card/60 px-3 py-2.5">
+          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">In Positions</div>
+          <div className="text-lg font-black font-mono text-foreground mt-0.5">{fmtUsd(invested)}</div>
+          <div className="text-[9px] text-muted-foreground mt-0.5">{fmt(investedPct, 0)}% deployed</div>
+        </div>
+        <div className={`rounded-lg border px-3 py-2.5 ${pnlBg(unrealizedPnl)}`}>
+          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Unrealized</div>
+          <div className={`text-lg font-black font-mono mt-0.5 ${pnlColor(unrealizedPnl)}`}>
+            {unrealizedPnl >= 0 ? '+' : ''}{fmtUsd(unrealizedPnl)}
+          </div>
+          <div className="text-[9px] text-muted-foreground mt-0.5">{openCount} open</div>
+        </div>
+        <div className={`rounded-lg border px-3 py-2.5 ${pnlBg(realizedPnl)}`}>
+          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Realized</div>
+          <div className={`text-lg font-black font-mono mt-0.5 ${pnlColor(realizedPnl)}`}>
+            {realizedPnl >= 0 ? '+' : ''}{fmtUsd(realizedPnl)}
+          </div>
+          <div className="text-[9px] text-muted-foreground mt-0.5">{tradeHistory.length} closed</div>
+        </div>
+        <div className="rounded-lg border border-border bg-card/60 px-3 py-2.5">
+          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Win Rate</div>
+          <div className="text-lg font-black font-mono text-foreground mt-0.5">
+            {tradeHistory.length === 0 ? '—' : `${Math.round(winRate)}%`}
+          </div>
+          <div className="text-[9px] text-muted-foreground mt-0.5">{wins}/{tradeHistory.length} wins</div>
+        </div>
       </div>
     </div>
   );
@@ -443,6 +482,243 @@ function PolymarketTab({ allMarkets }: { allMarkets: { conditionId: string; ques
   );
 }
 
+/* ─── In-simulator recommendations strip ─── */
+function StockRecommendationsStrip({
+  recs,
+  onPick,
+}: {
+  recs: StockRecommendation[];
+  onPick: (symbol: string) => void;
+}) {
+  const top = recs.filter(r => r.action !== "HOLD").slice(0, 6);
+  if (top.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Lightbulb className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[11px] font-bold tracking-widest uppercase text-primary">Recommended Stock Trades</span>
+        <span className="text-[10px] text-muted-foreground font-mono">live momentum signals</span>
+        <div className="flex-1 h-px bg-primary/20" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {top.map((rec) => {
+          const isBuy = rec.action === "BUY";
+          return (
+            <button
+              key={rec.symbol}
+              onClick={() => onPick(rec.symbol)}
+              className="text-left rounded-md border border-border bg-card/60 hover:bg-card transition-colors p-3 space-y-1.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-black font-mono text-foreground">{rec.symbol}</span>
+                <span className={`text-[10px] font-black font-mono px-1.5 py-0.5 rounded ${isBuy ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                  {rec.action}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{rec.rationale}</p>
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-muted-foreground">${rec.price.toFixed(2)}</span>
+                <span className={rec.momentum5dPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                  {rec.momentum5dPercent >= 0 ? '+' : ''}{rec.momentum5dPercent.toFixed(1)}% 5d
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Stocks Tab ─── */
+function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices: Record<string, number> }) {
+  const { stockPositions, cash, openStockPosition, closeStockPosition } = usePortfolio();
+  const { data: stockRecs } = useGetStockRecommendations({
+    query: { queryKey: getGetStockRecommendationsQueryKey(), refetchInterval: 60000 },
+  });
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<"ALL" | StockQuote["category"]>("ALL");
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const CATEGORIES: ("ALL" | StockQuote["category"])[] = ["ALL", "TECH", "ENERGY", "RESOURCES", "LARGE_CAP", "INDEX"];
+  const CAT_LABEL: Record<string, string> = {
+    ALL: "All", TECH: "Tech", ENERGY: "Energy", RESOURCES: "Resources", LARGE_CAP: "Large Cap", INDEX: "Index/ETF",
+  };
+
+  const filtered = useMemo(() =>
+    stocks
+      .filter(s => category === "ALL" || s.category === category)
+      .filter(s => !search || s.symbol.toLowerCase().includes(search.toLowerCase()) || s.name.toLowerCase().includes(search.toLowerCase()))
+      .slice(0, 60),
+    [stocks, category, search]
+  );
+
+  function buy(stock: StockQuote) {
+    const raw = amounts[stock.symbol] ?? "";
+    const amt = parseFloat(raw);
+    if (isNaN(amt) || amt <= 0) {
+      setErrors(e => ({ ...e, [stock.symbol]: "Enter a valid amount" }));
+      return;
+    }
+    const price = stockPrices[stock.symbol] ?? stock.price;
+    if (!price) {
+      setErrors(e => ({ ...e, [stock.symbol]: "Price unavailable" }));
+      return;
+    }
+    const err = openStockPosition({ symbol: stock.symbol, name: stock.name, entryPrice: price }, amt);
+    if (err) {
+      setErrors(e => ({ ...e, [stock.symbol]: err }));
+    } else {
+      setAmounts(a => ({ ...a, [stock.symbol]: "" }));
+      setErrors(e => ({ ...e, [stock.symbol]: "" }));
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Recommendations */}
+      <StockRecommendationsStrip
+        recs={stockRecs ?? []}
+        onPick={(symbol) => { setCategory("ALL"); setSearch(symbol); }}
+      />
+
+      {/* Open Stock Positions */}
+      {stockPositions.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <LineChart className="h-3.5 w-3.5 text-primary" />
+            <span className="text-[11px] font-bold tracking-widest uppercase text-primary">Open Stock Positions</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+          {stockPositions.map((pos) => {
+            const currentPrice = stockPrices[pos.symbol] ?? pos.entryPrice;
+            const value = pos.shares * currentPrice;
+            const pnl = value - pos.cost;
+            const pnlPct = pos.cost > 0 ? (pnl / pos.cost) * 100 : 0;
+
+            return (
+              <div key={pos.id} className={`rounded-lg border p-4 flex items-center justify-between gap-4 ${pnlBg(pnl)}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="text-xs font-black font-mono text-emerald-400">LONG</div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold font-mono truncate">{pos.symbol} <span className="text-muted-foreground font-normal">{fmt(pos.shares, 4)} sh</span></div>
+                    <div className="text-[10px] text-muted-foreground font-mono">
+                      Entry ${pos.entryPrice.toFixed(2)} → Now ${currentPrice.toFixed(2)} · Cost {fmtUsd(pos.cost)}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className={`text-sm font-black font-mono ${pnlColor(pnl)}`}>
+                    {pnl >= 0 ? "+" : ""}{fmtUsd(pnl)}
+                  </div>
+                  <div className={`text-[10px] font-mono ${pnlColor(pnl)}`}>
+                    {pnlPct >= 0 ? "+" : ""}{fmt(pnlPct)}% · Value {fmtUsd(value)}
+                  </div>
+                </div>
+                <button
+                  onClick={() => closeStockPosition(pos.id, currentPrice)}
+                  className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all flex-shrink-0"
+                  title="Sell position"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Search + category filter */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search stocks by symbol or name..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 bg-secondary/30"
+          />
+        </div>
+        <div className="flex rounded-md border border-border overflow-hidden text-[11px] font-mono">
+          {CATEGORIES.map(c => (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              className={`px-2.5 py-1.5 transition-colors whitespace-nowrap ${category === c ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary/50'}`}
+            >
+              {CAT_LABEL[c]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stock cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filtered.map((stock) => {
+          const price = stockPrices[stock.symbol] ?? stock.price;
+          const up = stock.changePercent >= 0;
+          const amt = parseFloat(amounts[stock.symbol] ?? "0") || 0;
+          const tvUrl = `https://www.tradingview.com/symbols/${stock.tradingViewSymbol}/`;
+
+          return (
+            <div key={stock.symbol} className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-lg font-black font-mono text-foreground">{stock.symbol}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{stock.name}</div>
+                </div>
+                <a
+                  href={tvUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0"
+                  title="View on TradingView"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+              <div className="flex items-end justify-between">
+                <div className="text-xl font-black font-mono">${price.toFixed(2)}</div>
+                <div className={`text-xs font-bold font-mono ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {up ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                </div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Amount (USD)</span>
+                <Input
+                  type="number"
+                  placeholder="e.g. 500"
+                  value={amounts[stock.symbol] ?? ""}
+                  onChange={e => setAmounts(a => ({ ...a, [stock.symbol]: e.target.value }))}
+                  className="h-8 text-xs font-mono bg-secondary/30"
+                />
+                {amt > 0 && (
+                  <div className="text-[10px] text-muted-foreground font-mono">
+                    {price > 0 ? `${fmt(amt / price, 4)} shares` : ''} · {cash < amt ? <span className="text-red-400">Insufficient cash</span> : <span className="text-emerald-400">OK</span>}
+                  </div>
+                )}
+              </div>
+              {errors[stock.symbol] && <div className="text-[10px] text-red-400 font-mono">{errors[stock.symbol]}</div>}
+              <button
+                onClick={() => buy(stock)}
+                className="w-full flex items-center justify-center gap-1 py-2 rounded text-[11px] font-bold font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 transition-all"
+              >
+                <TrendingUp className="h-3 w-3" /> BUY SHARES
+              </button>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="col-span-full text-center py-8 text-muted-foreground text-sm">No stocks found.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Trade History ─── */
 function TradeHistoryPanel() {
   const { tradeHistory } = usePortfolio();
@@ -460,7 +736,7 @@ function TradeHistoryPanel() {
           <div key={t.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded border border-border/50 bg-card/30 text-xs">
             <div className="flex items-center gap-2 min-w-0">
               <Badge variant="outline" className="text-[9px] font-mono flex-shrink-0">
-                {t.type === "BINANCE" ? "FUT" : "PRED"}
+                {t.type === "BINANCE" ? "FUT" : t.type === "STOCK" ? "STK" : "PRED"}
               </Badge>
               <span className="text-muted-foreground truncate font-mono">{t.description}</span>
             </div>
@@ -477,8 +753,8 @@ function TradeHistoryPanel() {
 
 /* ─── Main Page ─── */
 export default function SimulatorPage() {
-  const [tab, setTab] = useState<"futures" | "prediction">("futures");
-  const { polyPositions, binancePositions, cash } = usePortfolio();
+  const [tab, setTab] = useState<"futures" | "prediction" | "stocks">("futures");
+  const { polyPositions, binancePositions, stockPositions, cash } = usePortfolio();
 
   const { data: binanceData, isLoading: binanceLoading } = useGetBinanceMulti({
     query: { queryKey: getGetBinanceMultiQueryKey(), refetchInterval: 15000 }
@@ -489,11 +765,22 @@ export default function SimulatorPage() {
     { query: { queryKey: getGetAllMarketsQueryKey({}), refetchInterval: 60000 } }
   );
 
+  const { data: stocksData, isLoading: stocksLoading } = useGetStocks({
+    query: { queryKey: getGetStocksQueryKey(), refetchInterval: 60000 }
+  });
+
   const binancePrices = useMemo(() => {
     const map: Record<string, number> = {};
     (binanceData ?? []).forEach(b => { map[b.asset] = b.markPrice; });
     return map;
   }, [binanceData]);
+
+  const stocks = useMemo(() => stocksData ?? [], [stocksData]);
+  const stockPrices = useMemo(() => {
+    const map: Record<string, number> = {};
+    stocks.forEach(s => { map[s.symbol] = s.price; });
+    return map;
+  }, [stocks]);
 
   const allMarkets = useMemo(() =>
     (allMarketsData ?? []).map(m => ({
@@ -526,8 +813,13 @@ export default function SimulatorPage() {
       return sum + (value - pos.cost);
     }, 0);
 
-    return binancePnl + polyPnl;
-  }, [binancePositions, polyPositions, binancePrices, allMarkets]);
+    const stockPnl = stockPositions.reduce((sum, pos) => {
+      const currentPrice = stockPrices[pos.symbol] ?? pos.entryPrice;
+      return sum + (pos.shares * currentPrice - pos.cost);
+    }, 0);
+
+    return binancePnl + polyPnl + stockPnl;
+  }, [binancePositions, polyPositions, stockPositions, binancePrices, stockPrices, allMarkets]);
 
   const totalPositionValue = useMemo(() => {
     const binanceMargin = binancePositions.reduce((sum, pos) => sum + pos.notional / pos.leverage, 0);
@@ -545,8 +837,12 @@ export default function SimulatorPage() {
         : pos.entryPrice;
       return sum + pos.shares * currentPrice;
     }, 0);
-    return binanceMargin + binancePnl + polyValue;
-  }, [binancePositions, polyPositions, binancePrices, allMarkets]);
+    const stockValue = stockPositions.reduce((sum, pos) => {
+      const currentPrice = stockPrices[pos.symbol] ?? pos.entryPrice;
+      return sum + pos.shares * currentPrice;
+    }, 0);
+    return binanceMargin + binancePnl + polyValue + stockValue;
+  }, [binancePositions, polyPositions, stockPositions, binancePrices, stockPrices, allMarkets]);
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -561,7 +857,7 @@ export default function SimulatorPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Trade with $10,000 virtual USDT using real-time Binance futures and Polymarket prices.
+            Trade with $10,000 virtual funds using real-time Binance futures, stock, and Polymarket prices.
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm font-mono">
@@ -592,6 +888,22 @@ export default function SimulatorPage() {
           )}
         </button>
         <button
+          onClick={() => setTab("stocks")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all -mb-px ${
+            tab === "stocks"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <LineChart className="h-4 w-4" />
+          Stocks
+          {stockPositions.length > 0 && (
+            <span className="ml-1 text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-mono">
+              {stockPositions.length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setTab("prediction")}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all -mb-px ${
             tab === "prediction"
@@ -610,7 +922,7 @@ export default function SimulatorPage() {
       </div>
 
       {/* Tab content */}
-      {tab === "futures" ? (
+      {tab === "futures" && (
         binanceLoading ? (
           <div className="grid grid-cols-4 gap-3">
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-56" />)}
@@ -618,7 +930,17 @@ export default function SimulatorPage() {
         ) : (
           <BinanceFuturesTab binancePrices={binancePrices} />
         )
-      ) : (
+      )}
+      {tab === "stocks" && (
+        stocksLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48" />)}
+          </div>
+        ) : (
+          <StocksTab stocks={stocks} stockPrices={stockPrices} />
+        )
+      )}
+      {tab === "prediction" && (
         marketsLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20" />)}

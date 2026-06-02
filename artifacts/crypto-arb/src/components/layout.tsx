@@ -1,11 +1,11 @@
 import { Link, useLocation } from "wouter";
 import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-react";
 import { usePortfolio } from "@/contexts/portfolio-context";
-import { Activity, LayoutDashboard, LineChart, CandlestickChart, Zap, Globe, Trophy } from "lucide-react";
+import { Activity, LayoutDashboard, LineChart, CandlestickChart, Zap, Globe, Trophy, TrendingUp, ShieldCheck } from "lucide-react";
 
 function PortfolioMiniBalance() {
-  const { cash, polyPositions, binancePositions } = usePortfolio();
-  const openCount = polyPositions.length + binancePositions.length;
+  const { cash, polyPositions, binancePositions, stockPositions } = usePortfolio();
+  const openCount = polyPositions.length + binancePositions.length + stockPositions.length;
   return (
     <div className="flex items-center justify-between mt-0.5">
       <span className="text-[9px] font-mono text-primary/70 tracking-wider">${cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
@@ -28,6 +28,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const links = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/recommendations", label: "Trade Desk", icon: Zap },
+    { href: "/stocks", label: "Stocks", icon: TrendingUp },
     { href: "/browse", label: "Live Markets", icon: Globe },
     { href: "/simulator", label: "Simulator", icon: Trophy, extra: <PortfolioMiniBalance /> },
     { href: "/markets", label: "Crypto Markets", icon: LineChart },
@@ -45,11 +46,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="px-5 py-5 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded flex items-center justify-center" style={{ background: 'hsl(43 74% 52% / 0.15)', border: '1px solid hsl(43 74% 52% / 0.4)' }}>
-              <Activity className="h-4 w-4 text-primary" />
+              <ShieldCheck className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-widest text-primary font-mono uppercase">ARB_SCAN</h1>
-              <p className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase font-mono">Sentinel Terminal</p>
+              <h1 className="text-sm font-bold tracking-widest text-primary font-mono uppercase leading-tight">HEAVY GUARD<br />SYSTEM</h1>
+              <p className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase font-mono mt-0.5">Sentinel Terminal</p>
             </div>
           </div>
         </div>

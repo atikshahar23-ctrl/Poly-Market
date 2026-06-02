@@ -14,6 +14,8 @@ tags:
     description: Crypto market data and arbitrage scanning
   - name: markets
     description: All-categories Polymarket browser
+  - name: stocks
+    description: Stock and index market data and recommendations
 paths:
   /healthz:
     get:
@@ -183,6 +185,50 @@ paths:
                   $ref: "#/components/schemas/PolymarketMarket"
         "502":
           description: Failed to fetch from Polymarket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stocks:
+    get:
+      operationId: getStocks
+      tags: [stocks]
+      summary: Get live stock and index quotes
+      description: Returns live quotes for a curated universe of ~100 stocks (tech, energy, resources, large caps) plus common indices/ETFs
+      responses:
+        "200":
+          description: List of stock quotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockQuote"
+        "502":
+          description: Failed to fetch stock data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stocks/recommendations:
+    get:
+      operationId: getStockRecommendations
+      tags: [stocks]
+      summary: Get ranked stock trade recommendations
+      description: Returns momentum-based BUY/SELL recommendations across the stock universe, ranked by conviction
+      responses:
+        "200":
+          description: Ranked stock recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockRecommendation"
+        "502":
+          description: Failed to build recommendations
           content:
             application/json:
               schema:
@@ -415,3 +461,97 @@ components:
         entryPrice:
           type: number
           description: The price to pay per contract (yesPrice for BUY_YES, noPrice for BUY_NO)
+
+    StockQuote:
+      type: object
+      required:
+        - symbol
+        - name
+        - category
+        - price
+        - previousClose
+        - change
+        - changePercent
+        - currency
+        - tradingViewSymbol
+        - fetchedAt
+      properties:
+        symbol:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          enum: [TECH, ENERGY, RESOURCES, LARGE_CAP, INDEX]
+        price:
+          type: number
+        previousClose:
+          type: number
+        change:
+          type: number
+        changePercent:
+          type: number
+        dayHigh:
+          type: ["number", "null"]
+        dayLow:
+          type: ["number", "null"]
+        monthHigh:
+          type: ["number", "null"]
+        monthLow:
+          type: ["number", "null"]
+        momentum5dPercent:
+          type: ["number", "null"]
+        volume:
+          type: ["number", "null"]
+        currency:
+          type: string
+        tradingViewSymbol:
+          type: string
+          description: Symbol formatted for TradingView links (dot notation for class shares)
+        fetchedAt:
+          type: string
+
+    StockRecommendation:
+      type: object
+      required:
+        - rank
+        - symbol
+        - name
+        - category
+        - action
+        - confidence
+        - rationale
+        - price
+        - changePercent
+        - momentum5dPercent
+        - rangePositionPercent
+        - tradingViewSymbol
+      properties:
+        rank:
+          type: integer
+        symbol:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          enum: [TECH, ENERGY, RESOURCES, LARGE_CAP, INDEX]
+        action:
+          type: string
+          enum: [BUY, SELL, HOLD]
+        confidence:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        rationale:
+          type: string
+        price:
+          type: number
+        changePercent:
+          type: number
+        momentum5dPercent:
+          type: number
+        rangePositionPercent:
+          type: number
+          description: Where the price sits within its 1-month range (0 = monthly low, 100 = monthly high)
+        tradingViewSymbol:
+          type: string

@@ -9,6 +9,7 @@ import Browse from "@/pages/browse";
 import Binance from "@/pages/binance";
 import Recommendations from "@/pages/recommendations";
 import Simulator from "@/pages/simulator";
+import Stocks from "@/pages/stocks";
 import Layout from "@/components/layout";
 import { PortfolioProvider } from "@/contexts/portfolio-context";
 
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/markets" component={Markets} />
         <Route path="/binance" component={Binance} />
         <Route path="/recommendations" component={Recommendations} />
+        <Route path="/stocks" component={Stocks} />
         <Route path="/simulator" component={Simulator} />
         <Route component={NotFound} />
       </Switch>

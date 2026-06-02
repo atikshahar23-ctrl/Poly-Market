@@ -25,7 +25,9 @@ import type {
   HealthStatus,
   PolymarketMarket,
   Recommendation,
-  ScanResult
+  ScanResult,
+  StockQuote,
+  StockRecommendation
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -524,6 +526,162 @@ export function useGetAllMarkets<TData = Awaited<ReturnType<typeof getAllMarkets
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAllMarketsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetStocksUrl = () => {
+
+
+
+
+  return `/api/stocks`
+}
+
+/**
+ * Returns live quotes for a curated universe of ~100 stocks (tech, energy, resources, large caps) plus common indices/ETFs
+ * @summary Get live stock and index quotes
+ */
+export const getStocks = async ( options?: RequestInit): Promise<StockQuote[]> => {
+
+  return customFetch<StockQuote[]>(getGetStocksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStocksQueryKey = () => {
+    return [
+    `/api/stocks`
+    ] as const;
+    }
+
+
+export const getGetStocksQueryOptions = <TData = Awaited<ReturnType<typeof getStocks>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStocks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStocksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStocks>>> = ({ signal }) => getStocks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStocks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStocksQueryResult = NonNullable<Awaited<ReturnType<typeof getStocks>>>
+export type GetStocksQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get live stock and index quotes
+ */
+
+export function useGetStocks<TData = Awaited<ReturnType<typeof getStocks>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStocks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStocksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetStockRecommendationsUrl = () => {
+
+
+
+
+  return `/api/stocks/recommendations`
+}
+
+/**
+ * Returns momentum-based BUY/SELL recommendations across the stock universe, ranked by conviction
+ * @summary Get ranked stock trade recommendations
+ */
+export const getStockRecommendations = async ( options?: RequestInit): Promise<StockRecommendation[]> => {
+
+  return customFetch<StockRecommendation[]>(getGetStockRecommendationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStockRecommendationsQueryKey = () => {
+    return [
+    `/api/stocks/recommendations`
+    ] as const;
+    }
+
+
+export const getGetStockRecommendationsQueryOptions = <TData = Awaited<ReturnType<typeof getStockRecommendations>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStockRecommendations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStockRecommendationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStockRecommendations>>> = ({ signal }) => getStockRecommendations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStockRecommendations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStockRecommendationsQueryResult = NonNullable<Awaited<ReturnType<typeof getStockRecommendations>>>
+export type GetStockRecommendationsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get ranked stock trade recommendations
+ */
+
+export function useGetStockRecommendations<TData = Awaited<ReturnType<typeof getStockRecommendations>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStockRecommendations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStockRecommendationsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
