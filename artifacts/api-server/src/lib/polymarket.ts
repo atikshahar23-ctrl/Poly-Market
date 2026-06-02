@@ -164,7 +164,10 @@ export async function fetchPolymarketMarkets(opts: FetchPolymarketOptions = {}):
     const noPrice = parseFloat((tokens[1]["price"] as string) ?? "0");
     const yesProbabilityPercent = yesPrice * 100;
 
-    if (filterResolved && (yesPrice <= 0.01 || yesPrice >= 0.99)) continue;
+    if (filterResolved && (yesPrice <= 0.05 || yesPrice >= 0.95)) continue;
+
+    // Filter markets marked inactive by Polymarket
+    if (filterResolved && market["active"] === false) continue;
 
     const targetPrice = extractTargetPrice(question);
     if (requireTargetPrice && !targetPrice) continue;

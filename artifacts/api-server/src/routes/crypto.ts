@@ -94,7 +94,7 @@ router.get("/markets/all", async (req, res): Promise<void> => {
       category,
       search,
       requireTargetPrice: false,
-      filterResolved: false,
+      filterResolved: true,
     });
 
     res.json(GetAllMarketsResponse.parse(markets));

@@ -21,43 +21,74 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
-      <aside className="w-64 border-r border-border bg-card flex flex-col">
-        <div className="p-6 border-b border-border">
-          <h1 className="text-xl font-bold font-mono tracking-tighter text-primary flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            ARB_SCAN
-          </h1>
-          <p className="text-xs text-muted-foreground mt-1 font-mono uppercase">Sentinel Terminal</p>
+      {/* Sidebar */}
+      <aside className="relative w-60 border-r border-border flex flex-col" style={{ background: 'hsl(0 0% 5%)' }}>
+        {/* Gold top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, hsl(43 74% 52%), transparent)' }} />
+
+        {/* Logo */}
+        <div className="px-5 py-5 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded flex items-center justify-center" style={{ background: 'hsl(43 74% 52% / 0.15)', border: '1px solid hsl(43 74% 52% / 0.4)' }}>
+              <Activity className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold tracking-widest text-primary font-mono uppercase">ARB_SCAN</h1>
+              <p className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase font-mono">Sentinel Terminal</p>
+            </div>
+          </div>
         </div>
-        
-        <nav className="flex-1 p-4 space-y-1">
+
+        {/* Nav */}
+        <nav className="flex-1 p-3 space-y-0.5">
           {links.map((link) => {
             const isActive = location === link.href;
             const Icon = link.icon;
             return (
-              <Link key={link.href} href={link.href} className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
-                <Icon className="h-4 w-4" />
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded transition-all text-xs font-medium tracking-wide ${
+                  isActive
+                    ? 'text-primary font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                style={isActive ? {
+                  background: 'hsl(43 74% 52% / 0.08)',
+                  borderLeft: '2px solid hsl(43 74% 52%)',
+                  paddingLeft: '10px',
+                } : {}}
+              >
+                <Icon className={`h-3.5 w-3.5 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
                 {link.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-border bg-card/50">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-muted-foreground">API STATUS</span>
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : (health?.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500')}`} />
-              <span className={health?.status === 'ok' ? 'text-emerald-500' : 'text-muted-foreground'}>
-                {isLoading ? 'CHK' : (health?.status === 'ok' ? 'OK' : 'ERR')}
+        {/* Status bar */}
+        <div className="px-4 py-3 border-t border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase">API Status</span>
+            <div className="flex items-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : health?.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              <span className={`text-[9px] font-mono font-bold tracking-wider ${health?.status === 'ok' ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                {isLoading ? 'CHK' : health?.status === 'ok' ? 'LIVE' : 'ERR'}
               </span>
             </div>
           </div>
         </div>
       </aside>
-      
+
+      {/* Main content */}
       <main className="flex-1 overflow-y-auto relative">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent opacity-50" />
+        {/* Subtle radial gradient for depth */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-30"
+          style={{
+            background: 'radial-gradient(ellipse at top right, hsl(43 74% 52% / 0.04) 0%, transparent 60%)',
+          }}
+        />
         <div className="relative h-full">
           {children}
         </div>
