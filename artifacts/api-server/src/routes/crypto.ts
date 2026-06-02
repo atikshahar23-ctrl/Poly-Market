@@ -45,6 +45,8 @@ router.get("/crypto/polymarket", async (req, res): Promise<void> => {
     const markets = await fetchPolymarketMarkets({
       asset: (query.success ? query.data.asset : "ALL") as AssetFilter,
       search: query.success ? (query.data.search ?? undefined) : undefined,
+      requireTargetPrice: false,
+      filterResolved: false,
     });
     res.json(GetPolymarketMarketsResponse.parse(markets));
   } catch (err) {

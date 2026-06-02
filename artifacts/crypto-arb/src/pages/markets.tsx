@@ -101,8 +101,8 @@ export default function Markets() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  markets.map((m) => (
-                    <TableRow key={m.conditionId} className="hover:bg-secondary/20">
+                  markets.map((m, i) => (
+                    <TableRow key={m.conditionId || `market-${i}`} className="hover:bg-secondary/20">
                       <TableCell>
                         <Badge variant="outline" className={`font-mono text-[10px] ${getAssetBadgeColor(m.assetTag)}`}>
                           {m.assetTag}

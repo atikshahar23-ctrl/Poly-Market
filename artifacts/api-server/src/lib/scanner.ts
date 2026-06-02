@@ -103,7 +103,7 @@ export async function runScan(opts: { asset?: AssetFilter; search?: string } = {
     asset === "ALL"
       ? fetchAllBinanceData()
       : fetchBinanceData(ASSET_SYMBOLS[asset] ?? "BTCUSDT").then((d) => [d]),
-    fetchPolymarketMarkets(opts),
+    fetchPolymarketMarkets({ ...opts, requireTargetPrice: true, filterResolved: true }),
   ]);
 
   const analyzed: MarketAnalysis[] = [];
