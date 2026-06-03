@@ -327,6 +327,41 @@ export interface ScalpSignal {
   reasons: string[];
 }
 
+export type MomentumCoinStage = typeof MomentumCoinStage[keyof typeof MomentumCoinStage];
+
+
+export const MomentumCoinStage = {
+  SURGING: 'SURGING',
+  BUILDING: 'BUILDING',
+  HOT: 'HOT',
+  COOLING: 'COOLING',
+} as const;
+
+export interface MomentumCoin {
+  symbol: string;
+  asset: string;
+  price: number;
+  /** 24h price change percent */
+  change24h: number;
+  /** Relative volume — recent volume vs the session average (multiple) */
+  rvol: number;
+  /** Rate of change over the last ~15 minutes (percent) */
+  roc15m: number;
+  /** Rate of change over the last ~1 hour (percent) */
+  roc1h: number;
+  /** Consecutive rising 5m candles at the tail */
+  greenStreak: number;
+  /** Where price sits in its recent range (0 = low, 100 = high) */
+  rangePosition: number;
+  /** 0-100 composite surge score */
+  score: number;
+  stage: MomentumCoinStage;
+  entry: number;
+  stopLoss: number;
+  takeProfit: number;
+  reasons: string[];
+}
+
 export type GetBinanceDataParams = {
 /**
  * Trading symbol (e.g. BTCUSDT, ETHUSDT)

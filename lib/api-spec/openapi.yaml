@@ -320,6 +320,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /crypto/momentum:
+    get:
+      operationId: getMomentumCoins
+      tags: [crypto]
+      summary: Get momentum / surge radar
+      description: Scans the liquid coin universe on the 5m timeframe for relative-volume spikes, rate-of-change acceleration, green streaks and range breakouts to surface coins flying up now or building toward a surge (meme-style runners)
+      responses:
+        "200":
+          description: Ranked momentum coins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MomentumCoin"
+        "502":
+          description: Failed to fetch external data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /crypto/shortterm:
     get:
       operationId: getShortTermMarkets
@@ -828,6 +850,66 @@ components:
         takeProfit:
           type: number
         riskReward:
+          type: number
+        reasons:
+          type: array
+          items:
+            type: string
+
+    MomentumCoin:
+      type: object
+      required:
+        - symbol
+        - asset
+        - price
+        - change24h
+        - rvol
+        - roc15m
+        - roc1h
+        - greenStreak
+        - rangePosition
+        - score
+        - stage
+        - entry
+        - stopLoss
+        - takeProfit
+        - reasons
+      properties:
+        symbol:
+          type: string
+        asset:
+          type: string
+        price:
+          type: number
+        change24h:
+          type: number
+          description: 24h price change percent
+        rvol:
+          type: number
+          description: Relative volume — recent volume vs the session average (multiple)
+        roc15m:
+          type: number
+          description: Rate of change over the last ~15 minutes (percent)
+        roc1h:
+          type: number
+          description: Rate of change over the last ~1 hour (percent)
+        greenStreak:
+          type: integer
+          description: Consecutive rising 5m candles at the tail
+        rangePosition:
+          type: number
+          description: Where price sits in its recent range (0 = low, 100 = high)
+        score:
+          type: number
+          description: 0-100 composite surge score
+        stage:
+          type: string
+          enum: [SURGING, BUILDING, HOT, COOLING]
+        entry:
+          type: number
+        stopLoss:
+          type: number
+        takeProfit:
           type: number
         reasons:
           type: array

@@ -12,6 +12,7 @@ import Simulator from "@/pages/simulator";
 import Stocks from "@/pages/stocks";
 import Movers from "@/pages/movers";
 import Scalp from "@/pages/scalp";
+import Momentum from "@/pages/momentum";
 import QuickBets from "@/pages/quickbets";
 import History from "@/pages/history";
 import Layout from "@/components/layout";
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/browse" component={Browse} />
         <Route path="/movers" component={Movers} />
         <Route path="/scalp" component={Scalp} />
+        <Route path="/momentum" component={Momentum} />
         <Route path="/quickbets" component={QuickBets} />
         <Route path="/history" component={History} />
         <Route path="/markets" component={Markets} />

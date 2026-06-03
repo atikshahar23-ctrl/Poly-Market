@@ -13,7 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useFavorites } from "@/contexts/favorites-context";
 import { usePortfolio } from "@/contexts/portfolio-context";
-import { useAutoTrader, type ScalpConfidence } from "@/contexts/autotrader-context";
+import { useAutoTrader, type ScalpConfidence, type TradeStrategy } from "@/contexts/autotrader-context";
 import { toast } from "@/hooks/use-toast";
 
 function fmtPrice(p: number): string {
@@ -234,6 +234,11 @@ function AutoTraderPanel() {
   const [open, setOpen] = useState(false);
   const autoOpen = binancePositions.filter((p) => p.auto).length;
   const confs: ScalpConfidence[] = ["LOW", "MEDIUM", "HIGH"];
+  const strategies: { key: TradeStrategy; label: string }[] = [
+    { key: "SCALP", label: "Scalp" },
+    { key: "MOMENTUM", label: "Momentum" },
+    { key: "BOTH", label: "Both" },
+  ];
 
   return (
     <div
@@ -343,8 +348,83 @@ function AutoTraderPanel() {
             <Switch checked={settings.favoritesOnly} onCheckedChange={(v) => update({ favoritesOnly: v })} />
           </div>
 
+          {/* ── Warrior controls ── */}
+          <div className="sm:col-span-2 pt-2 border-t border-border/50">
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-primary">Warrior Mode</span>
+              <span className="text-[9px] font-mono text-muted-foreground">— sources, trailing &amp; risk caps</span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Signal source</label>
+            <div className="flex gap-1">
+              {strategies.map((st) => (
+                <button
+                  key={st.key}
+                  onClick={() => update({ strategy: st.key })}
+                  className={`flex-1 rounded py-1.5 text-[10px] font-mono font-bold transition-colors ${
+                    settings.strategy === st.key ? "text-primary" : "text-muted-foreground hover:text-foreground bg-secondary/40"
+                  }`}
+                  style={settings.strategy === st.key ? { background: "hsl(43 74% 52% / 0.15)", boxShadow: "inset 0 0 0 1px hsl(43 74% 52% / 0.3)" } : {}}
+                >
+                  {st.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {(settings.strategy === "MOMENTUM" || settings.strategy === "BOTH") && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Min momentum score</label>
+                <span className="font-mono text-xs font-bold text-primary">{settings.minMomentumScore}</span>
+              </div>
+              <Slider value={[settings.minMomentumScore]} min={30} max={90} step={5} onValueChange={(v) => update({ minMomentumScore: v[0] })} />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between rounded bg-secondary/30 px-2.5 py-2 sm:col-span-2">
+            <span className="text-[11px] font-mono text-foreground">Trailing stop (ride winners)</span>
+            <Switch checked={settings.trailingEnabled} onCheckedChange={(v) => update({ trailingEnabled: v })} />
+          </div>
+
+          {settings.trailingEnabled && (
+            <>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Trail activate</label>
+                  <span className="font-mono text-xs font-bold text-primary">{settings.trailActivatePct}%</span>
+                </div>
+                <Slider value={[settings.trailActivatePct]} min={0.5} max={5} step={0.5} onValueChange={(v) => update({ trailActivatePct: v[0] })} />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Trail distance</label>
+                  <span className="font-mono text-xs font-bold text-primary">{settings.trailDistancePct}%</span>
+                </div>
+                <Slider value={[settings.trailDistancePct]} min={0.5} max={5} step={0.5} onValueChange={(v) => update({ trailDistancePct: v[0] })} />
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center justify-between rounded bg-secondary/30 px-2.5 py-2 sm:col-span-2">
+            <span className="text-[11px] font-mono text-foreground">Daily loss circuit-breaker</span>
+            <Switch checked={settings.dailyStopEnabled} onCheckedChange={(v) => update({ dailyStopEnabled: v })} />
+          </div>
+
+          {settings.dailyStopEnabled && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Daily max loss</label>
+                <span className="font-mono text-xs font-bold text-red-400">{settings.dailyMaxLossPct}%</span>
+              </div>
+              <Slider value={[settings.dailyMaxLossPct]} min={1} max={50} step={1} onValueChange={(v) => update({ dailyMaxLossPct: v[0] })} />
+            </div>
+          )}
+
           <p className="sm:col-span-2 text-[9px] font-mono text-amber-400/80 leading-snug">
-            ⚠ Demo-only automation. Opens paper positions with virtual funds; 10-min cooldown per asset, exits on signal SL/TP.
+            ⚠ Demo-only automation. Opens paper positions with virtual funds; 10-min cooldown per asset, exits on signal SL/TP or trailing stop.
           </p>
         </div>
       )}

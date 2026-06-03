@@ -3,6 +3,7 @@ import { fetchBinanceData, fetchAllBinanceData, fetchMarketOverview } from "../l
 import { fetchPolymarketMarkets, type AssetFilter, type CategoryFilter } from "../lib/polymarket";
 import { fetchMarketMovers } from "../lib/movers";
 import { fetchScalpSignals } from "../lib/scalp";
+import { fetchMomentumCoins } from "../lib/momentum";
 import { runScan, buildRecommendations } from "../lib/scanner";
 import {
   GetBinanceDataQueryParams,
@@ -18,6 +19,7 @@ import {
   GetMarketMoversResponse,
   GetMarketOverviewResponse,
   GetScalpSignalsResponse,
+  GetMomentumCoinsResponse,
   GetShortTermMarketsResponse,
 } from "@workspace/api-zod";
 
@@ -115,6 +117,16 @@ router.get("/crypto/scalp", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "Failed to compute scalp signals");
     res.status(502).json({ error: "Failed to compute scalp signals" });
+  }
+});
+
+router.get("/crypto/momentum", async (req, res): Promise<void> => {
+  try {
+    const coins = await fetchMomentumCoins({ coins: 60, top: 24 });
+    res.json(GetMomentumCoinsResponse.parse(coins));
+  } catch (err) {
+    req.log.error({ err }, "Failed to compute momentum coins");
+    res.status(502).json({ error: "Failed to compute momentum coins" });
   }
 });
 

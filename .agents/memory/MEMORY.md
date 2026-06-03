@@ -12,3 +12,4 @@
 - [Refresh cadence coupling](refresh-cadence.md) — frontend poll interval must stay >= server cache TTL; fast-refresh toggle floors cache-backed queries at the TTL, only real-time Binance stream truly speeds up.
 - [lightweight-charts v5 API](lightweight-charts-v5.md) — use addSeries(CandlestickSeries, opts) not addCandlestickSeries() (removed in v5). Klines from data-api.binance.vision (non-geo-blocked). ColorType.Solid for backgrounds.
 - [Mobile layout pattern](mobile-layout.md) — Sticky md:hidden top-bar in layout.tsx with hamburger + brand. Sidebar is overlay drawer. Pages use p-4 md:p-6. Simulator fills inner scrollable div with h-full flex flex-col.
+- [Momentum scanner & Warrior Auto-Trader](momentum-and-warrior.md) — 5m RVol/ROC surge scoring (LONG-only in auto-trader); trailing stop only ever tightens (LONG max-peak / SHORT min-peak), runs before checkSlTp; daily realized-loss guard halts new opens.

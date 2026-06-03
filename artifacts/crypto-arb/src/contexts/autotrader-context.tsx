@@ -2,6 +2,9 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 
 export type ScalpConfidence = "LOW" | "MEDIUM" | "HIGH";
 
+/** Which signal sources the engine trades from. */
+export type TradeStrategy = "SCALP" | "MOMENTUM" | "BOTH";
+
 export interface AutoTraderSettings {
   enabled: boolean;
   /** Cash committed as margin per auto trade (USD). */
@@ -14,6 +17,22 @@ export interface AutoTraderSettings {
   maxOpenPositions: number;
   /** Only auto-trade assets the user has starred. */
   favoritesOnly: boolean;
+
+  /* ── Warrior-trading additions ── */
+  /** Signal sources: scalp setups, momentum runners, or both. */
+  strategy: TradeStrategy;
+  /** Minimum momentum surge score (0-100) required to open a momentum trade. */
+  minMomentumScore: number;
+  /** Ride winners with a trailing stop that ratchets toward price. */
+  trailingEnabled: boolean;
+  /** Favorable move (price %) required before the trailing stop arms. */
+  trailActivatePct: number;
+  /** Distance (price %) the trailing stop sits behind the peak once armed. */
+  trailDistancePct: number;
+  /** Halt opening new trades after the day's realized loss hits this cap. */
+  dailyStopEnabled: boolean;
+  /** Daily max realized loss as a percent of deposited equity. */
+  dailyMaxLossPct: number;
 }
 
 export const DEFAULT_SETTINGS: AutoTraderSettings = {
@@ -25,6 +44,14 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
   allowShort: true,
   maxOpenPositions: 5,
   favoritesOnly: false,
+
+  strategy: "BOTH",
+  minMomentumScore: 55,
+  trailingEnabled: true,
+  trailActivatePct: 1.5,
+  trailDistancePct: 1.0,
+  dailyStopEnabled: false,
+  dailyMaxLossPct: 10,
 };
 
 const STORAGE_KEY = "arb_scan_autotrader";

@@ -23,6 +23,8 @@ export * from './getScanResultsParams';
 export * from './healthStatus';
 export * from './marketAnalysis';
 export * from './marketMovers';
+export * from './momentumCoin';
+export * from './momentumCoinStage';
 export * from './moverCoin';
 export * from './newsItem';
 export * from './polymarketMarket';

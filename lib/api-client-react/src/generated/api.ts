@@ -25,6 +25,7 @@ import type {
   GetScanResultsParams,
   HealthStatus,
   MarketMovers,
+  MomentumCoin,
   PolymarketMarket,
   Recommendation,
   ScalpSignal,
@@ -997,6 +998,84 @@ export function useGetScalpSignals<TData = Awaited<ReturnType<typeof getScalpSig
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetScalpSignalsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMomentumCoinsUrl = () => {
+
+
+
+
+  return `/api/crypto/momentum`
+}
+
+/**
+ * Scans the liquid coin universe on the 5m timeframe for relative-volume spikes, rate-of-change acceleration, green streaks and range breakouts to surface coins flying up now or building toward a surge (meme-style runners)
+ * @summary Get momentum / surge radar
+ */
+export const getMomentumCoins = async ( options?: RequestInit): Promise<MomentumCoin[]> => {
+
+  return customFetch<MomentumCoin[]>(getGetMomentumCoinsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMomentumCoinsQueryKey = () => {
+    return [
+    `/api/crypto/momentum`
+    ] as const;
+    }
+
+
+export const getGetMomentumCoinsQueryOptions = <TData = Awaited<ReturnType<typeof getMomentumCoins>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMomentumCoins>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMomentumCoinsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMomentumCoins>>> = ({ signal }) => getMomentumCoins({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMomentumCoins>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMomentumCoinsQueryResult = NonNullable<Awaited<ReturnType<typeof getMomentumCoins>>>
+export type GetMomentumCoinsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get momentum / surge radar
+ */
+
+export function useGetMomentumCoins<TData = Awaited<ReturnType<typeof getMomentumCoins>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMomentumCoins>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMomentumCoinsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

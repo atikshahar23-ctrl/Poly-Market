@@ -15,6 +15,17 @@ export interface PolyPosition {
   openedAt: string;
 }
 
+export interface TrailConfig {
+  /** Favorable move (price %) required before the trailing stop arms. */
+  activatePct: number;
+  /** Distance (price %) the stop sits behind the best price once armed. */
+  distancePct: number;
+  /** Best favorable price seen so far (peak for LONG, trough for SHORT). */
+  peak?: number;
+  /** Whether the trail has armed (price moved past the activation threshold). */
+  armed?: boolean;
+}
+
 export interface BinancePosition {
   id: string;
   asset: string;
@@ -29,6 +40,8 @@ export interface BinancePosition {
   auto?: boolean;
   /** Free-form source label, e.g. "Scalp signal". */
   source?: string;
+  /** Optional trailing-stop config (warrior-style ride-the-winner). */
+  trail?: TrailConfig;
 }
 
 export interface StockPosition {
@@ -90,6 +103,8 @@ interface PortfolioContextValue extends PortfolioState {
   ) => string | null;
   closeStockPosition: (id: string, currentPrice: number) => void;
   checkSlTp: (prices: Record<string, number>) => void;
+  /** Ratchet trailing stops on Binance positions toward the favorable price. */
+  updateTrailingStops: (prices: Record<string, number>) => void;
   resetPortfolio: () => void;
 }
 
@@ -404,6 +419,64 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /**
+   * Ratchet trailing stops. For each Binance position with a `trail` config we
+   * track the best favorable price and, once price has moved past the
+   * activation threshold, pull the stop to within `distancePct` of that best
+   * price. The stop only ever moves in the favorable direction — never against
+   * the position. Runs before checkSlTp so a tightened stop can trigger.
+   */
+  const updateTrailingStops = useCallback((prices: Record<string, number>) => {
+    setState((prev) => {
+      let changed = false;
+      const binancePositions = prev.binancePositions.map((pos) => {
+        if (!pos.trail) return pos;
+        const price = prices[pos.asset];
+        if (!price || !Number.isFinite(price)) return pos;
+
+        const { activatePct, distancePct } = pos.trail;
+        const isLong = pos.direction === "LONG";
+
+        // Track the best favorable price seen.
+        const prevPeak = pos.trail.peak ?? pos.entryPrice;
+        const peak = isLong ? Math.max(prevPeak, price) : Math.min(prevPeak, price);
+
+        // Favorable move from entry to the best price (in price %).
+        const movePct = isLong
+          ? ((peak - pos.entryPrice) / pos.entryPrice) * 100
+          : ((pos.entryPrice - peak) / pos.entryPrice) * 100;
+        const armed = pos.trail.armed || movePct >= activatePct;
+
+        let slPrice = pos.slPrice;
+        if (armed) {
+          const candidate = isLong
+            ? peak * (1 - distancePct / 100)
+            : peak * (1 + distancePct / 100);
+          // Only tighten — never loosen the stop.
+          if (isLong) {
+            if (slPrice == null || candidate > slPrice) slPrice = candidate;
+          } else {
+            if (slPrice == null || candidate < slPrice) slPrice = candidate;
+          }
+        }
+
+        const newTrail = { ...pos.trail, peak, armed };
+        if (
+          slPrice === pos.slPrice &&
+          newTrail.peak === pos.trail.peak &&
+          newTrail.armed === pos.trail.armed
+        ) {
+          return pos;
+        }
+        changed = true;
+        return { ...pos, slPrice, trail: newTrail };
+      });
+
+      if (!changed) return prev;
+      return { ...prev, binancePositions };
+    });
+  }, []);
+
   const resetPortfolio = useCallback(() => {
     setState({
       cash: STARTING_BALANCE,
@@ -427,6 +500,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         openStockPosition,
         closeStockPosition,
         checkSlTp,
+        updateTrailingStops,
         resetPortfolio,
       }}
     >

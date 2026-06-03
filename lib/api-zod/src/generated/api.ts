@@ -350,6 +350,30 @@ export const GetScalpSignalsResponse = zod.array(GetScalpSignalsResponseItem)
 
 
 /**
+ * Scans the liquid coin universe on the 5m timeframe for relative-volume spikes, rate-of-change acceleration, green streaks and range breakouts to surface coins flying up now or building toward a surge (meme-style runners)
+ * @summary Get momentum / surge radar
+ */
+export const GetMomentumCoinsResponseItem = zod.object({
+  "symbol": zod.string(),
+  "asset": zod.string(),
+  "price": zod.number(),
+  "change24h": zod.number().describe('24h price change percent'),
+  "rvol": zod.number().describe('Relative volume — recent volume vs the session average (multiple)'),
+  "roc15m": zod.number().describe('Rate of change over the last ~15 minutes (percent)'),
+  "roc1h": zod.number().describe('Rate of change over the last ~1 hour (percent)'),
+  "greenStreak": zod.number().describe('Consecutive rising 5m candles at the tail'),
+  "rangePosition": zod.number().describe('Where price sits in its recent range (0 = low, 100 = high)'),
+  "score": zod.number().describe('0-100 composite surge score'),
+  "stage": zod.enum(['SURGING', 'BUILDING', 'HOT', 'COOLING']),
+  "entry": zod.number(),
+  "stopLoss": zod.number(),
+  "takeProfit": zod.number(),
+  "reasons": zod.array(zod.string())
+})
+export const GetMomentumCoinsResponse = zod.array(GetMomentumCoinsResponseItem)
+
+
+/**
  * Returns Polymarket crypto markets resolving within 48 hours, sorted soonest-first
  * @summary Get short-term crypto prediction markets
  */
