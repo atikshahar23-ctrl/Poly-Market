@@ -48,6 +48,8 @@ export interface StockPosition {
   id: string;
   symbol: string;
   name: string;
+  /** LONG (buy) or SHORT (sell). Missing/legacy positions are treated as LONG. */
+  direction?: "LONG" | "SHORT";
   shares: number;
   entryPrice: number;
   leverage: number;
@@ -140,7 +142,7 @@ function loadState(): PortfolioState {
         totalDeposited: parsed.totalDeposited ?? STARTING_BALANCE,
         polyPositions: parsed.polyPositions ?? [],
         binancePositions: parsed.binancePositions ?? [],
-        stockPositions: (parsed.stockPositions ?? []).map((p) => ({ ...p, leverage: p.leverage ?? 1 })),
+        stockPositions: (parsed.stockPositions ?? []).map((p) => ({ ...p, leverage: p.leverage ?? 1, direction: p.direction ?? "LONG" })),
         tradeHistory: parsed.tradeHistory ?? [],
       };
     }
@@ -326,12 +328,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const pos = prev.stockPositions.find((p) => p.id === id);
       if (!pos) return prev;
-      const pnl = pos.shares * (currentPrice - pos.entryPrice);
+      const dir = pos.direction ?? "LONG";
+      const pnl = pos.shares * (dir === "SHORT" ? pos.entryPrice - currentPrice : currentPrice - pos.entryPrice);
       const proceeds = Math.max(0, pos.cost + pnl);
       const closed: ClosedTrade = {
         id: crypto.randomUUID(),
         type: "STOCK",
-        description: `${pos.symbol}${pos.leverage > 1 ? ` ${pos.leverage}x` : ""} ${pos.shares.toFixed(2)} sh @ $${pos.entryPrice.toFixed(2)} → $${currentPrice.toFixed(2)}`,
+        description: `${dir} ${pos.symbol}${pos.leverage > 1 ? ` ${pos.leverage}x` : ""} ${pos.shares.toFixed(2)} sh @ $${pos.entryPrice.toFixed(2)} → $${currentPrice.toFixed(2)}`,
         cost: pos.cost,
         proceeds,
         pnl,
@@ -395,22 +398,23 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         changed = true;
       }
 
-      // Stocks are always long.
+      // Stocks: LONG closes on price falling to SL / rising to TP; SHORT is mirrored.
       for (const pos of prev.stockPositions) {
         const price = prices[pos.symbol];
         if (!price) continue;
+        const dir = pos.direction ?? "LONG";
 
-        const hitSL = pos.slPrice != null && price <= pos.slPrice;
-        const hitTP = pos.tpPrice != null && price >= pos.tpPrice;
+        const hitSL = pos.slPrice != null && (dir === "SHORT" ? price >= pos.slPrice : price <= pos.slPrice);
+        const hitTP = pos.tpPrice != null && (dir === "SHORT" ? price <= pos.tpPrice : price >= pos.tpPrice);
         if (!hitSL && !hitTP) continue;
 
-        const pnl = pos.shares * (price - pos.entryPrice);
+        const pnl = pos.shares * (dir === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice);
         const proceeds = Math.max(0, pos.cost + pnl);
 
         const closed: ClosedTrade = {
           id: crypto.randomUUID(),
           type: "STOCK",
-          description: `${hitTP ? "TP" : "SL"} ${pos.symbol}${pos.leverage > 1 ? ` ${pos.leverage}x` : ""} ${pos.shares.toFixed(2)} sh @ $${price.toFixed(2)} (entry $${pos.entryPrice.toFixed(2)})`,
+          description: `${hitTP ? "TP" : "SL"} ${dir} ${pos.symbol}${pos.leverage > 1 ? ` ${pos.leverage}x` : ""} ${pos.shares.toFixed(2)} sh @ $${price.toFixed(2)} (entry $${pos.entryPrice.toFixed(2)})`,
           cost: pos.cost,
           proceeds,
           pnl,
@@ -589,7 +593,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     for (const pos of prev.stockPositions) {
       const price = prices[pos.symbol];
       if (!price || !Number.isFinite(price)) { keptStocks.push(pos); continue; }
-      const pnl = pos.shares * (price - pos.entryPrice);
+      const pnl = pos.shares * (pos.direction === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice);
       const proceeds = Math.max(0, pos.cost + pnl);
       const closed: ClosedTrade = {
         id: crypto.randomUUID(),

@@ -664,13 +664,13 @@ function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices:
           </div>
           {stockPositions.map(pos => {
             const currentPrice = stockPrices[pos.symbol] ?? pos.entryPrice;
-            const pnl = pos.shares * (currentPrice - pos.entryPrice);
+            const pnl = pos.shares * (pos.direction === "SHORT" ? pos.entryPrice - currentPrice : currentPrice - pos.entryPrice);
             const equity = Math.max(0, pos.cost + pnl);
             const pnlPct = pos.cost > 0 ? (pnl / pos.cost) * 100 : 0;
             return (
               <div key={pos.id} className={`rounded-lg border p-4 flex items-center justify-between gap-4 ${pnlBg(pnl)}`}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="text-xs font-black font-mono text-emerald-400">LONG</div>
+                  <div className={`text-xs font-black font-mono ${(pos.direction ?? "LONG") === "SHORT" ? "text-red-400" : "text-emerald-400"}`}>{pos.direction ?? "LONG"}</div>
                   <div className="min-w-0">
                     <div className="text-sm font-bold font-mono truncate">
                       {pos.symbol} {pos.leverage > 1 && <span className="text-primary font-normal">{pos.leverage}x</span>} <span className="text-muted-foreground font-normal">{fmt(pos.shares, 4)} sh</span>
@@ -898,7 +898,7 @@ export default function SimulatorPage() {
     }, 0);
     const stockPnl = stockPositions.reduce((sum, pos) => {
       const p = stockPrices[pos.symbol] ?? pos.entryPrice;
-      return sum + pos.shares * (p - pos.entryPrice);
+      return sum + pos.shares * (pos.direction === "SHORT" ? pos.entryPrice - p : p - pos.entryPrice);
     }, 0);
     return binancePnl + polyPnl + stockPnl;
   }, [binancePositions, polyPositions, stockPositions, binancePrices, stockPrices, allMarkets]);
@@ -917,7 +917,7 @@ export default function SimulatorPage() {
     }, 0);
     const stockVal = stockPositions.reduce((s, p) => {
       const price = stockPrices[p.symbol] ?? p.entryPrice;
-      return s + Math.max(0, p.cost + p.shares * (price - p.entryPrice));
+      return s + Math.max(0, p.cost + p.shares * (p.direction === "SHORT" ? p.entryPrice - price : price - p.entryPrice));
     }, 0);
     return bMargin + bPnl + polyVal + stockVal;
   }, [binancePositions, polyPositions, stockPositions, binancePrices, stockPrices, allMarkets]);

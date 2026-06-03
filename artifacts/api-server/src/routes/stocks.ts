@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
 import { fetchStockQuotes, buildStockRecommendations, fetchStockKlines } from "../lib/stocks";
+import { fetchInfluencerSignals } from "../lib/influencers";
 import {
   GetStocksResponse,
   GetStockRecommendationsResponse,
   GetStockKlinesResponse,
   GetStockKlinesQueryParams,
+  GetInfluencerSignalsResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -47,6 +49,16 @@ router.get("/stocks/recommendations", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "Failed to build stock recommendations");
     res.status(502).json({ error: "Failed to build stock recommendations" });
+  }
+});
+
+router.get("/stocks/influencers", async (req, res): Promise<void> => {
+  try {
+    const data = await fetchInfluencerSignals();
+    res.json(GetInfluencerSignalsResponse.parse(data));
+  } catch (err) {
+    req.log.error({ err }, "Failed to build influencer signals");
+    res.status(502).json({ error: "Failed to build influencer signals" });
   }
 });
 

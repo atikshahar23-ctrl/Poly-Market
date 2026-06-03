@@ -4,10 +4,13 @@ import {
   useGetMomentumCoins, getGetMomentumCoinsQueryKey,
   useGetMarketOverview, getGetMarketOverviewQueryKey,
   useGetStocks, getGetStocksQueryKey,
+  useGetStockRecommendations, getGetStockRecommendationsQueryKey,
+  useGetInfluencerSignals, getGetInfluencerSignalsQueryKey,
   useGetShortTermMarkets, getGetShortTermMarketsQueryKey,
 } from "@workspace/api-client-react";
-import type { ScalpSignal, MomentumCoin, PolymarketMarket } from "@workspace/api-client-react";
+import type { ScalpSignal, MomentumCoin, PolymarketMarket, StockRecommendation, InfluencerSignal, StockQuote } from "@workspace/api-client-react";
 import { usePortfolio, type TrailConfig } from "@/contexts/portfolio-context";
+import { recommendLevels } from "@/lib/recommend-levels";
 import { useAutoTrader, type ScalpConfidence } from "@/contexts/autotrader-context";
 import { useFavorites } from "@/contexts/favorites-context";
 import { useLivePrices } from "@/contexts/live-price-context";
@@ -72,7 +75,7 @@ function realizedPnlToday(history: { pnl: number; closedAt: string }[]): number 
 export function AutoTraderEngine() {
   const {
     binancePositions, stockPositions, polyPositions, cash, totalDeposited, tradeHistory,
-    openBinancePosition, openPolyPosition, closePolyPosition,
+    openBinancePosition, openPolyPosition, closePolyPosition, openStockPosition,
     checkSlTp, updateTrailingStops, checkRiskGuards, flattenAll,
   } = usePortfolio();
   const { settings, update } = useAutoTrader();
@@ -86,6 +89,24 @@ export function AutoTraderEngine() {
   });
   const { data: stocks } = useGetStocks({
     query: { queryKey: getGetStocksQueryKey(), refetchInterval: 30000, staleTime: 20000 },
+  });
+
+  // Smart-Money stock bot inputs — only polled while the stock bot is armed.
+  const { data: stockRecs } = useGetStockRecommendations({
+    query: {
+      queryKey: getGetStockRecommendationsQueryKey(),
+      refetchInterval: settings.stocksEnabled ? 60000 : false,
+      staleTime: 45000,
+      enabled: settings.stocksEnabled,
+    },
+  });
+  const { data: influencers } = useGetInfluencerSignals({
+    query: {
+      queryKey: getGetInfluencerSignalsQueryKey(),
+      refetchInterval: settings.stocksEnabled ? 120000 : false,
+      staleTime: 90000,
+      enabled: settings.stocksEnabled,
+    },
   });
 
   // Same-day crypto prediction markets — only polled while the BTC bot is armed.
@@ -119,6 +140,7 @@ export function AutoTraderEngine() {
   });
 
   const cooldownRef = useRef<Record<string, number>>({});
+  const stockCooldownRef = useRef<Record<string, number>>({});
   const polyCooldownRef = useRef<Record<string, number>>({});
   /** Running peak of total equity, for the max-drawdown kill-switch. */
   const equityPeakRef = useRef<number>(0);
@@ -164,7 +186,7 @@ export function AutoTraderEngine() {
       for (const pos of stockPositions) {
         const price = priceMap[pos.symbol];
         if (!price) { equity += pos.cost; continue; }
-        equity += Math.max(0, pos.cost + pos.shares * (price - pos.entryPrice));
+        equity += Math.max(0, pos.cost + pos.shares * (pos.direction === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice));
       }
 
       if (equity > equityPeakRef.current) equityPeakRef.current = equity;
@@ -291,6 +313,132 @@ export function AutoTraderEngine() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signals, momentum, settings, cash, binancePositions, isFavorite, totalDeposited, tradeHistory]);
+
+  // ── Smart-Money stock bot ───────────────────────────────────────────────────
+  // Fuses two free sources per ticker — technical recommendations and
+  // influencer-news sentiment — into a directional conviction, then opens LONG or
+  // SHORT paper positions for the strongest agreeing setups (risk-gated).
+  useEffect(() => {
+    if (!settings.stocksEnabled) return;
+    const stake = settings.stockStakePerTrade;
+    if (!(stake > 0)) return;
+
+    // Daily loss guard shared with the rest of the book.
+    if (settings.dailyStopEnabled) {
+      const cap = (settings.dailyMaxLossPct / 100) * totalDeposited;
+      if (cap > 0 && realizedPnlToday(tradeHistory) <= -cap) return;
+    }
+
+    const now = Date.now();
+    let autoOpen = stockPositions.filter((p) => p.auto).length;
+    let availableCash = cash;
+    const openSymbols = new Set(stockPositions.map((p) => p.symbol));
+
+    // Net directional conviction per ticker: LONG votes add, SHORT votes subtract.
+    const score = new Map<string, number>();
+    const nameBy = new Map<string, string>();
+    const priceBy = new Map<string, number>();
+    const labelBy = new Map<string, string[]>();
+    const srcBy = new Map<string, Set<string>>();
+
+    const vote = (sym: string, signed: number, name: string, label: string, src: string, price?: number) => {
+      const key = sym.toUpperCase();
+      score.set(key, (score.get(key) ?? 0) + signed);
+      if (name && !nameBy.has(key)) nameBy.set(key, name);
+      if (price && price > 0 && !priceBy.has(key)) priceBy.set(key, price);
+      const bits = labelBy.get(key) ?? [];
+      bits.push(label);
+      labelBy.set(key, bits);
+      const set = srcBy.get(key) ?? new Set<string>();
+      set.add(src);
+      srcBy.set(key, set);
+    };
+
+    // Technical recommendations (BUY → long, SELL → short; weighted by confidence).
+    for (const r of (stockRecs ?? []) as StockRecommendation[]) {
+      if (r.action === "HOLD") continue;
+      const w = (CONF_RANK[r.confidence] + 1) * 18; // LOW 18 / MED 36 / HIGH 54
+      const signed = r.action === "BUY" ? w : -w;
+      vote(r.symbol, signed, r.name, `${r.confidence} ${r.action.toLowerCase()} technical`, "Technical", r.price);
+    }
+
+    // Influencer-news sentiment (confidence 0-100 scaled to the same range).
+    for (const s of (influencers ?? []) as InfluencerSignal[]) {
+      const w = (s.confidence / 100) * 50;
+      const signed = s.direction === "LONG" ? w : -w;
+      vote(s.ticker, signed, s.name, `${s.influencer} ${s.direction.toLowerCase()}`, "Influencer");
+    }
+
+    // Resolve a live price for any ticker the recs didn't carry.
+    for (const sym of score.keys()) {
+      if (!priceBy.has(sym)) {
+        const p = priceMap[sym];
+        if (p && p > 0) priceBy.set(sym, p);
+      }
+    }
+
+    type StockCand = {
+      symbol: string; name: string; direction: "LONG" | "SHORT";
+      price: number; conviction: number; label: string; multiSource: boolean;
+    };
+    const candidates: StockCand[] = [];
+    for (const [sym, net] of score) {
+      const conviction = Math.min(100, Math.abs(net));
+      if (conviction < settings.stockMinConfidence) continue;
+      const direction: "LONG" | "SHORT" = net >= 0 ? "LONG" : "SHORT";
+      if (direction === "LONG" ? !settings.allowLong : !settings.allowShort) continue;
+      const price = priceBy.get(sym);
+      if (!price || price <= 0) continue;
+      candidates.push({
+        symbol: sym,
+        name: nameBy.get(sym) ?? sym,
+        direction,
+        price,
+        conviction,
+        label: (labelBy.get(sym) ?? []).slice(0, 2).join(" + "),
+        multiSource: (srcBy.get(sym)?.size ?? 0) > 1,
+      });
+    }
+
+    const ranked = candidates
+      .filter((c) => !openSymbols.has(c.symbol))
+      .filter((c) => now - (stockCooldownRef.current[c.symbol] ?? 0) > COOLDOWN_MS)
+      // Reward agreement across both sources, then raw conviction.
+      .sort((a, b) => Number(b.multiSource) - Number(a.multiSource) || b.conviction - a.conviction);
+
+    for (const c of ranked) {
+      if (autoOpen >= settings.stockMaxOpen) break;
+      if (availableCash < stake) break;
+
+      // 2:1 reward at a conviction-tightened stop (higher conviction → wider room).
+      const slPct = c.conviction >= 75 ? 0.04 : 0.03;
+      const { sl, tp } = recommendLevels(c.price, c.direction, { slPct, tpPct: slPct * 2 });
+      const err = openStockPosition(
+        {
+          symbol: c.symbol,
+          name: c.name,
+          direction: c.direction,
+          entryPrice: c.price,
+          slPrice: sl,
+          tpPrice: tp,
+          auto: true,
+          source: c.multiSource ? "Smart-Money (technical + influencer)" : "Smart-Money",
+        },
+        stake,
+        1,
+      );
+      if (err) continue;
+
+      stockCooldownRef.current[c.symbol] = now;
+      availableCash -= stake;
+      autoOpen += 1;
+      toast({
+        title: `Smart-Money · ${c.direction} ${c.symbol}`,
+        description: `${c.label} · conviction ${c.conviction.toFixed(0)} · $${stake} @ $${c.price}`,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stockRecs, influencers, settings, cash, stockPositions, totalDeposited, tradeHistory]);
 
   // ── Polymarket BTC auto-investor ────────────────────────────────────────────
   // Focuses purely on same-day Bitcoin up/down markets. Direction comes from the

@@ -4,7 +4,7 @@ import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-re
 import { usePortfolio } from "@/contexts/portfolio-context";
 import {
   LayoutDashboard, LineChart, CandlestickChart, Zap, Globe, Trophy,
-  TrendingUp, Menu, X, Activity, Gauge, Timer, Star, History, Rocket,
+  TrendingUp, Menu, X, Activity, Gauge, Timer, Star, History, Rocket, Megaphone,
 } from "lucide-react";
 import { Jarvis } from "@/components/jarvis";
 import { TopControls } from "@/components/top-controls";
@@ -44,6 +44,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/momentum", label: "Momentum Radar", icon: Rocket },
     { href: "/quickbets", label: "Quick Bets", icon: Timer },
     { href: "/stocks", label: "Stocks", icon: TrendingUp },
+    { href: "/smart-money", label: "Smart Money", icon: Megaphone },
     { href: "/movers", label: "Market Movers", icon: Activity },
     { href: "/browse", label: "Live Markets", icon: Globe },
     { href: "/simulator", label: "Simulator", icon: Trophy, extra: <PortfolioMiniBalance /> },

@@ -281,6 +281,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /stocks/influencers:
+    get:
+      operationId: getInfluencerSignals
+      tags: [stocks]
+      summary: Get Smart-Money influencer signals
+      description: Tracks mega-influencers (Trump, Musk, etc.) via free Google News RSS, scores headline sentiment, and maps it to LONG/SHORT stock signals
+      responses:
+        "200":
+          description: Influencer-driven stock signals ranked by confidence
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InfluencerSignal"
+        "502":
+          description: Failed to build influencer signals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /crypto/recommendations:
     get:
       operationId: getRecommendations
@@ -747,6 +769,49 @@ components:
           type: number
           description: Where the price sits within its 1-month range (0 = monthly low, 100 = monthly high)
         tradingViewSymbol:
+          type: string
+
+    InfluencerSignal:
+      type: object
+      required:
+        - influencer
+        - ticker
+        - name
+        - headline
+        - url
+        - source
+        - sentiment
+        - direction
+        - confidence
+        - horizon
+        - publishedAt
+      properties:
+        influencer:
+          type: string
+        ticker:
+          type: string
+        name:
+          type: string
+          description: Company / instrument name for the ticker
+        headline:
+          type: string
+        url:
+          type: string
+        source:
+          type: string
+        sentiment:
+          type: number
+          description: Aggregate headline sentiment from -1 (bearish) to 1 (bullish)
+        direction:
+          type: string
+          enum: [LONG, SHORT]
+        confidence:
+          type: number
+          description: Conviction score 0-100
+        horizon:
+          type: string
+          enum: [SHORT, LONG]
+        publishedAt:
           type: string
 
     MoverCoin:

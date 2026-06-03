@@ -44,6 +44,16 @@ export interface AutoTraderSettings {
   /** Max equity drawdown from the running peak (%) before the kill-switch fires. */
   portfolioMaxDrawdownPct: number;
 
+  /* ── Smart-Money stock bot (influencer + technical, LONG & SHORT) ── */
+  /** Master switch for the Wall-Street-grade stock bot. */
+  stocksEnabled: boolean;
+  /** USD committed per stock trade. */
+  stockStakePerTrade: number;
+  /** Hard cap on simultaneously open auto stock positions. */
+  stockMaxOpen: number;
+  /** Minimum combined conviction (0-100) required to open a stock trade. */
+  stockMinConfidence: number;
+
   /* ── Polymarket BTC auto-investor (same-day up/down bets) ── */
   /** Master switch for the Bitcoin prediction-market bot. */
   polyEnabled: boolean;
@@ -83,6 +93,11 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
   maxLossPerTradePct: 80,
   portfolioStopEnabled: false,
   portfolioMaxDrawdownPct: 25,
+
+  stocksEnabled: false,
+  stockStakePerTrade: 200,
+  stockMaxOpen: 5,
+  stockMinConfidence: 55,
 
   polyEnabled: false,
   polyStakePerBet: 25,

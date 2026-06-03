@@ -276,6 +276,34 @@ textarea:focus-visible,
   }
 }
 
+/* JARVIS assistant — idle float, eye glow, scanning ring, talking mouth */
+@keyframes jarvis-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.jarvis-float {
+  animation: jarvis-float 3.6s var(--ease-out-quart, ease-in-out) infinite;
+}
+@keyframes jarvis-ring-spin {
+  to { transform: rotate(360deg); }
+}
+.jarvis-ring {
+  transform-origin: center;
+  animation: jarvis-ring-spin 9s linear infinite;
+  stroke-dasharray: 8 6;
+}
+.jarvis-glow {
+  filter: drop-shadow(0 0 3px hsl(43 74% 52% / 0.8));
+}
+@keyframes jarvis-mouth-speak {
+  0%, 100% { transform: scaleY(0.35); }
+  50%      { transform: scaleY(1.15); }
+}
+.jarvis-mouth-speak {
+  transform-origin: center;
+  animation: jarvis-mouth-speak 0.22s ease-in-out infinite;
+}
+
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,

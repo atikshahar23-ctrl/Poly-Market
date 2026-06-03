@@ -10,6 +10,7 @@ import Binance from "@/pages/binance";
 import Recommendations from "@/pages/recommendations";
 import Simulator from "@/pages/simulator";
 import Stocks from "@/pages/stocks";
+import SmartMoney from "@/pages/smart-money";
 import Movers from "@/pages/movers";
 import Scalp from "@/pages/scalp";
 import Momentum from "@/pages/momentum";
@@ -40,6 +41,7 @@ function Router() {
         <Route path="/binance" component={Binance} />
         <Route path="/recommendations" component={Recommendations} />
         <Route path="/stocks" component={Stocks} />
+        <Route path="/smart-money" component={SmartMoney} />
         <Route path="/simulator" component={Simulator} />
         <Route component={NotFound} />
       </Switch>

@@ -25,6 +25,7 @@ import type {
   GetScanResultsParams,
   GetStockKlinesParams,
   HealthStatus,
+  InfluencerSignal,
   MarketMovers,
   MomentumCoin,
   PolymarketMarket,
@@ -773,6 +774,84 @@ export function useGetStockRecommendations<TData = Awaited<ReturnType<typeof get
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStockRecommendationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetInfluencerSignalsUrl = () => {
+
+
+
+
+  return `/api/stocks/influencers`
+}
+
+/**
+ * Tracks mega-influencers (Trump, Musk, etc.) via free Google News RSS, scores headline sentiment, and maps it to LONG/SHORT stock signals
+ * @summary Get Smart-Money influencer signals
+ */
+export const getInfluencerSignals = async ( options?: RequestInit): Promise<InfluencerSignal[]> => {
+
+  return customFetch<InfluencerSignal[]>(getGetInfluencerSignalsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInfluencerSignalsQueryKey = () => {
+    return [
+    `/api/stocks/influencers`
+    ] as const;
+    }
+
+
+export const getGetInfluencerSignalsQueryOptions = <TData = Awaited<ReturnType<typeof getInfluencerSignals>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInfluencerSignals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInfluencerSignalsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInfluencerSignals>>> = ({ signal }) => getInfluencerSignals({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInfluencerSignals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInfluencerSignalsQueryResult = NonNullable<Awaited<ReturnType<typeof getInfluencerSignals>>>
+export type GetInfluencerSignalsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get Smart-Money influencer signals
+ */
+
+export function useGetInfluencerSignals<TData = Awaited<ReturnType<typeof getInfluencerSignals>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInfluencerSignals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInfluencerSignalsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

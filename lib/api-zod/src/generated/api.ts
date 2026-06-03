@@ -248,6 +248,26 @@ export const GetStockRecommendationsResponse = zod.array(GetStockRecommendations
 
 
 /**
+ * Tracks mega-influencers (Trump, Musk, etc.) via free Google News RSS, scores headline sentiment, and maps it to LONG/SHORT stock signals
+ * @summary Get Smart-Money influencer signals
+ */
+export const GetInfluencerSignalsResponseItem = zod.object({
+  "influencer": zod.string(),
+  "ticker": zod.string(),
+  "name": zod.string().describe('Company \/ instrument name for the ticker'),
+  "headline": zod.string(),
+  "url": zod.string(),
+  "source": zod.string(),
+  "sentiment": zod.number().describe('Aggregate headline sentiment from -1 (bearish) to 1 (bullish)'),
+  "direction": zod.enum(['LONG', 'SHORT']),
+  "confidence": zod.number().describe('Conviction score 0-100'),
+  "horizon": zod.enum(['SHORT', 'LONG']),
+  "publishedAt": zod.string()
+})
+export const GetInfluencerSignalsResponse = zod.array(GetInfluencerSignalsResponseItem)
+
+
+/**
  * Returns the top actionable signals ranked by severity and confidence across all assets
  * @summary Get top-ranked arbitrage recommendations
  */

@@ -3,11 +3,11 @@ import {
   useGetRecommendations, getGetRecommendationsQueryKey,
   useGetStockRecommendations, getGetStockRecommendationsQueryKey,
   useGetStocks, getGetStocksQueryKey,
+  useGetInfluencerSignals, getGetInfluencerSignalsQueryKey,
   Recommendation, StockRecommendation,
 } from "@workspace/api-client-react";
 import { usePortfolio } from "@/contexts/portfolio-context";
-import { X, Send, Sparkles, ExternalLink } from "lucide-react";
-import logoUrl from "@/assets/logo-heavy-guard.png";
+import { X, Send, Sparkles, ExternalLink, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 
 interface MsgLink {
   label: string;
@@ -23,6 +23,7 @@ interface Msg {
 const QUICK_ACTIONS = [
   "Top stock to buy",
   "Stocks to avoid",
+  "Smart money",
   "Crypto signal",
   "Market mood",
   "My portfolio",
@@ -39,6 +40,47 @@ function newsLink(symbol: string, name: string): MsgLink {
   return { label: "News", href: `https://news.google.com/search?q=${encodeURIComponent(`${symbol} ${name} stock`)}` };
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Animated SVG face — eyes blink on a timer, mouth opens/closes
+   while JARVIS is speaking, subtle pupil drift when idle.
+   ───────────────────────────────────────────────────────────── */
+function JarvisFace({ speaking, size = 48 }: { speaking: boolean; size?: number }) {
+  const [blink, setBlink] = useState(false);
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    const loop = () => {
+      const next = 2200 + Math.random() * 2600;
+      timeout = setTimeout(() => {
+        setBlink(true);
+        setTimeout(() => setBlink(false), 130);
+        loop();
+      }, next);
+    };
+    loop();
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const gold = "hsl(43 74% 52%)";
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" className="overflow-visible">
+      {/* face ring */}
+      <circle cx="24" cy="24" r="21" fill="hsl(0 0% 7%)" stroke={gold} strokeWidth="1.5" opacity="0.95" />
+      <circle cx="24" cy="24" r="21" fill="none" stroke={gold} strokeWidth="0.5" opacity="0.4" className="jarvis-ring" />
+      {/* eyes */}
+      <g style={{ transition: "transform 80ms", transformOrigin: "center", transform: blink ? "scaleY(0.1)" : "scaleY(1)" }}>
+        <circle cx="16.5" cy="20" r="3.1" fill={gold} className="jarvis-glow" />
+        <circle cx="31.5" cy="20" r="3.1" fill={gold} className="jarvis-glow" />
+      </g>
+      {/* mouth — animated bar while speaking */}
+      {speaking ? (
+        <rect x="15" y="30" width="18" height="6" rx="3" fill={gold} className="jarvis-mouth-speak" />
+      ) : (
+        <rect x="17" y="32" width="14" height="2.4" rx="1.2" fill={gold} opacity="0.85" />
+      )}
+    </svg>
+  );
+}
+
 export function Jarvis() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -46,7 +88,7 @@ export function Jarvis() {
     {
       id: uid(),
       role: "jarvis",
-      text: "JARVIS online. I read the live Binance, Polymarket and stock signals plus your simulator portfolio. Ask me what to trade, or tap a shortcut below.",
+      text: "JARVIS online. I read the live Binance, Polymarket, stock and Smart-Money signals plus your simulator portfolio. Drag me anywhere, talk to me with the mic, or tap a shortcut below.",
     },
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -60,6 +102,9 @@ export function Jarvis() {
   const { data: stocks } = useGetStocks({
     query: { queryKey: getGetStocksQueryKey(), refetchInterval: open ? 30000 : 90000 },
   });
+  const { data: influencers } = useGetInfluencerSignals({
+    query: { queryKey: getGetInfluencerSignalsQueryKey(), refetchInterval: open ? 60000 : 180000 },
+  });
 
   const { cash, totalDeposited, polyPositions, binancePositions, stockPositions, tradeHistory } = usePortfolio();
 
@@ -69,6 +114,52 @@ export function Jarvis() {
     }
   }, [messages, open]);
 
+  /* ── Voice output (TTS) ─────────────────────────────────────── */
+  const ttsSupported = typeof window !== "undefined" && "speechSynthesis" in window;
+  const [muted, setMuted] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+
+  const speak = useCallback(
+    (text: string) => {
+      if (!ttsSupported || mutedRef.current) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.02;
+        u.pitch = 0.95;
+        u.volume = 1;
+        u.onstart = () => setSpeaking(true);
+        u.onend = () => setSpeaking(false);
+        u.onerror = () => setSpeaking(false);
+        window.speechSynthesis.speak(u);
+      } catch {
+        setSpeaking(false);
+      }
+    },
+    [ttsSupported],
+  );
+
+  const stopSpeaking = useCallback(() => {
+    if (ttsSupported) window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }, [ttsSupported]);
+
+  // Speak each new JARVIS message once.
+  const lastSpokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "jarvis") return;
+    if (lastSpokenRef.current === last.id) return;
+    lastSpokenRef.current = last.id;
+    if (!muted) speak(last.text);
+  }, [messages, muted, speak]);
+
+  useEffect(() => {
+    if (muted) stopSpeaking();
+  }, [muted, stopSpeaking]);
+
   const topBuys = useMemo(() => (stockRecs ?? []).filter((r) => r.action === "BUY"), [stockRecs]);
   const topSells = useMemo(() => (stockRecs ?? []).filter((r) => r.action === "SELL"), [stockRecs]);
   const topGainers = useMemo(
@@ -77,7 +168,7 @@ export function Jarvis() {
   );
 
   // ── Proactive recommendations that pop up while the panel is closed ──
-  interface Tip { id: string; label: string; tone: "buy" | "crypto" | "sell"; text: string; links?: MsgLink[]; }
+  interface Tip { id: string; label: string; tone: "buy" | "crypto" | "sell" | "smart"; text: string; links?: MsgLink[]; }
   const tips = useMemo<Tip[]>(() => {
     const out: Tip[] = [];
     const buy = topBuys[0];
@@ -88,6 +179,16 @@ export function Jarvis() {
         tone: "buy",
         text: `Strongest stock to buy: ${buy.symbol} (${buy.name}) — ${buy.confidence} confidence. ${buy.rationale}`,
         links: [tvLink(buy.tradingViewSymbol), newsLink(buy.symbol, buy.name)],
+      });
+    }
+    const inf = (influencers ?? [])[0];
+    if (inf) {
+      out.push({
+        id: `smart-${inf.influencer}-${inf.ticker}`,
+        label: `${inf.direction} ${inf.ticker} · ${Math.round(inf.confidence)}%`,
+        tone: "smart",
+        text: `Smart-Money: ${inf.influencer} is moving ${inf.ticker} (${inf.name}). Signal ${inf.direction} at ${Math.round(inf.confidence)}% conviction. "${inf.headline}"`,
+        links: [{ label: "Article", href: inf.url }, tvLink(inf.ticker.replace(".", ""))],
       });
     }
     const crypto = (cryptoRecs ?? []).filter((r) => r.action !== "WATCH")[0];
@@ -112,7 +213,7 @@ export function Jarvis() {
       });
     }
     return out;
-  }, [topBuys, topSells, cryptoRecs]);
+  }, [topBuys, topSells, cryptoRecs, influencers]);
 
   const [tipIdx, setTipIdx] = useState(0);
   const [mutedUntil, setMutedUntil] = useState(0);
@@ -146,6 +247,7 @@ export function Jarvis() {
       const q = raw.toLowerCase().trim();
       const id = uid();
 
+      const wantsSmart = /\b(smart money|smart-money|influencer|trump|musk|elon|buffett|powell|pelosi|cathie|whale)/.test(q);
       const wantsBuy = /\b(buy|long|enter|best stock|top stock|invest|gain)/.test(q);
       const wantsSell = /\b(sell|short|avoid|dump|drop|exit|weak)/.test(q);
       const wantsCrypto = /\b(crypto|btc|bitcoin|eth|ethereum|sol|coin|poly|polymarket|arb|futures)/.test(q);
@@ -157,7 +259,20 @@ export function Jarvis() {
         return {
           id,
           role: "jarvis",
-          text: "I can surface: the strongest stock to BUY, stocks to AVOID, the best crypto/Polymarket signal, the overall market mood, and a read on your simulator portfolio. Use the shortcuts or just ask in plain words.",
+          text: "I can surface: the strongest stock to BUY, stocks to AVOID, Smart-Money influencer signals (Trump, Musk, Powell...), the best crypto/Polymarket signal, the overall market mood, and a read on your simulator portfolio. Use the shortcuts, type, or hit the mic and talk.",
+        };
+      }
+
+      if (wantsSmart) {
+        const pick = (influencers ?? [])[0];
+        if (!pick) {
+          return { id, role: "jarvis", text: "No Smart-Money signals are loaded yet — give the news feed a moment and ask again." };
+        }
+        return {
+          id,
+          role: "jarvis",
+          text: `Smart-Money: ${pick.influencer} is moving ${pick.ticker} (${pick.name}) — signal ${pick.direction} at ${Math.round(pick.confidence)}% conviction (${pick.horizon.toLowerCase()}-term). Headline: "${pick.headline}".`,
+          links: [{ label: "Article", href: pick.url }, tvLink(pick.ticker.replace(".", ""))],
         };
       }
 
@@ -236,7 +351,7 @@ export function Jarvis() {
         text: `Market mood is ${mood}. Stock signals: ${buys} BUY vs ${sells} SELL.${gainerLine}`,
       };
     },
-    [cryptoRecs, topBuys, topSells, topGainers, cash, totalDeposited, polyPositions, binancePositions, stockPositions, tradeHistory],
+    [cryptoRecs, topBuys, topSells, topGainers, influencers, cash, totalDeposited, polyPositions, binancePositions, stockPositions, tradeHistory],
   );
 
   const send = useCallback(
@@ -251,19 +366,176 @@ export function Jarvis() {
     [respond],
   );
 
+  /* ── Voice input (SpeechRecognition) ────────────────────────── */
+  const SpeechRecognitionCtor =
+    typeof window !== "undefined"
+      ? ((window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition ??
+        (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition)
+      : undefined;
+  const micSupported = !!SpeechRecognitionCtor;
+  const [listening, setListening] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const stopListening = useCallback(() => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+    setListening(false);
+  }, []);
+
+  const startListening = useCallback(() => {
+    if (!micSupported) {
+      setMicError("Voice input isn't supported in this browser.");
+      return;
+    }
+    setMicError(null);
+    stopSpeaking();
+    try {
+      const Ctor = SpeechRecognitionCtor as new () => any;
+      const rec = new Ctor();
+      rec.lang = "en-US";
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.continuous = false;
+      rec.onstart = () => setListening(true);
+      rec.onresult = (e: any) => {
+        const transcript = e?.results?.[0]?.[0]?.transcript ?? "";
+        if (transcript) {
+          if (!open) setOpen(true);
+          send(transcript);
+        }
+      };
+      rec.onerror = (e: any) => {
+        setListening(false);
+        if (e?.error === "not-allowed" || e?.error === "service-not-allowed") {
+          setMicError("Microphone permission denied. Enable it in your browser to talk to JARVIS.");
+        } else if (e?.error === "no-speech") {
+          setMicError("Didn't catch that — try again.");
+        }
+      };
+      rec.onend = () => setListening(false);
+      recognitionRef.current = rec;
+      rec.start();
+    } catch {
+      setListening(false);
+      setMicError("Couldn't start the microphone.");
+    }
+  }, [micSupported, SpeechRecognitionCtor, stopSpeaking, open, send]);
+
+  const toggleMic = useCallback(() => {
+    if (listening) stopListening();
+    else startListening();
+  }, [listening, startListening, stopListening]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+      if (ttsSupported) window.speechSynthesis.cancel();
+    };
+  }, [ttsSupported]);
+
+  /* ── Draggable avatar ───────────────────────────────────────── */
+  const AVATAR = 64;
+  const initialPos = () => {
+    if (typeof window === "undefined") return { x: 100, y: 100 };
+    return { x: window.innerWidth - AVATAR - 20, y: window.innerHeight - AVATAR - 24 };
+  };
+  const [pos, setPos] = useState(initialPos);
+  const dragRef = useRef<{ dx: number; dy: number; moved: boolean; dragging: boolean }>({
+    dx: 0, dy: 0, moved: false, dragging: false,
+  });
+
+  const clamp = useCallback((x: number, y: number) => {
+    if (typeof window === "undefined") return { x, y };
+    return {
+      x: Math.max(8, Math.min(x, window.innerWidth - AVATAR - 8)),
+      y: Math.max(8, Math.min(y, window.innerHeight - AVATAR - 8)),
+    };
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setPos((p) => clamp(p.x, p.y));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [clamp]);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y, moved: false, dragging: true };
+  }, [pos]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current.dragging) return;
+    const nx = e.clientX - dragRef.current.dx;
+    const ny = e.clientY - dragRef.current.dy;
+    if (Math.abs(e.clientX - (pos.x + dragRef.current.dx)) > 4 || Math.abs(e.clientY - (pos.y + dragRef.current.dy)) > 4) {
+      dragRef.current.moved = true;
+    }
+    setPos(clamp(nx, ny));
+  }, [clamp, pos]);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    const wasDrag = dragRef.current.moved;
+    dragRef.current.dragging = false;
+    if (!wasDrag) setOpen(true);
+  }, []);
+
+  // Anchor the panel near the avatar, clamped to the viewport.
+  const panelStyle = useMemo(() => {
+    if (typeof window === "undefined") return { right: 20, bottom: 20 } as React.CSSProperties;
+    const W = Math.min(380, window.innerWidth - 24);
+    const H = Math.min(560, window.innerHeight - 24);
+    let left = pos.x + AVATAR + 12;
+    if (left + W > window.innerWidth - 8) left = pos.x - W - 12;
+    if (left < 8) left = Math.max(8, (window.innerWidth - W) / 2);
+    let top = pos.y - H + AVATAR;
+    top = Math.max(12, Math.min(top, window.innerHeight - H - 12));
+    return { left, top, width: W, height: H } as React.CSSProperties;
+  }, [pos]);
+
+  const voiceControls = (
+    <div className="flex items-center gap-1">
+      {micSupported && (
+        <button
+          onClick={toggleMic}
+          aria-label={listening ? "Stop listening" : "Talk to JARVIS"}
+          className={`p-1.5 rounded transition-colors ${listening ? "bg-red-500/20 text-red-400 animate-pulse" : "text-muted-foreground hover:text-primary hover:bg-secondary/60"}`}
+        >
+          {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        </button>
+      )}
+      {ttsSupported && (
+        <button
+          onClick={() => setMuted((m) => !m)}
+          aria-label={muted ? "Unmute JARVIS" : "Mute JARVIS"}
+          className={`p-1.5 rounded transition-colors ${muted ? "text-muted-foreground hover:text-foreground hover:bg-secondary/60" : "text-primary hover:bg-secondary/60"}`}
+        >
+          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <>
-      {/* Toggle button + proactive recommendation bubble */}
+      {/* Draggable avatar + proactive recommendation bubble */}
       {!open && (
-        <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2 w-[min(320px,calc(100vw-2.5rem))]">
+        <div
+          className="fixed z-50 select-none touch-none"
+          style={{ left: pos.x, top: pos.y, width: AVATAR }}
+        >
           {showTip && currentTip && (
             <div
-              className="relative w-full rounded-2xl border border-primary/30 bg-card/95 backdrop-blur shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-300"
+              className="absolute bottom-full right-0 mb-3 w-[min(300px,calc(100vw-2.5rem))] rounded-2xl border border-primary/30 bg-card/95 backdrop-blur shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-300"
               style={{ boxShadow: "0 0 32px hsl(43 74% 52% / 0.18)" }}
             >
               <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, hsl(43 74% 52%), transparent)" }} />
               <div className="flex items-start gap-2.5 p-3">
-                <img src={logoUrl} alt="JARVIS" className="h-8 w-8 object-contain shrink-0 mt-0.5" />
+                <div className="shrink-0 mt-0.5"><JarvisFace speaking={speaking} size={34} /></div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-widest text-primary mb-1">
                     <Sparkles className="h-3 w-3" /> JARVIS · Live tip
@@ -275,7 +547,9 @@ export function Jarvis() {
                           ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                           : currentTip.tone === "sell"
                             ? "bg-red-500/15 text-red-400 border border-red-500/30"
-                            : "bg-primary/15 text-primary border border-primary/30"
+                            : currentTip.tone === "smart"
+                              ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                              : "bg-primary/15 text-primary border border-primary/30"
                       }`}
                     >
                       {currentTip.label}
@@ -301,17 +575,19 @@ export function Jarvis() {
           )}
 
           <button
-            onClick={() => setOpen(true)}
-            className="self-end flex items-center gap-2 rounded-full pl-2 pr-4 py-2 border border-primary/40 bg-card/95 backdrop-blur shadow-lg hover:border-primary transition-all group"
-            style={{ boxShadow: "0 0 24px hsl(43 74% 52% / 0.18)" }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            aria-label="Open JARVIS"
+            className="relative grid place-items-center rounded-full cursor-grab active:cursor-grabbing jarvis-float"
+            style={{ width: AVATAR, height: AVATAR, boxShadow: "0 0 28px hsl(43 74% 52% / 0.28)" }}
           >
-            <span className="relative">
-              <img src={logoUrl} alt="JARVIS" className="h-8 w-8 object-contain" />
-              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card animate-pulse" />
-            </span>
-            <span className="text-xs font-mono font-bold tracking-widest uppercase text-primary">JARVIS</span>
+            <JarvisFace speaking={speaking} size={AVATAR} />
+            <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card animate-pulse" />
             {tips.length > 0 && !showTip && (
-              <span className="text-[9px] font-mono font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">{tips.length}</span>
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-mono font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                {tips.length} tips
+              </span>
             )}
           </button>
         </div>
@@ -319,23 +595,33 @@ export function Jarvis() {
 
       {/* Panel */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 flex flex-col w-[min(380px,calc(100vw-2.5rem))] h-[min(520px,calc(100vh-2.5rem))] rounded-2xl border border-primary/30 bg-card shadow-2xl overflow-hidden"
-          style={{ boxShadow: "0 0 40px hsl(43 74% 52% / 0.15)" }}>
+        <div
+          className="fixed z-50 flex flex-col rounded-2xl border border-primary/30 bg-card shadow-2xl overflow-hidden"
+          style={{ ...panelStyle, boxShadow: "0 0 40px hsl(43 74% 52% / 0.15)" }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-primary/10 to-transparent">
             <div className="flex items-center gap-2.5">
-              <img src={logoUrl} alt="JARVIS" className="h-9 w-9 object-contain" />
+              <JarvisFace speaking={speaking} size={36} />
               <div>
                 <div className="text-sm font-black font-mono tracking-widest text-primary uppercase leading-none">JARVIS</div>
                 <div className="text-[9px] text-muted-foreground font-mono tracking-wider mt-1 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Advisory engine · live signals
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {listening ? "Listening…" : speaking ? "Speaking…" : "Advisory engine · live signals"}
                 </div>
               </div>
             </div>
-            <button onClick={() => setOpen(false)} className="p-1.5 rounded hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors">
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              {voiceControls}
+              <button onClick={() => { stopSpeaking(); stopListening(); setOpen(false); }} className="p-1.5 rounded hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
+
+          {micError && (
+            <div className="px-4 py-1.5 text-[10px] font-mono text-amber-400 bg-amber-500/10 border-b border-amber-500/20">{micError}</div>
+          )}
 
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
@@ -390,10 +676,20 @@ export function Jarvis() {
             onSubmit={(e) => { e.preventDefault(); send(input); }}
             className="flex items-center gap-2 p-3"
           >
+            {micSupported && (
+              <button
+                type="button"
+                onClick={toggleMic}
+                aria-label={listening ? "Stop listening" : "Talk to JARVIS"}
+                className={`h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 border transition-colors ${listening ? "bg-red-500/20 border-red-500/40 text-red-400 animate-pulse" : "border-border bg-secondary/40 text-muted-foreground hover:text-primary hover:border-primary/50"}`}
+              >
+                {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+            )}
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask JARVIS..."
+              placeholder={listening ? "Listening…" : "Ask JARVIS..."}
               className="flex-1 h-9 rounded-lg bg-secondary/40 border border-border px-3 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
             <button

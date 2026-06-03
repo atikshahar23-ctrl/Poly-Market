@@ -252,6 +252,39 @@ export interface StockRecommendation {
   tradingViewSymbol: string;
 }
 
+export type InfluencerSignalDirection = typeof InfluencerSignalDirection[keyof typeof InfluencerSignalDirection];
+
+
+export const InfluencerSignalDirection = {
+  LONG: 'LONG',
+  SHORT: 'SHORT',
+} as const;
+
+export type InfluencerSignalHorizon = typeof InfluencerSignalHorizon[keyof typeof InfluencerSignalHorizon];
+
+
+export const InfluencerSignalHorizon = {
+  SHORT: 'SHORT',
+  LONG: 'LONG',
+} as const;
+
+export interface InfluencerSignal {
+  influencer: string;
+  ticker: string;
+  /** Company / instrument name for the ticker */
+  name: string;
+  headline: string;
+  url: string;
+  source: string;
+  /** Aggregate headline sentiment from -1 (bearish) to 1 (bullish) */
+  sentiment: number;
+  direction: InfluencerSignalDirection;
+  /** Conviction score 0-100 */
+  confidence: number;
+  horizon: InfluencerSignalHorizon;
+  publishedAt: string;
+}
+
 export interface MoverCoin {
   symbol: string;
   price: number;
