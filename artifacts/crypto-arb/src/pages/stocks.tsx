@@ -201,7 +201,7 @@ export default function StocksPage() {
   }, [stocks]);
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 space-y-5 md:space-y-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

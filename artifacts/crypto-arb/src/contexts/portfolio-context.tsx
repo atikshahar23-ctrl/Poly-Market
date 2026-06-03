@@ -22,6 +22,8 @@ export interface BinancePosition {
   notional: number;
   entryPrice: number;
   leverage: number;
+  slPrice?: number;
+  tpPrice?: number;
   openedAt: string;
 }
 
@@ -72,6 +74,7 @@ interface PortfolioContextValue extends PortfolioState {
     leverage?: number
   ) => string | null;
   closeStockPosition: (id: string, currentPrice: number) => void;
+  checkSlTp: (prices: Record<string, number>) => void;
   resetPortfolio: () => void;
 }
 
@@ -294,16 +297,65 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /** Auto-execute SL/TP for open Binance positions when price crosses threshold. */
+  const checkSlTp = useCallback((prices: Record<string, number>) => {
+    setState((prev) => {
+      let changed = false;
+      let binancePositions = prev.binancePositions;
+      let cash = prev.cash;
+      let tradeHistory = prev.tradeHistory;
+
+      for (const pos of prev.binancePositions) {
+        const price = prices[pos.asset];
+        if (!price) continue;
+
+        const hitSL =
+          pos.slPrice != null &&
+          (pos.direction === "LONG" ? price <= pos.slPrice : price >= pos.slPrice);
+        const hitTP =
+          pos.tpPrice != null &&
+          (pos.direction === "LONG" ? price >= pos.tpPrice : price <= pos.tpPrice);
+
+        if (!hitSL && !hitTP) continue;
+
+        const margin = pos.notional / pos.leverage;
+        const priceDelta =
+          pos.direction === "LONG"
+            ? (price - pos.entryPrice) / pos.entryPrice
+            : (pos.entryPrice - price) / pos.entryPrice;
+        const pnl = priceDelta * pos.notional;
+        const proceeds = Math.max(0, margin + pnl);
+
+        const closed: ClosedTrade = {
+          id: crypto.randomUUID(),
+          type: "BINANCE",
+          description: `${hitTP ? "TP" : "SL"} ${pos.direction} ${pos.asset} ${pos.leverage}x @ $${price.toLocaleString()} (entry $${pos.entryPrice.toLocaleString()})`,
+          cost: margin,
+          proceeds,
+          pnl,
+          closedAt: new Date().toISOString(),
+        };
+
+        binancePositions = binancePositions.filter((p) => p.id !== pos.id);
+        cash = cash + proceeds;
+        tradeHistory = [closed, ...tradeHistory].slice(0, 50);
+        changed = true;
+      }
+
+      if (!changed) return prev;
+      return { ...prev, binancePositions, cash, tradeHistory };
+    });
+  }, []);
+
   const resetPortfolio = useCallback(() => {
-    const fresh: PortfolioState = {
+    setState({
       cash: STARTING_BALANCE,
       totalDeposited: STARTING_BALANCE,
       polyPositions: [],
       binancePositions: [],
       stockPositions: [],
       tradeHistory: [],
-    };
-    setState(fresh);
+    });
   }, []);
 
   return (
@@ -317,6 +369,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         closeBinancePosition,
         openStockPosition,
         closeStockPosition,
+        checkSlTp,
         resetPortfolio,
       }}
     >

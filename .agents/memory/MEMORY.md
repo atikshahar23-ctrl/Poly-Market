@@ -5,3 +5,5 @@
 - [Gold luxury theme](gold-theme.md) — primary: HSL 43 74% 52% (gold), background: 0 0% 4% (near-black). Scrollbar, sidebar accent line, and text-primary glow use gold. Font: Inter + Space Mono.
 - [Binance futures geo-block](binance-geoblock.md) — fapi.binance.com returns 451 in deployment region (works in dev); crypto signals vanish in prod. Fall back to non-geo-blocked data-api.binance.vision spot price.
 - [Refresh cadence coupling](refresh-cadence.md) — frontend poll interval must stay >= server cache TTL; fast-refresh toggle floors cache-backed queries at the TTL, only real-time Binance stream truly speeds up.
+- [lightweight-charts v5 API](lightweight-charts-v5.md) — use addSeries(CandlestickSeries, opts) not addCandlestickSeries() (removed in v5). Klines from data-api.binance.vision (non-geo-blocked). ColorType.Solid for backgrounds.
+- [Mobile layout pattern](mobile-layout.md) — Sticky md:hidden top-bar in layout.tsx with hamburger + brand. Sidebar is overlay drawer. Pages use p-4 md:p-6. Simulator fills inner scrollable div with h-full flex flex-col.
