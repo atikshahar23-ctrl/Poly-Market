@@ -13,23 +13,37 @@ the old `addCandlestickSeries()` / `addAreaSeries()` helpers were removed in v5.
 # "Object is disposed" crash (runtime-error overlay)
 
 **Symptom:** an uncaught `Error: Object is disposed` with a stack through
-`DevicePixelContentBoxBinding.resizeCanvasElement` → `TimeAxisWidget._internal_setSizes`.
-Surfaces as a Replit runtime-error overlay the user perceives as a crash. Fires on
-chart unmount/remount (tab switch, symbol change, navigation), and also during HMR.
+`DevicePixelContentBoxBinding.get` (the `canvasElement` getter) → `resizeCanvasElement`
+→ `TimeAxisWidget._internal_setSizes`. Surfaces as a Replit runtime-error overlay the
+user perceives as a crash. Fires on chart unmount/remount (tab switch, symbol change,
+navigation), and also during HMR.
 
-**Root cause:** lightweight-charts has its OWN internal ResizeObserver
-(`DevicePixelContentBoxBinding`) that can fire one last queued callback AFTER
-`chart.remove()`. That throw happens inside the library, so a try/catch around your own
-`applyOptions` call can NOT catch it.
+**Root cause (verified in the bundled lib):** the throw fires from inside a
+`window.requestAnimationFrame` DRAW callback, NOT from the ResizeObserver callback. The
+chart schedules its draw/layout via `this._private__drawRafId = window.requestAnimationFrame(...)`;
+when `chart.remove()` nulls `_canvasElement` after a draw frame is already queued, the
+queued rAF runs, hits the `canvasElement` getter, and throws. Because it's a separate
+async callback, a try/catch around your own code (or around the ResizeObserver callback)
+can NOT catch it.
 
-**Two-layer fix (both needed):**
-1. In every chart effect, guard your own ResizeObserver: a `let disposed = false` flag
-   set true in cleanup before `chart.remove()`, checked at the top of the callback, plus
-   a try/catch around `applyOptions`. Handles the case where YOUR observer is the caller.
-2. A global suppressor in `main.tsx` (capture-phase `error` + `unhandledrejection`
-   listeners) that calls `preventDefault()`/`stopImmediatePropagation()` ONLY when the
-   message includes "Object is disposed" AND the stack includes "lightweight-charts".
-   This catches the throw from the library's INTERNAL observer, which layer 1 can't.
+**What does NOT work:**
+- A window `error` / `unhandledrejection` listener with `preventDefault()` /
+  `stopImmediatePropagation()` — Replit's own error instrumentation registers its
+  capture-phase handler BEFORE app code runs, so it has already reported the error.
+- Wrapping only `ResizeObserver` — the throw is in the rAF draw callback, not the
+  observer callback.
 
-**Why:** without layer 2 the benign internal-observer throw still hits the overlay; the
-narrow message+stack match keeps all other real errors propagating normally.
+**Fix that works (in `main.tsx`, before rendering):** wrap the global
+`window.requestAnimationFrame` so every scheduled callback runs in a try/catch that
+swallows ONLY errors whose message includes "Object is disposed" (rethrow everything
+else). This stops the throw at its true async source, so no error event ever fires.
+`window.requestAnimationFrame` is resolved at call time by the lib, so patching it in the
+`main.tsx` body (before charts are created in effects) is early enough. Also wrap
+`ResizeObserver` the same way (defense for the size-observer path) and keep the
+per-component `disposed` flag guard. The native rAF is `.bind(window)`-ed and the
+patched fn must return the id so callers that `cancelAnimationFrame` still work.
+
+**Why:** the benign disposal throw is unavoidable from app code (it's library-internal,
+fired async); catching it at the rAF source is the only place app code can intercept it
+before the browser/Replit report it. The narrow "Object is disposed" message match keeps
+all other real errors propagating normally.
