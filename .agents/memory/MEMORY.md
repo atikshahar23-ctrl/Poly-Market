@@ -15,3 +15,4 @@
 - [Stock ticker canonical form](stock-ticker-canon.md) — join stock feed ↔ influencer feed on the dash form (BRK-B), never the TradingView dot form (BRK.B), or fusion/price-lookup silently drops class shares.
 - [Live real-time layer](live-realtime-layer.md) — free Binance miniTicker WS for sub-second prices + per-symbol kline WS charts; daily interval label "1D" MUST be lowercased to "1d" for ALL Binance REST/WS calls or daily charts 4xx.
 - [Momentum scanner & Warrior Auto-Trader](momentum-and-warrior.md) — 5m RVol/ROC surge scoring (LONG-only in auto-trader); trailing stop only ever tightens (LONG max-peak / SHORT min-peak), runs before checkSlTp; daily realized-loss guard halts new opens.
+- [JARVIS bilingual (he/en)](jarvis-bilingual.md) — langRef.current in send/speak/listen avoids stale-closure; store per-message lang and render dir from m.lang (toggling must not flip past msgs); English = British-male butler voice.
