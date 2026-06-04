@@ -30,7 +30,17 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Hebrew-language paper-trading simulator (educational only — no real money, no win-rate/return promises):
+- Market Scanner dashboard (Binance futures × Polymarket crowd sentiment), scalp/momentum signals, stocks, smart-money headlines.
+- Simulator with multi-wallet portfolios and equity curve.
+- Bot Command Center (`/bots`): 7 paper-trading bots (incl. Dip Buyer, Breakout Hunter, Blue-Chip DCA) with a master arm/disarm and an adaptive manager that nudges each bot's selectivity from its own rolling win-rate.
+- Research Desk (`/research`): free symbol/company lookup (stocks + crypto) with live prices and keyless external research links (TradingView, Yahoo, StockAnalysis, Google News, SEC, CoinGecko).
+- Jarvis assistant: free rule-based brain (NO paid AI), bilingual he/en, silent on open.
+
+## Constraints
+
+- EVERYTHING must stay 100% free — no paid AI integrations. Jarvis is rule-based only.
+- Paper/demo trading only; never promise win-rates, returns, or give financial advice.
 
 ## User preferences
 

@@ -106,7 +106,7 @@ function StockRow({ s, onOpen }: { s: StockQuote; onOpen: (s: StockQuote) => voi
             >
               <Star
                 className="h-3.5 w-3.5 transition-colors"
-                style={{ color: fav ? "hsl(43 74% 52%)" : "#52525b", fill: fav ? "hsl(43 74% 52%)" : "transparent" }}
+                style={{ color: fav ? "hsl(32 84% 55%)" : "#52525b", fill: fav ? "hsl(32 84% 55%)" : "transparent" }}
               />
             </button>
             <span className="font-mono font-bold text-sm text-foreground">{s.symbol}</span>

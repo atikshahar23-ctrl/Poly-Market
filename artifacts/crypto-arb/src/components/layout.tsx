@@ -4,7 +4,7 @@ import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-re
 import { usePortfolio } from "@/contexts/portfolio-context";
 import {
   LayoutDashboard, LineChart, CandlestickChart, Zap, Globe, Trophy,
-  TrendingUp, Menu, X, Activity, Gauge, Timer, Star, History, Rocket, Megaphone, Bot,
+  TrendingUp, Menu, X, Activity, Gauge, Timer, Star, History, Rocket, Megaphone, Bot, Search,
 } from "lucide-react";
 import { Jarvis } from "@/components/jarvis";
 import { TopControls } from "@/components/top-controls";
@@ -50,6 +50,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/browse", label: "Live Markets", icon: Globe },
     { href: "/simulator", label: "Simulator", icon: Trophy, extra: <PortfolioMiniBalance /> },
     { href: "/bots", label: "Bot Command", icon: Bot },
+    { href: "/research", label: "Research Desk", icon: Search },
     { href: "/history", label: "Trade History", icon: History },
     { href: "/markets", label: "Crypto Markets", icon: LineChart },
     { href: "/binance", label: "Binance", icon: CandlestickChart },
@@ -57,14 +58,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const SidebarContent = () => (
     <>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, hsl(43 74% 52%), transparent)' }} />
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, hsl(32 84% 55%), transparent)' }} />
       <div className="px-5 py-5 short:py-2.5 border-b border-border flex flex-col items-center gap-2 short:gap-1">
         <img
           src={logoUrl}
           alt="HEAVY GUARD SYSTEM"
           draggable={false}
           className="w-36 short:w-20 h-auto select-none transition-all"
-          style={{ filter: 'drop-shadow(0 0 14px hsl(43 74% 52% / 0.22))' }}
+          style={{ filter: 'drop-shadow(0 0 14px hsl(32 84% 55% / 0.22))' }}
         />
         <p className="text-[9px] short:text-[8px] text-muted-foreground tracking-[0.32em] uppercase font-mono">Sentinel Terminal</p>
       </div>
@@ -82,8 +83,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40'
               }`}
               style={isActive ? {
-                background: 'hsl(43 74% 52% / 0.08)',
-                borderLeft: '2px solid hsl(43 74% 52%)',
+                background: 'hsl(32 84% 55% / 0.08)',
+                borderLeft: '2px solid hsl(32 84% 55%)',
                 paddingLeft: '10px',
               } : {}}
             >
@@ -164,7 +165,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div
             className="absolute inset-0 pointer-events-none opacity-30"
             style={{
-              background: 'radial-gradient(ellipse at top right, hsl(43 74% 52% / 0.04) 0%, transparent 60%)',
+              background: 'radial-gradient(ellipse at top right, hsl(32 84% 55% / 0.04) 0%, transparent 60%)',
             }}
           />
           <div key={location} className="relative h-full page-enter">

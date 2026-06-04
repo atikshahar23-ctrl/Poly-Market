@@ -63,12 +63,12 @@ function BotCard({
   return (
     <div
       className="relative rounded-lg border border-border bg-secondary/20 p-4 transition-all"
-      style={active ? { borderColor: accent ?? "hsl(43 74% 52% / 0.5)", boxShadow: `0 0 0 1px ${accent ?? "hsl(43 74% 52% / 0.25)"}` } : {}}
+      style={active ? { borderColor: accent ?? "hsl(32 84% 55% / 0.5)", boxShadow: `0 0 0 1px ${accent ?? "hsl(32 84% 55% / 0.25)"}` } : {}}
     >
       <div className="flex items-start gap-3">
         <div
           className="mt-0.5 h-9 w-9 shrink-0 rounded-md flex items-center justify-center"
-          style={{ background: active ? (accent ?? "hsl(43 74% 52% / 0.15)") + "" : "hsl(0 0% 12%)" }}
+          style={{ background: active ? (accent ?? "hsl(32 84% 55% / 0.15)") + "" : "hsl(0 0% 12%)" }}
         >
           <Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
         </div>
@@ -164,7 +164,7 @@ export default function Bots() {
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:pr-44">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Bot className="h-6 w-6 text-primary" /> Bot Command Center
@@ -193,7 +193,7 @@ export default function Bots() {
       </div>
 
       {/* Adaptive Manager */}
-      <section className="rounded-lg border p-4" style={{ borderColor: "hsl(43 74% 52% / 0.35)", background: "hsl(43 74% 52% / 0.04)" }}>
+      <section className="rounded-lg border p-4" style={{ borderColor: "hsl(32 84% 55% / 0.35)", background: "hsl(32 84% 55% / 0.04)" }}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="h-9 w-9 rounded-md bg-primary/15 flex items-center justify-center shrink-0">

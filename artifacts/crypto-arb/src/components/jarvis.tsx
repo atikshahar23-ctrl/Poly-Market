@@ -86,16 +86,17 @@ function JarvisFace({ speaking, size = 48 }: { speaking: boolean; size?: number 
     return () => clearTimeout(timeout);
   }, []);
 
-  const gold = "hsl(43 74% 52%)";
+  const gold = "hsl(32 84% 55%)";
+  const cyan = "hsl(190 80% 52%)";
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className="overflow-visible">
       {/* face ring */}
-      <circle cx="24" cy="24" r="21" fill="hsl(0 0% 7%)" stroke={gold} strokeWidth="1.5" opacity="0.95" />
-      <circle cx="24" cy="24" r="21" fill="none" stroke={gold} strokeWidth="0.5" opacity="0.4" className="jarvis-ring" />
-      {/* eyes */}
+      <circle cx="24" cy="24" r="21" fill="hsl(220 15% 9%)" stroke={gold} strokeWidth="1.5" opacity="0.95" />
+      <circle cx="24" cy="24" r="21" fill="none" stroke={cyan} strokeWidth="0.5" opacity="0.45" className="jarvis-ring" />
+      {/* eyes — cyan glow echoing the logo bull */}
       <g style={{ transition: "transform 80ms", transformOrigin: "center", transform: blink ? "scaleY(0.1)" : "scaleY(1)" }}>
-        <circle cx="16.5" cy="20" r="3.1" fill={gold} className="jarvis-glow" />
-        <circle cx="31.5" cy="20" r="3.1" fill={gold} className="jarvis-glow" />
+        <circle cx="16.5" cy="20" r="3.1" fill={cyan} className="jarvis-glow" />
+        <circle cx="31.5" cy="20" r="3.1" fill={cyan} className="jarvis-glow" />
       </g>
       {/* mouth — animated bar while speaking */}
       {speaking ? (
@@ -117,10 +118,8 @@ export function Jarvis() {
     if (typeof window !== "undefined") window.localStorage.setItem(LANG_STORAGE, lang);
   }, [lang]);
 
-  const [messages, setMessages] = useState<Msg[]>(() => {
-    const l = loadLang();
-    return [{ id: uid(), role: "jarvis", text: greeting(l), lang: l }];
-  });
+  const initialMsg = useRef<Msg>({ id: uid(), role: "jarvis", text: greeting(loadLang()), lang: loadLang() });
+  const [messages, setMessages] = useState<Msg[]>(() => [initialMsg.current]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: cryptoRecs } = useGetRecommendations({
@@ -216,7 +215,9 @@ export function Jarvis() {
   }, [ttsSupported]);
 
   // Speak each new JARVIS message once.
-  const lastSpokenRef = useRef<string | null>(null);
+  // Seeded with the greeting's id so JARVIS stays SILENT on app open — it only
+  // speaks replies to messages the user actually triggers.
+  const lastSpokenRef = useRef<string | null>(initialMsg.current.id);
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last || last.role !== "jarvis") return;
@@ -648,9 +649,9 @@ export function Jarvis() {
           {showTip && currentTip && (
             <div
               className="absolute bottom-full right-0 mb-3 w-[min(300px,calc(100vw-2.5rem))] rounded-2xl border border-primary/30 bg-card/95 backdrop-blur shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-300"
-              style={{ boxShadow: "0 0 32px hsl(43 74% 52% / 0.18)" }}
+              style={{ boxShadow: "0 0 32px hsl(32 84% 55% / 0.18)" }}
             >
-              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, hsl(43 74% 52%), transparent)" }} />
+              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, hsl(32 84% 55%), transparent)" }} />
               <div className="flex items-start gap-2.5 p-3">
                 <div className="shrink-0 mt-0.5"><JarvisFace speaking={speaking} size={34} /></div>
                 <div className="min-w-0 flex-1">
@@ -697,7 +698,7 @@ export function Jarvis() {
             onPointerUp={onPointerUp}
             aria-label="Open JARVIS"
             className="relative grid place-items-center rounded-full cursor-grab active:cursor-grabbing jarvis-float"
-            style={{ width: AVATAR, height: AVATAR, boxShadow: "0 0 28px hsl(43 74% 52% / 0.28)" }}
+            style={{ width: AVATAR, height: AVATAR, boxShadow: "0 0 28px hsl(32 84% 55% / 0.28)" }}
           >
             <JarvisFace speaking={speaking} size={AVATAR} />
             <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card animate-pulse" />
@@ -714,7 +715,7 @@ export function Jarvis() {
       {open && (
         <div
           className="fixed z-50 flex flex-col rounded-2xl border border-primary/30 bg-card shadow-2xl overflow-hidden"
-          style={{ ...panelStyle, boxShadow: "0 0 40px hsl(43 74% 52% / 0.15)" }}
+          style={{ ...panelStyle, boxShadow: "0 0 40px hsl(32 84% 55% / 0.15)" }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-primary/10 to-transparent">

@@ -17,6 +17,7 @@ import Momentum from "@/pages/momentum";
 import QuickBets from "@/pages/quickbets";
 import History from "@/pages/history";
 import Bots from "@/pages/bots";
+import Research from "@/pages/research";
 import Layout from "@/components/layout";
 import { PortfolioProvider } from "@/contexts/portfolio-context";
 import { FavoritesProvider } from "@/contexts/favorites-context";
@@ -46,6 +47,7 @@ function Router() {
         <Route path="/smart-money" component={SmartMoney} />
         <Route path="/simulator" component={Simulator} />
         <Route path="/bots" component={Bots} />
+        <Route path="/research" component={Research} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

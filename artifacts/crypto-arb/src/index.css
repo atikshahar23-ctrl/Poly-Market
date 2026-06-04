@@ -69,64 +69,64 @@
 }
 
 :root, .dark {
-  --button-outline: rgba(212, 175, 55, 0.15);
-  --badge-outline: rgba(212, 175, 55, 0.08);
+  --button-outline: rgba(197, 128, 42, 0.16);
+  --badge-outline: rgba(197, 128, 42, 0.08);
 
   --opaque-button-border-intensity: 9;
 
-  --elevate-1: rgba(212, 175, 55, 0.04);
-  --elevate-2: rgba(212, 175, 55, 0.08);
+  --elevate-1: rgba(197, 128, 42, 0.05);
+  --elevate-2: rgba(197, 128, 42, 0.10);
 
-  /* Deep black background — luxury */
-  --background: 0 0% 4%;
-  --foreground: 45 30% 94%;
+  /* Logo-derived: cool steel-charcoal base — softer & more comfortable than pure black */
+  --background: 220 16% 8%;
+  --foreground: 210 22% 92%;
 
-  --border: 43 20% 16%;
+  --border: 215 15% 19%;
 
-  --card: 0 0% 7%;
-  --card-foreground: 45 30% 94%;
-  --card-border: 43 20% 16%;
+  --card: 220 15% 11%;
+  --card-foreground: 210 22% 92%;
+  --card-border: 215 15% 19%;
 
-  --sidebar: 0 0% 5%;
-  --sidebar-foreground: 45 30% 94%;
-  --sidebar-border: 43 20% 16%;
-  /* Gold primary for sidebar */
-  --sidebar-primary: 43 74% 52%;
-  --sidebar-primary-foreground: 0 0% 4%;
-  --sidebar-accent: 43 20% 12%;
-  --sidebar-accent-foreground: 45 30% 94%;
-  --sidebar-ring: 43 74% 52%;
+  --sidebar: 220 17% 9%;
+  --sidebar-foreground: 210 22% 92%;
+  --sidebar-border: 215 15% 19%;
+  /* Copper primary (logo horns / "HEAVY") */
+  --sidebar-primary: 32 84% 55%;
+  --sidebar-primary-foreground: 220 25% 8%;
+  --sidebar-accent: 215 14% 16%;
+  --sidebar-accent-foreground: 210 22% 92%;
+  --sidebar-ring: 32 84% 55%;
 
-  --popover: 0 0% 7%;
-  --popover-foreground: 45 30% 94%;
-  --popover-border: 43 20% 16%;
+  --popover: 220 15% 11%;
+  --popover-foreground: 210 22% 92%;
+  --popover-border: 215 15% 19%;
 
-  /* Gold — the signature color */
-  --primary: 43 74% 52%;
-  --primary-foreground: 0 0% 4%;
+  /* Copper — the signature brand color (logo horns + "HEAVY") */
+  --primary: 32 84% 55%;
+  --primary-foreground: 220 25% 8%;
 
-  /* Dark warm secondary */
-  --secondary: 43 15% 12%;
-  --secondary-foreground: 45 30% 94%;
+  /* Steel secondary panels */
+  --secondary: 215 15% 15%;
+  --secondary-foreground: 210 22% 92%;
 
-  --muted: 43 10% 11%;
-  --muted-foreground: 45 15% 55%;
+  --muted: 215 13% 14%;
+  --muted-foreground: 213 14% 62%;
 
-  /* Warm champagne accent */
-  --accent: 43 74% 52%;
-  --accent-foreground: 0 0% 4%;
+  /* Cyan accent (logo lock + glowing eyes) */
+  --accent: 190 80% 52%;
+  --accent-foreground: 220 25% 8%;
 
-  --destructive: 0 62.8% 35%;
-  --destructive-foreground: 45 30% 94%;
+  --destructive: 0 62% 42%;
+  --destructive-foreground: 210 22% 94%;
 
-  --input: 43 15% 12%;
-  --ring: 43 74% 52%;
+  --input: 215 15% 15%;
+  --ring: 32 84% 55%;
 
-  --chart-1: 43 74% 52%;
-  --chart-2: 152 60% 42%;
-  --chart-3: 0 65% 50%;
-  --chart-4: 280 55% 55%;
-  --chart-5: 210 60% 50%;
+  --chart-1: 32 84% 55%;
+  --chart-2: 152 58% 46%;
+  --chart-3: 0 70% 56%;
+  --chart-4: 190 80% 52%;
+  --chart-5: 210 28% 62%;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-mono: 'Space Mono', monospace;
@@ -160,11 +160,11 @@
     background: hsl(0 0% 6%);
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(43 50% 30%);
+    background: hsl(32 45% 32%);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(43 74% 42%);
+    background: hsl(32 84% 48%);
   }
 }
 
@@ -176,13 +176,13 @@ aside::before {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(43 74% 52%), transparent);
+  background: linear-gradient(90deg, transparent, hsl(32 84% 55%), transparent);
   opacity: 0.6;
 }
 
 /* Subtle gold glow on primary elements */
 .text-primary {
-  text-shadow: 0 0 20px hsl(43 74% 52% / 0.3);
+  text-shadow: 0 0 20px hsl(32 84% 55% / 0.3);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ html {
   background: linear-gradient(
     90deg,
     transparent,
-    hsl(43 74% 52% / 0.10),
+    hsl(32 84% 55% / 0.10),
     transparent
   );
   animation: shimmer 1.6s var(--ease-out-quart) infinite;
@@ -259,7 +259,7 @@ textarea:focus-visible,
   outline-offset: 2px;
   box-shadow:
     0 0 0 2px hsl(0 0% 4%),
-    0 0 0 4px hsl(43 74% 52% / 0.55);
+    0 0 0 4px hsl(32 84% 55% / 0.55);
   border-radius: 5px;
 }
 
@@ -293,7 +293,7 @@ textarea:focus-visible,
   stroke-dasharray: 8 6;
 }
 .jarvis-glow {
-  filter: drop-shadow(0 0 3px hsl(43 74% 52% / 0.8));
+  filter: drop-shadow(0 0 3px hsl(32 84% 55% / 0.8));
 }
 @keyframes jarvis-mouth-speak {
   0%, 100% { transform: scaleY(0.35); }

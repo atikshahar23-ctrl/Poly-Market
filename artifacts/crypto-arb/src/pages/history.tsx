@@ -274,7 +274,7 @@ function FilterGroup({ label, value, setValue, options, render }: {
             className={`px-2 py-1 rounded text-[10px] font-mono font-bold transition-colors ${
               value === o ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
             }`}
-            style={value === o ? { boxShadow: "inset 0 0 0 1px hsl(43 74% 52% / 0.3)" } : {}}
+            style={value === o ? { boxShadow: "inset 0 0 0 1px hsl(32 84% 55% / 0.3)" } : {}}
           >
             {render(o)}
           </button>

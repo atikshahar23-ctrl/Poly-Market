@@ -44,7 +44,7 @@ function BetCard({ m, now }: { m: PolymarketMarket; now: number }) {
           >
             <Star
               className="h-3.5 w-3.5 transition-colors"
-              style={{ color: fav ? "hsl(43 74% 52%)" : "#52525b", fill: fav ? "hsl(43 74% 52%)" : "transparent" }}
+              style={{ color: fav ? "hsl(32 84% 55%)" : "#52525b", fill: fav ? "hsl(32 84% 55%)" : "transparent" }}
             />
           </button>
           <p className="text-sm font-medium text-foreground/90 leading-snug line-clamp-3">{m.question}</p>
@@ -69,7 +69,7 @@ function BetCard({ m, now }: { m: PolymarketMarket; now: number }) {
       <div className="flex items-center justify-between border-t border-border/50 pt-2">
         <div
           className="flex items-center gap-1.5 text-xs font-mono font-bold"
-          style={{ color: cd.urgent ? "#ef4444" : "hsl(43 74% 52%)" }}
+          style={{ color: cd.urgent ? "#ef4444" : "hsl(32 84% 55%)" }}
         >
           <Timer className="h-3.5 w-3.5" />
           {cd.text}

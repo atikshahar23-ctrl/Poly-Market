@@ -32,7 +32,7 @@ interface StageMeta {
 function stageMeta(stage: MomentumCoin["stage"]): StageMeta {
   switch (stage) {
     case "HOT": return { Icon: Flame, color: "#ef4444", label: "HOT" };
-    case "SURGING": return { Icon: Rocket, color: "hsl(43 74% 52%)", label: "SURGING" };
+    case "SURGING": return { Icon: Rocket, color: "hsl(32 84% 55%)", label: "SURGING" };
     case "BUILDING": return { Icon: Activity, color: "#84cc16", label: "BUILDING" };
     default: return { Icon: TrendingUp, color: "#71717a", label: "COOLING" };
   }
@@ -165,7 +165,7 @@ function MomentumCard({ c }: { c: MomentumCoin }) {
           >
             <Star
               className="h-3.5 w-3.5 transition-colors"
-              style={{ color: fav ? "hsl(43 74% 52%)" : "#52525b", fill: fav ? "hsl(43 74% 52%)" : "transparent" }}
+              style={{ color: fav ? "hsl(32 84% 55%)" : "#52525b", fill: fav ? "hsl(32 84% 55%)" : "transparent" }}
             />
           </button>
           <span className="font-mono font-black text-base text-foreground">{c.asset}</span>
@@ -316,7 +316,7 @@ export default function MomentumPage() {
                 ? "bg-primary/15 text-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
             }`}
-            style={filter === t.key ? { boxShadow: "inset 0 0 0 1px hsl(43 74% 52% / 0.3)" } : {}}
+            style={filter === t.key ? { boxShadow: "inset 0 0 0 1px hsl(32 84% 55% / 0.3)" } : {}}
           >
             {t.label}
           </button>
