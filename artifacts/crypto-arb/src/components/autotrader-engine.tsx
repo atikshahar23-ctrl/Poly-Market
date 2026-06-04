@@ -76,7 +76,7 @@ export function AutoTraderEngine() {
   const {
     binancePositions, stockPositions, polyPositions, cash, totalDeposited, tradeHistory,
     openBinancePosition, openPolyPosition, closePolyPosition, openStockPosition,
-    checkSlTp, updateTrailingStops, checkRiskGuards, flattenAll,
+    closeBinancePosition, checkSlTp, updateTrailingStops, checkRiskGuards, flattenAll,
   } = usePortfolio();
   const { settings, update } = useAutoTrader();
   const { isFavorite } = useFavorites();
@@ -144,6 +144,8 @@ export function AutoTraderEngine() {
   const polyCooldownRef = useRef<Record<string, number>>({});
   /** Running peak of total equity, for the max-drawdown kill-switch. */
   const equityPeakRef = useRef<number>(0);
+  /** Per-position best favorable price, for the Smart-Exit peak-pullback trail. */
+  const peakRef = useRef<Map<string, number>>(new Map());
 
   // Build a live price map (crypto + stocks); trail first, then SL/TP exits.
   const priceMap: Record<string, number> = {};
@@ -166,6 +168,69 @@ export function AutoTraderEngine() {
   useEffect(() => {
     if (Object.keys(priceMap).length === 0) return;
     updateTrailingStops(priceMap);
+
+    // ── Smart Exit ── Bank small bot wins fast ("supermarket" turnover — even
+    // 30s–1min trades), but once a trade's profit crosses the runner threshold
+    // give it more room and ride it until a peak-pullback trips the exit. Only
+    // ever closes positions that are in profit, so it never deepens a loss.
+    if (settings.smartExitEnabled) {
+      const now = Date.now();
+      for (const pos of binancePositions) {
+        if (!pos.auto) continue;
+        const price = priceMap[pos.asset];
+        if (!price || !Number.isFinite(price)) continue;
+        const ageMs = now - new Date(pos.openedAt).getTime();
+        if (ageMs < 3000) continue; // never open→close in the same breath
+
+        const isLong = pos.direction === "LONG";
+        const prevPeak = peakRef.current.get(pos.id) ?? pos.entryPrice;
+        const peak = isLong ? Math.max(prevPeak, price) : Math.min(prevPeak, price);
+        peakRef.current.set(pos.id, peak);
+
+        const gainPct = isLong
+          ? ((price - pos.entryPrice) / pos.entryPrice) * 100
+          : ((pos.entryPrice - price) / pos.entryPrice) * 100;
+        const peakGainPct = isLong
+          ? ((peak - pos.entryPrice) / pos.entryPrice) * 100
+          : ((pos.entryPrice - peak) / pos.entryPrice) * 100;
+
+        // Once enough profit has been tasted, protect it with a peak-pullback
+        // trail. Strong movers past the runner threshold get a wider giveback
+        // so they can keep running; ordinary scalps are banked on a tiny dip.
+        if (peakGainPct >= settings.scalpTakeProfitPct) {
+          const isRunner = peakGainPct >= settings.runnerTriggerPct;
+          const giveback = isRunner ? settings.runnerTrailPct : settings.scalpGivebackPct;
+          const trailStop = isLong ? peak * (1 - giveback / 100) : peak * (1 + giveback / 100);
+          // Only bank when still green — never let the trail close below breakeven.
+          const hit = (isLong ? price <= trailStop : price >= trailStop) && gainPct > 0;
+          if (hit) {
+            closeBinancePosition(pos.id, price, "TP");
+            peakRef.current.delete(pos.id);
+            toast({
+              title: `סגירה חכמה · ${isRunner ? "ריצת רווח" : "סקאלפ מהיר"} ${pos.asset}`,
+              description: `${pos.direction} +${gainPct.toFixed(2)}% (שיא +${peakGainPct.toFixed(2)}%)`,
+            });
+          }
+          continue;
+        }
+
+        // Stale-but-green trades: recycle the capital for the next fast setup.
+        if (settings.maxScalpHoldSec > 0 && ageMs >= settings.maxScalpHoldSec * 1000 && gainPct > 0) {
+          closeBinancePosition(pos.id, price, "TP");
+          peakRef.current.delete(pos.id);
+          toast({
+            title: `סגירה חכמה · מִחזוּר ${pos.asset}`,
+            description: `${pos.direction} +${gainPct.toFixed(2)}% אחרי ${Math.round(ageMs / 1000)} ש'`,
+          });
+        }
+      }
+      // Drop peak state for positions that are no longer open.
+      const openIds = new Set(binancePositions.map((p) => p.id));
+      for (const id of [...peakRef.current.keys()]) {
+        if (!openIds.has(id)) peakRef.current.delete(id);
+      }
+    }
+
     if (settings.catastrophicExitEnabled) {
       checkRiskGuards(priceMap, settings.maxLossPerTradePct);
     }
@@ -208,7 +273,7 @@ export function AutoTraderEngine() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overview, stocks, liveVersion, settings, checkSlTp, updateTrailingStops, checkRiskGuards, flattenAll]);
+  }, [overview, stocks, liveVersion, settings, closeBinancePosition, checkSlTp, updateTrailingStops, checkRiskGuards, flattenAll]);
 
   // Auto-trade evaluation.
   useEffect(() => {

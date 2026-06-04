@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import {
   Bot, Power, Gauge, Rocket, Megaphone, Timer, TrendingDown, TrendingUp,
-  Layers, Brain, RotateCcw, Activity, ShieldCheck, ShieldAlert,
+  Layers, Brain, RotateCcw, Activity, ShieldCheck, ShieldAlert, Scissors,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -295,6 +295,38 @@ export default function Bots() {
             <RotateCcw className="h-3 w-3" /> אפס כל ההושהות
           </Button>
         </div>
+      </section>
+
+      {/* Smart Exit — סגירה חכמה */}
+      <section className="rounded-lg border p-4" style={{ borderColor: "hsl(152 60% 45% / 0.35)", background: "hsl(152 60% 45% / 0.04)" }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-md bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <Scissors className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold tracking-wide">Smart Exit — סגירה חכמה</h2>
+              <p className="text-[11px] text-muted-foreground" dir="rtl">
+                סוכן הסגירה: נועל רווחים קטנים מהר כמו סופרמרקט — אפילו עסקאות של דקה או חצי דקה. אבל כשיש פוטנציאל לרווח גדול הוא נותן לעסקה לרוץ עד שהמומנטום מתהפך.
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={settings.smartExitEnabled}
+            onCheckedChange={(v) => update({ smartExitEnabled: v })}
+            aria-label="Toggle smart exit"
+          />
+        </div>
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+          <NumField label="נעילת רווח %" value={settings.scalpTakeProfitPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ scalpTakeProfitPct: v })} />
+          <NumField label="החזר סקאלפ %" value={settings.scalpGivebackPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ scalpGivebackPct: v })} />
+          <NumField label="סף ריצה %" value={settings.runnerTriggerPct} min={0.2} step={0.1} suffix="%" onChange={(v) => update({ runnerTriggerPct: v })} />
+          <NumField label="טריילינג ריצה %" value={settings.runnerTrailPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ runnerTrailPct: v })} />
+          <NumField label="מחזור אחרי (ש')" value={settings.maxScalpHoldSec} min={0} step={15} suffix="ש'" onChange={(v) => update({ maxScalpHoldSec: v })} />
+        </div>
+        <p className="mt-3 text-[10px] text-muted-foreground/70" dir="rtl">
+          חל על עסקאות הקריפטו של כל הבוטים. נעילת הרווח מתחילה רק כשהעסקה בירוק; עסקאות חזקות שעוברות את "סף הריצה" מקבלות מרחב טריילינג גדול יותר כדי להמשיך לרוץ. הסוכן אף פעם לא מעמיק הפסד.
+        </p>
       </section>
 
       {/* New bots */}

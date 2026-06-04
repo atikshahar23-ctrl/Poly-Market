@@ -126,7 +126,7 @@ interface PortfolioContextValue extends PortfolioState {
   openBinancePosition: (
     pos: Omit<BinancePosition, "id" | "openedAt">
   ) => string | null;
-  closeBinancePosition: (id: string, currentPrice: number) => void;
+  closeBinancePosition: (id: string, currentPrice: number, exit?: ClosedTrade["exit"]) => void;
   openStockPosition: (
     stock: Omit<StockPosition, "id" | "shares" | "cost" | "openedAt" | "leverage">,
     amountUsd: number,
@@ -407,7 +407,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   );
 
   const closeBinancePosition = useCallback(
-    (id: string, currentPrice: number) => {
+    (id: string, currentPrice: number, exit: ClosedTrade["exit"] = "MANUAL") => {
       setState((prev) => {
         const pos = prev.binancePositions.find((p) => p.id === id);
         if (!pos) return prev;
@@ -428,7 +428,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,
-          exit: "MANUAL",
+          exit,
         };
         return {
           ...prev,

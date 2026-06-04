@@ -151,6 +151,20 @@ export interface AutoTraderSettings {
   /** Daily max realized loss as a percent of deposited equity. */
   dailyMaxLossPct: number;
 
+  /* ── Smart Exit: fast scalp closes + ride-the-winner (applies to bot crypto trades) ── */
+  /** Manage exits on bot trades: bank small wins fast, let big winners run. */
+  smartExitEnabled: boolean;
+  /** Favorable move (price %) at which the profit-protecting trail starts working. */
+  scalpTakeProfitPct: number;
+  /** Pullback from peak (price %) that banks a small scalp once in profit. */
+  scalpGivebackPct: number;
+  /** Favorable move (price %) that promotes a trade to "runner" (ride it). */
+  runnerTriggerPct: number;
+  /** Pullback from peak (price %) a runner is allowed before the manager exits. */
+  runnerTrailPct: number;
+  /** Recycle a stale-but-profitable bot trade after this many seconds (0 = off). */
+  maxScalpHoldSec: number;
+
   /* ── Risk Guardian (highest-level capital protection) ── */
   /** Force-exit a leveraged position before it can be liquidated. */
   catastrophicExitEnabled: boolean;
@@ -241,6 +255,13 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
   trailDistancePct: 1.0,
   dailyStopEnabled: false,
   dailyMaxLossPct: 10,
+
+  smartExitEnabled: true,
+  scalpTakeProfitPct: 0.6,
+  scalpGivebackPct: 0.3,
+  runnerTriggerPct: 1.5,
+  runnerTrailPct: 0.8,
+  maxScalpHoldSec: 90,
 
   catastrophicExitEnabled: true,
   maxLossPerTradePct: 80,
