@@ -4,6 +4,7 @@ import {
   useGetStockRecommendations, getGetStockRecommendationsQueryKey, StockRecommendation,
 } from "@workspace/api-client-react";
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Zap, Target, AlertTriangle, ExternalLink, LineChart, Check } from "lucide-react";
+import { CryptoIcon } from "@/components/crypto-icon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -89,7 +90,8 @@ function AssetBadge({ tag }: { tag: string }) {
     BNB: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
   };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold font-mono border ${colors[tag] ?? 'bg-muted/30 text-muted-foreground border-border'}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold font-mono border ${colors[tag] ?? 'bg-muted/30 text-muted-foreground border-border'}`}>
+      <CryptoIcon asset={tag} size={14} />
       {tag}
     </span>
   );

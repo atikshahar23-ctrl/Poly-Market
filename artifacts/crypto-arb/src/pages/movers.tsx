@@ -4,6 +4,7 @@ import {
   Activity, TrendingUp, TrendingDown, Flame, Newspaper, Gauge, RefreshCw, ExternalLink,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CryptoIcon } from "@/components/crypto-icon";
 
 /* ─── Fear & Greed gauge ───────────────────────────────────── */
 function fgColor(v: number): string {
@@ -91,6 +92,7 @@ function MoversList({ title, coins, positive }: { title: string; coins: MoverCoi
             className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-secondary/40 transition-colors group"
           >
             <div className="flex items-center gap-2 min-w-0">
+              <CryptoIcon asset={c.symbol} size={20} />
               <span className="font-mono font-bold text-sm text-foreground/90 w-16 truncate">{c.symbol}</span>
               <span className="text-[10px] font-mono text-muted-foreground hidden sm:inline">{fmtVol(c.quoteVolume)}</span>
             </div>

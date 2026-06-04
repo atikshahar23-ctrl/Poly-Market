@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { useAutoTrader } from "@/contexts/autotrader-context";
+import { CryptoIcon } from "@/components/crypto-icon";
 
 /* ─── helpers ─────────────────────────────────────────────── */
 
@@ -96,8 +97,8 @@ function DemoTradePanel({ market, onClose }: DemoPanelProps) {
       <div className="shrink-0 flex items-start justify-between gap-3 p-4 border-b border-border">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <Badge variant="outline" className={`font-mono text-[10px] shrink-0 ${assetBadgeCls(market.assetTag)}`}>
-              {market.assetTag}
+            <Badge variant="outline" className={`font-mono text-[10px] shrink-0 flex items-center gap-1 ${assetBadgeCls(market.assetTag)}`}>
+              <CryptoIcon asset={market.assetTag} size={14} /> {market.assetTag}
             </Badge>
             <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground border-border shrink-0">
               {market.category}

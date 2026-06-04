@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { StockDetailPanel } from "@/components/stock-detail-panel";
 import { UniversalStockSearch } from "@/components/universal-stock-search";
+import { StockIcon } from "@/components/stock-icon";
 
 type Outlook = { tone: "bull" | "bear" | "neutral"; verdict: string; detail: string };
 
@@ -109,6 +110,7 @@ function StockRow({ s, onOpen }: { s: StockQuote; onOpen: (s: StockQuote) => voi
                 style={{ color: fav ? "hsl(32 84% 55%)" : "#52525b", fill: fav ? "hsl(32 84% 55%)" : "transparent" }}
               />
             </button>
+            <StockIcon symbol={s.symbol} size={24} />
             <span className="font-mono font-bold text-sm text-foreground">{s.symbol}</span>
             <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-secondary/50 text-muted-foreground">
               {CATEGORY_LABEL[s.category] ?? s.category}

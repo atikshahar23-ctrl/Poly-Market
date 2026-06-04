@@ -8,6 +8,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CryptoIcon } from "@/components/crypto-icon";
 import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useFavorites } from "@/contexts/favorites-context";
@@ -168,6 +169,7 @@ function MomentumCard({ c }: { c: MomentumCoin }) {
               style={{ color: fav ? "hsl(32 84% 55%)" : "#52525b", fill: fav ? "hsl(32 84% 55%)" : "transparent" }}
             />
           </button>
+          <CryptoIcon asset={c.asset} size={24} />
           <span className="font-mono font-black text-base text-foreground">{c.asset}</span>
           <span className="text-[10px] font-mono text-muted-foreground">/USDT</span>
         </div>

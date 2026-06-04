@@ -4,6 +4,7 @@ import type { PolymarketMarket } from "@workspace/api-client-react";
 import { Timer, RefreshCw, ExternalLink, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFavorites } from "@/contexts/favorites-context";
+import { CryptoIcon } from "@/components/crypto-icon";
 
 function useNow(intervalMs = 1000) {
   const [now, setNow] = useState(() => Date.now());
@@ -49,8 +50,8 @@ function BetCard({ m, now }: { m: PolymarketMarket; now: number }) {
           </button>
           <p className="text-sm font-medium text-foreground/90 leading-snug line-clamp-3">{m.question}</p>
         </div>
-        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary flex-shrink-0">
-          {m.assetTag}
+        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary flex-shrink-0 flex items-center gap-1">
+          <CryptoIcon asset={m.assetTag} size={14} /> {m.assetTag}
         </span>
       </div>
 

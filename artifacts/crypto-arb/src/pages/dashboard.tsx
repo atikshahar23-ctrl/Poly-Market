@@ -6,6 +6,7 @@ import {
   ScanResult, GetScanResultsAsset, Recommendation,
 } from "@workspace/api-client-react";
 import { RefreshCw, TrendingUp, TrendingDown, Search, Zap, ArrowRight, AlertTriangle } from "lucide-react";
+import { CryptoIcon } from "@/components/crypto-icon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,8 +25,8 @@ function AssetBadge({ tag }: { tag: string }) {
     BNB: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
   };
   return (
-    <Badge variant="outline" className={`font-mono text-[10px] ${colors[tag] ?? 'bg-muted text-muted-foreground border-border'}`}>
-      {tag}
+    <Badge variant="outline" className={`inline-flex items-center gap-1 font-mono text-[10px] ${colors[tag] ?? 'bg-muted text-muted-foreground border-border'}`}>
+      <CryptoIcon asset={tag} size={14} /> {tag}
     </Badge>
   );
 }
@@ -213,9 +214,12 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {data.binanceAssets.filter(b => b.asset !== 'BTC').map(asset => (
             <div key={asset.asset} className="rounded-md border border-border/50 bg-card/30 px-3 py-2 flex items-center justify-between">
-              <div>
-                <div className="text-[10px] text-muted-foreground font-mono">{asset.asset}</div>
-                <div className="text-sm font-bold font-mono">${asset.markPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+              <div className="flex items-center gap-2">
+                <CryptoIcon asset={asset.asset} size={24} />
+                <div>
+                  <div className="text-[10px] text-muted-foreground font-mono">{asset.asset}</div>
+                  <div className="text-sm font-bold font-mono">${asset.markPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                </div>
               </div>
               <span className={`text-xs font-mono font-semibold ${asset.fundingRatePercent > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {asset.fundingRatePercent > 0 ? '+' : ''}{asset.fundingRatePercent.toFixed(4)}%

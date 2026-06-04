@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CryptoIcon } from "@/components/crypto-icon";
+import { StockIcon } from "@/components/stock-icon";
 
 function fmtPrice(p: number): string {
   if (p >= 1000) return p.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -183,9 +185,12 @@ export default function Research() {
               return (
                 <div key={c.symbol} className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-base font-bold">{c.asset}</div>
-                      <div className="text-[10px] font-mono text-muted-foreground">{c.symbol}</div>
+                    <div className="flex items-center gap-2">
+                      <CryptoIcon asset={c.asset} size={28} />
+                      <div>
+                        <div className="text-base font-bold">{c.asset}</div>
+                        <div className="text-[10px] font-mono text-muted-foreground">{c.symbol}</div>
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="font-mono font-semibold">${fmtPrice(c.price)}</div>
@@ -218,6 +223,7 @@ export default function Research() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <StockIcon symbol={s.symbol} size={28} />
                         <span className="text-base font-bold">{s.symbol}</span>
                         <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-muted/50 text-muted-foreground uppercase">{s.type}</span>
                         <span className="text-[9px] font-mono text-muted-foreground">{s.exchange}</span>
