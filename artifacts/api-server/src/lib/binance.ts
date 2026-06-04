@@ -40,7 +40,7 @@ async function fetchSpotFallback(symbol: string): Promise<BinanceData> {
   const url = new URL(BINANCE_SPOT_FALLBACK);
   url.searchParams.set("symbol", symbol);
 
-  const response = await fetch(url.toString());
+  const response = await fetch(url.toString(), { signal: AbortSignal.timeout(8_000) });
   if (!response.ok) {
     logger.error({ status: response.status, symbol }, "Binance spot fallback error");
     throw new Error(`Binance spot fallback returned ${response.status} for ${symbol}`);
@@ -69,7 +69,7 @@ export async function fetchBinanceData(symbol = "BTCUSDT"): Promise<BinanceData>
 
   let response: Response;
   try {
-    response = await fetch(url.toString());
+    response = await fetch(url.toString(), { signal: AbortSignal.timeout(8_000) });
   } catch (err) {
     logger.warn({ err, symbol }, "Binance futures fetch failed, using spot fallback");
     return fetchSpotFallback(symbol);
@@ -151,7 +151,7 @@ export async function fetchMarketOverview(limit = 50): Promise<CoinTicker[]> {
     return _overviewCache.data.slice(0, limit);
   }
 
-  const res = await fetch(BINANCE_24H);
+  const res = await fetch(BINANCE_24H, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) {
     logger.error({ status: res.status }, "Binance 24h overview failed");
     throw new Error(`Binance 24h overview returned ${res.status}`);

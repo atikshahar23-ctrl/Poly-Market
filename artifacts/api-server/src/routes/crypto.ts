@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { expensiveRateLimit } from "../lib/rateLimiter";
 import { fetchBinanceData, fetchAllBinanceData, fetchMarketOverview } from "../lib/binance";
 import { fetchPolymarketMarkets, type AssetFilter, type CategoryFilter } from "../lib/polymarket";
 import { fetchMarketMovers } from "../lib/movers";
@@ -65,7 +66,7 @@ router.get("/crypto/polymarket", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/crypto/scan", async (req, res): Promise<void> => {
+router.get("/crypto/scan", expensiveRateLimit, async (req, res): Promise<void> => {
   const query = GetScanResultsQueryParams.safeParse(req.query);
 
   try {
@@ -80,7 +81,7 @@ router.get("/crypto/scan", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/crypto/recommendations", async (req, res): Promise<void> => {
+router.get("/crypto/recommendations", expensiveRateLimit, async (req, res): Promise<void> => {
   try {
     const recs = await buildRecommendations();
     res.json(GetRecommendationsResponse.parse(recs));
@@ -110,7 +111,7 @@ router.get("/crypto/overview", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/crypto/scalp", async (req, res): Promise<void> => {
+router.get("/crypto/scalp", expensiveRateLimit, async (req, res): Promise<void> => {
   try {
     const signals = await fetchScalpSignals({ interval: "15m", coins: 30 });
     res.json(GetScalpSignalsResponse.parse(signals));
@@ -120,7 +121,7 @@ router.get("/crypto/scalp", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/crypto/momentum", async (req, res): Promise<void> => {
+router.get("/crypto/momentum", expensiveRateLimit, async (req, res): Promise<void> => {
   try {
     const coins = await fetchMomentumCoins({ coins: 60, top: 24 });
     res.json(GetMomentumCoinsResponse.parse(coins));

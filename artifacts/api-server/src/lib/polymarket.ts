@@ -112,7 +112,7 @@ async function fetchAllPages(): Promise<Record<string, unknown>[]> {
 
   const pageResults = await Promise.all(
     Array.from({ length: TOTAL_PAGES }, (_, i) =>
-      fetch(buildUrl(i * PAGE_SIZE))
+      fetch(buildUrl(i * PAGE_SIZE), { signal: AbortSignal.timeout(15_000) })
         .then(r => {
           if (!r.ok) throw new Error(`Gamma API page ${i} returned ${r.status}`);
           return r.json() as Promise<Record<string, unknown>[]>;

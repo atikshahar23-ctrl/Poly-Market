@@ -6,6 +6,7 @@ import {
   searchStocks,
 } from "../lib/stocks";
 import { fetchInfluencerSignals } from "../lib/influencers";
+import { expensiveRateLimit } from "../lib/rateLimiter";
 import {
   GetStocksResponse,
   GetStockRecommendationsResponse,
@@ -54,7 +55,7 @@ router.get("/stocks/klines", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/stocks", async (req, res): Promise<void> => {
+router.get("/stocks", expensiveRateLimit, async (req, res): Promise<void> => {
   try {
     const data = await fetchStockQuotes();
     res.json(GetStocksResponse.parse(data));
@@ -64,7 +65,7 @@ router.get("/stocks", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/stocks/recommendations", async (req, res): Promise<void> => {
+router.get("/stocks/recommendations", expensiveRateLimit, async (req, res): Promise<void> => {
   try {
     const data = await buildStockRecommendations();
     res.json(GetStockRecommendationsResponse.parse(data));

@@ -179,7 +179,10 @@ interface YahooChartMeta {
 async function fetchOneQuote(def: TickerDef): Promise<StockQuote | null> {
   const url = `${YAHOO_CHART}/${encodeURIComponent(def.symbol)}?interval=1d&range=1mo`;
   try {
-    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!res.ok) {
       logger.warn({ symbol: def.symbol, status: res.status }, "Yahoo chart returned non-OK");
       return null;
@@ -249,6 +252,10 @@ let _cacheExpiresAt = 0;
 const CACHE_TTL_MS = 30 * 1000;
 const CONCURRENCY = 10;
 
+// In-flight coalescing: concurrent cold-cache callers share one fetch sweep
+// instead of each triggering their own ~100-request fan-out.
+let _inflight: Promise<StockQuote[]> | null = null;
+
 export async function fetchStockQuotes(): Promise<StockQuote[]> {
   const now = Date.now();
   if (_cached && now < _cacheExpiresAt) {
@@ -256,22 +263,33 @@ export async function fetchStockQuotes(): Promise<StockQuote[]> {
     return _cached;
   }
 
-  const start = Date.now();
-  const out: StockQuote[] = [];
-  for (let i = 0; i < TICKERS.length; i += CONCURRENCY) {
-    const chunk = TICKERS.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(chunk.map(fetchOneQuote));
-    for (const r of results) if (r) out.push(r);
-  }
+  if (_inflight) return _inflight;
 
-  if (out.length === 0) {
-    throw new Error("Failed to fetch any stock quotes from Yahoo Finance");
-  }
+  const promise = (async () => {
+    const start = Date.now();
+    const out: StockQuote[] = [];
+    for (let i = 0; i < TICKERS.length; i += CONCURRENCY) {
+      const chunk = TICKERS.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(chunk.map(fetchOneQuote));
+      for (const r of results) if (r) out.push(r);
+    }
 
-  logger.info({ total: out.length, ms: Date.now() - start }, "Stock quotes fetched (cold)");
-  _cached = out;
-  _cacheExpiresAt = now + CACHE_TTL_MS;
-  return out;
+    if (out.length === 0) {
+      throw new Error("Failed to fetch any stock quotes from Yahoo Finance");
+    }
+
+    logger.info({ total: out.length, ms: Date.now() - start }, "Stock quotes fetched (cold)");
+    _cached = out;
+    _cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+    return out;
+  })();
+
+  _inflight = promise;
+  promise.finally(() => {
+    if (_inflight === promise) _inflight = null;
+  });
+
+  return promise;
 }
 
 export function invalidateStockCache(): void {
@@ -320,7 +338,10 @@ export async function fetchStockKlines(
   if (cached && now < cached.expiresAt) return cached.data;
 
   const url = `${YAHOO_CHART}/${encodeURIComponent(sym)}?interval=${iv}&range=${r}`;
-  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!res.ok) throw new Error(`Yahoo chart ${res.status}`);
 
   const json = (await res.json()) as {
