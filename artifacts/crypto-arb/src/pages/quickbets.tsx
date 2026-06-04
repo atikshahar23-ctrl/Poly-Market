@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useGetShortTermMarkets, getGetShortTermMarketsQueryKey } from "@workspace/api-client-react";
 import type { PolymarketMarket } from "@workspace/api-client-react";
-import { Timer, RefreshCw, ExternalLink, Star } from "lucide-react";
+import { Timer, RefreshCw, ExternalLink, Star, Zap, ArrowUpRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFavorites } from "@/contexts/favorites-context";
+import { usePortfolio } from "@/contexts/portfolio-context";
 import { CryptoIcon } from "@/components/crypto-icon";
 
 function useNow(intervalMs = 1000) {
@@ -26,16 +27,52 @@ function countdown(endDate: string | null | undefined, now: number): { text: str
   return { text: `${m}m ${s}s`, urgent: true };
 }
 
-function BetCard({ m, now }: { m: PolymarketMarket; now: number }) {
+function smartPick(m: PolymarketMarket): { side: "YES" | "NO"; confidence: number; reason: string } {
+  const yes = m.yesProbabilityPercent;
+  if (yes <= 25) return { side: "YES", confidence: 0.85, reason: "YES זול — ערך מוסרי" };
+  if (yes >= 75) return { side: "NO", confidence: 0.85, reason: "NO זול — ערך מוסרי" };
+  if (yes < 45) return { side: "YES", confidence: 0.55, reason: "YES קל יותר" };
+  if (yes > 55) return { side: "NO", confidence: 0.55, reason: "NO קל יותר" };
+  return { side: "YES", confidence: 0.5, reason: "50/50 — קל יותר" };
+}
+
+function QuickBetCard({ m, now }: { m: PolymarketMarket; now: number }) {
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { cash, openPolyPosition } = usePortfolio();
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
   const favId = `market:${m.conditionId}`;
   const fav = isFavorite(favId);
   const cd = countdown(m.endDate, now);
   const yes = m.yesProbabilityPercent;
   const url = m.eventSlug ? `https://polymarket.com/event/${m.eventSlug}` : "https://polymarket.com";
+  const smart = smartPick(m);
+
+  const canAfford = cash >= 50;
+  const stake = Math.min(200, Math.max(50, Math.floor(cash * 0.05)));
+  const fairYes = smart.side === "YES" ? yes : 100 - yes;
+
+  function doBet() {
+    if (!canAfford) { setStatus({ ok: false, msg: "אין מספיק מזומן" }); return; }
+    const err = openPolyPosition(
+      {
+        conditionId: m.conditionId,
+        question: m.question,
+        category: m.assetTag ?? "crypto",
+        slug: m.eventSlug ?? null,
+        side: smart.side,
+        entryPrice: fairYes / 100,
+      },
+      stake,
+    );
+    if (err) { setStatus({ ok: false, msg: err }); return; }
+    setStatus({ ok: true, msg: `${smart.side} $${stake} → ${m.assetTag}` });
+    setTimeout(() => setStatus(null), 3000);
+  }
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3">
+      {/* Header: question + asset tag */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 min-w-0">
           <button
@@ -55,6 +92,17 @@ function BetCard({ m, now }: { m: PolymarketMarket; now: number }) {
         </span>
       </div>
 
+      {/* Smart pick badge */}
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded ${
+          smart.side === "YES" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+        }`}>
+          {smart.side === "YES" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          בוט: {smart.side} — {smart.reason}
+        </span>
+        <span className="text-[9px] font-mono text-muted-foreground">{Math.round(smart.confidence * 100)}% בטחון</span>
+      </div>
+
       {/* Probability bar */}
       <div>
         <div className="flex items-center justify-between text-[10px] font-mono mb-1">
@@ -66,7 +114,7 @@ function BetCard({ m, now }: { m: PolymarketMarket; now: number }) {
         </div>
       </div>
 
-      {/* Footer: countdown + link */}
+      {/* Footer: countdown + quick bet + external link */}
       <div className="flex items-center justify-between border-t border-border/50 pt-2">
         <div
           className="flex items-center gap-1.5 text-xs font-mono font-bold"
@@ -75,14 +123,28 @@ function BetCard({ m, now }: { m: PolymarketMarket; now: number }) {
           <Timer className="h-3.5 w-3.5" />
           {cd.text}
         </div>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors"
-        >
-          Trade <ExternalLink className="h-3 w-3" />
-        </a>
+        <div className="flex items-center gap-2">
+          {status && (
+            <span className={`text-[10px] font-mono ${status.ok ? "text-emerald-400" : "text-red-400"}`}>
+              {status.msg}
+            </span>
+          )}
+          <button
+            onClick={doBet}
+            disabled={!canAfford}
+            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-mono font-bold bg-primary/15 text-primary hover:bg-primary/25 disabled:opacity-40 transition-colors"
+          >
+            <Zap className="h-3 w-3" /> ${stake} {smart.side}
+          </button>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors"
+          >
+            <ArrowUpRight className="h-3 w-3" />
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -90,6 +152,9 @@ function BetCard({ m, now }: { m: PolymarketMarket; now: number }) {
 
 export default function QuickBetsPage() {
   const now = useNow(1000);
+  const { isFavorite } = useFavorites();
+  const [showFavOnly, setShowFavOnly] = useState(false);
+
   const { data, isLoading, isFetching } = useGetShortTermMarkets({
     query: {
       queryKey: getGetShortTermMarketsQueryKey(),
@@ -99,6 +164,10 @@ export default function QuickBetsPage() {
   });
 
   const markets = data ?? [];
+
+  const filtered = showFavOnly
+    ? markets.filter((m) => isFavorite(`market:${m.conditionId}`))
+    : markets;
 
   return (
     <div className="p-5 space-y-4">
@@ -110,24 +179,40 @@ export default function QuickBetsPage() {
             {isFetching && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Short-term crypto prediction markets resolving within 48h — soonest first.
+            שווקי חיזוי קצרי-טווח עם פתרון תוך 48 שעות — בוט חכם ממליץ צד לכל שוק.
           </p>
         </div>
-        <span className="text-[10px] font-mono text-muted-foreground hidden sm:block">{markets.length} markets</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowFavOnly((v) => !v)}
+            className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-mono font-bold transition-colors ${
+              showFavOnly ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Star className="h-3 w-3" style={{ fill: showFavOnly ? "hsl(32 84% 55%)" : "transparent" }} />
+            {showFavOnly ? "מועדפים" : "הכל"}
+          </button>
+          <span className="text-[10px] font-mono text-muted-foreground hidden sm:block">{filtered.length} markets</span>
+        </div>
       </div>
 
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {Array.from({ length: 9 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 w-full rounded-lg" />
+            <Skeleton key={i} className="h-48 w-full rounded-lg" />
           ))}
         </div>
-      ) : markets.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-12 text-center">No near-term crypto markets available right now.</p>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border py-16 text-center">
+          <Zap className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">
+            {showFavOnly ? "אין שווקים מועדפים — סמן כוכב כדי לעקוב" : "אין שווקי חיזוי זמינים כרגע."}
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {markets.map((m) => (
-            <BetCard key={m.conditionId} m={m} now={now} />
+          {filtered.map((m) => (
+            <QuickBetCard key={m.conditionId} m={m} now={now} />
           ))}
         </div>
       )}

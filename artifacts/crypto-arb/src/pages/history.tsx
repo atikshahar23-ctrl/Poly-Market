@@ -2,13 +2,31 @@ import { useMemo, useState } from "react";
 import { useGetMarketOverview, getGetMarketOverviewQueryKey } from "@workspace/api-client-react";
 import {
   History as HistoryIcon, TrendingUp, TrendingDown, Trophy, Target,
-  Bot, Hand, Wallet, Trash2, Activity,
+  Bot, Hand, Wallet, Trash2, Activity, Cpu,
 } from "lucide-react";
-import { usePortfolio, type ClosedTrade } from "@/contexts/portfolio-context";
+import { usePortfolio, type ClosedTrade, type BinancePosition, type StockPosition } from "@/contexts/portfolio-context";
+import { CryptoIcon } from "@/components/crypto-icon";
+import { StockIcon } from "@/components/stock-icon";
 
 type TypeFilter = "ALL" | "BINANCE" | "STOCK" | "POLYMARKET";
 type ResultFilter = "ALL" | "WINS" | "LOSSES";
 type SourceFilter = "ALL" | "AUTO" | "MANUAL";
+
+const BOT_SOURCE_LABEL: Record<string, string> = {
+  "Dip Buyer": "Dip Buyer",
+  "Breakout Hunter": "Breakout Hunter",
+  "Blue-Chip DCA": "Blue-Chip DCA",
+  "Scalp signal": "Scalp Signal",
+  "Momentum surge": "Momentum Signal",
+  "Smart-Money": "Smart Money",
+  "Smart-Money (technical + influencer)": "Smart Money",
+  "Quick Trade": "Quick Trade",
+};
+
+function botName(source: string | undefined): string | null {
+  if (!source) return null;
+  return BOT_SOURCE_LABEL[source] ?? null;
+}
 
 function fmtUsd(n: number, dp = 2): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
@@ -52,7 +70,7 @@ function StatCard({ label, value, sub, color, Icon }: {
 }
 
 function OpenPositions() {
-  const { binancePositions, closeBinancePosition } = usePortfolio();
+  const { binancePositions, closeBinancePosition, stockPositions, closeStockPosition, polyPositions, closePolyPosition } = usePortfolio();
   const { data: overview } = useGetMarketOverview({
     query: { queryKey: getGetMarketOverviewQueryKey(), refetchInterval: 30000, staleTime: 20000 },
   });
@@ -62,63 +80,168 @@ function OpenPositions() {
     return m;
   }, [overview]);
 
-  if (binancePositions.length === 0) return null;
+  const total = binancePositions.length + stockPositions.length + polyPositions.length;
+  if (total === 0) return null;
+
+  // Group by bot
+  const cryptoByBot = useMemo(() => {
+    const groups: Record<string, typeof binancePositions> = {};
+    for (const p of binancePositions) {
+      const name = botName(p.source) ?? (p.auto ? "Auto-Trader" : "Manual");
+      groups[name] = groups[name] ?? [];
+      groups[name].push(p);
+    }
+    return groups;
+  }, [binancePositions]);
+
+  const stockByBot = useMemo(() => {
+    const groups: Record<string, typeof stockPositions> = {};
+    for (const p of stockPositions) {
+      const name = botName(p.source) ?? (p.auto ? "Auto-Trader" : "Manual");
+      groups[name] = groups[name] ?? [];
+      groups[name].push(p);
+    }
+    return groups;
+  }, [stockPositions]);
 
   return (
-    <div className="space-y-2">
-      <h2 className="text-sm font-black tracking-tight flex items-center gap-1.5">
-        <Activity className="h-4 w-4 text-primary" /> Open Positions ({binancePositions.length})
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        {binancePositions.map((p) => {
-          const cur = priceMap[p.asset] ?? p.entryPrice;
-          const margin = p.notional / p.leverage;
-          const delta = p.direction === "LONG"
-            ? (cur - p.entryPrice) / p.entryPrice
-            : (p.entryPrice - cur) / p.entryPrice;
-          const pnl = delta * p.notional;
-          const pnlPct = (pnl / margin) * 100;
-          const up = pnl >= 0;
-          const accent = p.direction === "LONG" ? "#22c55e" : "#ef4444";
-          return (
-            <div key={p.id} className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: `${accent}30` }}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-black text-sm">{p.asset}</span>
-                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${accent}1a`, color: accent }}>
-                    {p.direction} {p.leverage}x
-                  </span>
-                  {p.auto && (
-                    <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary flex items-center gap-0.5">
-                      <Bot className="h-2.5 w-2.5" /> AUTO
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-end justify-between">
-                <div className="text-[10px] font-mono text-muted-foreground">
-                  <div>Entry ${fmtPrice(p.entryPrice)}</div>
-                  <div>Mark ${fmtPrice(cur)}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-mono font-bold text-sm" style={{ color: up ? "#22c55e" : "#ef4444" }}>
-                    {up ? "+" : ""}${fmtUsd(pnl)}
-                  </div>
-                  <div className="font-mono text-[10px]" style={{ color: up ? "#22c55e" : "#ef4444" }}>
-                    {up ? "+" : ""}{pnlPct.toFixed(1)}%
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => closeBinancePosition(p.id, cur)}
-                className="w-full rounded py-1.5 text-[11px] font-mono font-bold bg-secondary/60 hover:bg-secondary transition-colors"
-              >
-                Close @ ${fmtPrice(cur)}
-              </button>
-            </div>
-          );
-        })}
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Activity className="h-4 w-4 text-primary" />
+        <h2 className="text-sm font-black tracking-tight">Open Positions ({total})</h2>
       </div>
+
+      {/* Crypto / Binance Futures */}
+      {Object.entries(cryptoByBot).map(([botName, positions]) => (
+        <div key={`crypto-${botName}`} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Cpu className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">{botName}</span>
+            <div className="flex-1 h-px bg-border/50" />
+            <span className="text-[9px] font-mono text-muted-foreground">{positions.length} crypto</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {positions.map((p) => {
+              const cur = priceMap[p.asset] ?? p.entryPrice;
+              const margin = p.notional / p.leverage;
+              const delta = p.direction === "LONG"
+                ? (cur - p.entryPrice) / p.entryPrice
+                : (p.entryPrice - cur) / p.entryPrice;
+              const pnl = delta * p.notional;
+              const pnlPct = (pnl / margin) * 100;
+              const up = pnl >= 0;
+              const accent = p.direction === "LONG" ? "#22c55e" : "#ef4444";
+              return (
+                <div key={p.id} className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: `${accent}30` }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <CryptoIcon asset={p.asset} size={18} />
+                      <span className="font-mono font-black text-sm">{p.asset}</span>
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${accent}1a`, color: accent }}>
+                        {p.direction} {p.leverage}x
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <div className="text-[10px] font-mono text-muted-foreground">
+                      <div>Entry ${fmtPrice(p.entryPrice)}</div>
+                      <div>Mark ${fmtPrice(cur)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-sm" style={{ color: up ? "#22c55e" : "#ef4444" }}>
+                        {up ? "+" : ""}${fmtUsd(pnl)}
+                      </div>
+                      <div className="font-mono text-[10px]" style={{ color: up ? "#22c55e" : "#ef4444" }}>
+                        {up ? "+" : ""}{pnlPct.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => closeBinancePosition(p.id, cur)}
+                    className="w-full rounded py-1.5 text-[11px] font-mono font-bold bg-secondary/60 hover:bg-secondary transition-colors"
+                  >
+                    Close @ ${fmtPrice(cur)}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Stocks */}
+      {Object.entries(stockByBot).map(([botName, positions]) => (
+        <div key={`stock-${botName}`} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Cpu className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">{botName}</span>
+            <div className="flex-1 h-px bg-border/50" />
+            <span className="text-[9px] font-mono text-muted-foreground">{positions.length} stocks</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {positions.map((p) => {
+              const dir = p.direction ?? "LONG";
+              const accent = dir === "LONG" ? "#22c55e" : "#ef4444";
+              return (
+                <div key={p.id} className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: `${accent}30` }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <StockIcon symbol={p.symbol} size={18} />
+                      <span className="font-mono font-black text-sm">{p.symbol}</span>
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${accent}1a`, color: accent }}>
+                        {dir}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-mono text-muted-foreground">
+                    {p.shares.toFixed(2)} shares @ ${fmtPrice(p.entryPrice)}
+                  </div>
+                  <button
+                    onClick={() => closeStockPosition(p.id, p.entryPrice)}
+                    className="w-full rounded py-1.5 text-[11px] font-mono font-bold bg-secondary/60 hover:bg-secondary transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Polymarket */}
+      {polyPositions.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Cpu className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">Prediction Markets</span>
+            <div className="flex-1 h-px bg-border/50" />
+            <span className="text-[9px] font-mono text-muted-foreground">{polyPositions.length} bets</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {polyPositions.map((p) => (
+              <div key={p.id} className="rounded-lg border bg-card p-3 space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded ${p.side === "YES" ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"}`}>
+                    {p.side}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono">{p.category}</span>
+                </div>
+                <p className="text-xs text-foreground/80 line-clamp-2">{p.question}</p>
+                <div className="text-[10px] font-mono text-muted-foreground">
+                  {p.shares.toFixed(2)} shares · Entry ${p.entryPrice.toFixed(3)}
+                </div>
+                <button
+                  onClick={() => closePolyPosition(p.id, p.entryPrice)}
+                  className="w-full rounded py-1.5 text-[11px] font-mono font-bold bg-secondary/60 hover:bg-secondary transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
