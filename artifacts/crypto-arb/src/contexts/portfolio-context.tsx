@@ -371,6 +371,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         proceeds,
         pnl,
         closedAt: new Date().toISOString(),
+        openedAt: pos.openedAt,
       };
       return {
         ...prev,
@@ -486,6 +487,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         proceeds,
         pnl,
         closedAt: new Date().toISOString(),
+        openedAt: pos.openedAt,
+        auto: pos.auto,
       };
       return {
         ...prev,

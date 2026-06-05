@@ -277,7 +277,7 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
   polyStakePerBet: 25,
   polyMaxOpenBets: 4,
   polyMinBiasPct: 0.6,
-  polyHorizonHours: 24,
+  polyHorizonHours: 48,
   polyTakeProfitPct: 40,
   polyStopLossPct: 50,
 

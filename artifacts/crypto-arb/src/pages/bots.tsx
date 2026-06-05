@@ -360,7 +360,7 @@ export default function Bots() {
                     label="Max Open"
                     value={settings[b.maxKey] as number}
                     min={1}
-                    max={20}
+                    max={50}
                     onChange={(v) => update({ [b.maxKey]: v } as Partial<AutoTraderSettings>)}
                   />
                   <NumField

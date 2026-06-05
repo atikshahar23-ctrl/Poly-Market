@@ -7,6 +7,7 @@ import {
 import { usePortfolio, type ClosedTrade, type BinancePosition, type StockPosition } from "@/contexts/portfolio-context";
 import { CryptoIcon } from "@/components/crypto-icon";
 import { StockIcon } from "@/components/stock-icon";
+import { TradeAnalytics } from "@/components/trade-analytics";
 
 type TypeFilter = "ALL" | "BINANCE" | "STOCK" | "POLYMARKET";
 type ResultFilter = "ALL" | "WINS" | "LOSSES";
@@ -42,17 +43,29 @@ function fmtPrice(p: number): string {
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return "עכשיו";
+  if (m < 60) return `לפני ${m} ד׳`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return `לפני ${h} ש׳`;
+  return `לפני ${Math.floor(h / 24)} י׳`;
+}
+
+/** Holding duration from open to close, when both timestamps are known. */
+function duration(t: ClosedTrade): string | null {
+  if (!t.openedAt) return null;
+  const ms = new Date(t.closedAt).getTime() - new Date(t.openedAt).getTime();
+  if (!(ms > 0)) return null;
+  const m = Math.floor(ms / 60000);
+  if (m < 60) return `${m} ד׳`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} ש׳ ${m % 60} ד׳`;
+  return `${Math.floor(h / 24)} י׳ ${h % 24} ש׳`;
 }
 
 const TYPE_LABEL: Record<ClosedTrade["type"], string> = {
-  BINANCE: "Futures",
-  STOCK: "Stock",
-  POLYMARKET: "Prediction",
+  BINANCE: "פיוצ'רס",
+  STOCK: "מניות",
+  POLYMARKET: "הימור",
 };
 
 function StatCard({ label, value, sub, color, Icon }: {
@@ -110,7 +123,7 @@ function OpenPositions() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Activity className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-black tracking-tight">Open Positions ({total})</h2>
+        <h2 className="text-sm font-black tracking-tight">פוזיציות פתוחות ({total})</h2>
       </div>
 
       {/* Crypto / Binance Futures */}
@@ -120,7 +133,7 @@ function OpenPositions() {
             <Cpu className="h-3 w-3 text-muted-foreground" />
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">{botName}</span>
             <div className="flex-1 h-px bg-border/50" />
-            <span className="text-[9px] font-mono text-muted-foreground">{positions.length} crypto</span>
+            <span className="text-[9px] font-mono text-muted-foreground">{positions.length} קריפטו</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {positions.map((p) => {
@@ -146,8 +159,8 @@ function OpenPositions() {
                   </div>
                   <div className="flex items-end justify-between">
                     <div className="text-[10px] font-mono text-muted-foreground">
-                      <div>Entry ${fmtPrice(p.entryPrice)}</div>
-                      <div>Mark ${fmtPrice(cur)}</div>
+                      <div>כניסה ${fmtPrice(p.entryPrice)}</div>
+                      <div>שוק ${fmtPrice(cur)}</div>
                     </div>
                     <div className="text-right">
                       <div className="font-mono font-bold text-sm" style={{ color: up ? "#22c55e" : "#ef4444" }}>
@@ -162,7 +175,7 @@ function OpenPositions() {
                     onClick={() => closeBinancePosition(p.id, cur)}
                     className="w-full rounded py-1.5 text-[11px] font-mono font-bold bg-secondary/60 hover:bg-secondary transition-colors"
                   >
-                    Close @ ${fmtPrice(cur)}
+                    סגור @ ${fmtPrice(cur)}
                   </button>
                 </div>
               );
@@ -178,7 +191,7 @@ function OpenPositions() {
             <Cpu className="h-3 w-3 text-muted-foreground" />
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">{botName}</span>
             <div className="flex-1 h-px bg-border/50" />
-            <span className="text-[9px] font-mono text-muted-foreground">{positions.length} stocks</span>
+            <span className="text-[9px] font-mono text-muted-foreground">{positions.length} מניות</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {positions.map((p) => {
@@ -196,13 +209,13 @@ function OpenPositions() {
                     </div>
                   </div>
                   <div className="text-[10px] font-mono text-muted-foreground">
-                    {p.shares.toFixed(2)} shares @ ${fmtPrice(p.entryPrice)}
+                    {p.shares.toFixed(2)} מניות @ ${fmtPrice(p.entryPrice)}
                   </div>
                   <button
                     onClick={() => closeStockPosition(p.id, p.entryPrice)}
                     className="w-full rounded py-1.5 text-[11px] font-mono font-bold bg-secondary/60 hover:bg-secondary transition-colors"
                   >
-                    Close
+                    סגור
                   </button>
                 </div>
               );
@@ -216,9 +229,9 @@ function OpenPositions() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Cpu className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">Prediction Markets</span>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">שוקי חיזוי</span>
             <div className="flex-1 h-px bg-border/50" />
-            <span className="text-[9px] font-mono text-muted-foreground">{polyPositions.length} bets</span>
+            <span className="text-[9px] font-mono text-muted-foreground">{polyPositions.length} הימורים</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {polyPositions.map((p) => (
@@ -231,13 +244,13 @@ function OpenPositions() {
                 </div>
                 <p className="text-xs text-foreground/80 line-clamp-2">{p.question}</p>
                 <div className="text-[10px] font-mono text-muted-foreground">
-                  {p.shares.toFixed(2)} shares · Entry ${p.entryPrice.toFixed(3)}
+                  {p.shares.toFixed(2)} יחידות · כניסה ${p.entryPrice.toFixed(3)}
                 </div>
                 <button
                   onClick={() => closePolyPosition(p.id, p.entryPrice)}
                   className="w-full rounded py-1.5 text-[11px] font-mono font-bold bg-secondary/60 hover:bg-secondary transition-colors"
                 >
-                  Close
+                  סגור
                 </button>
               </div>
             ))}
@@ -286,7 +299,7 @@ export default function HistoryPage() {
     if (t.exit === "TP") return { label: "TP", color: "#22c55e" };
     if (t.exit === "SL") return { label: "SL", color: "#ef4444" };
     if (t.exit === "LIQ") return { label: "LIQ", color: "#f59e0b" };
-    return { label: "Manual", color: "#a1a1aa" };
+    return { label: "ידני", color: "#a1a1aa" };
   }
 
   return (
@@ -295,58 +308,60 @@ export default function HistoryPage() {
         <div>
           <div className="flex items-center gap-2">
             <HistoryIcon className="h-5 w-5 text-primary" />
-            <h1 className="text-xl font-black tracking-tight">Trade History</h1>
+            <h1 className="text-xl font-black tracking-tight">היסטוריית עסקאות</h1>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Your complete demo-trading track record — every closed position, win rate &amp; P&amp;L.
+            מעקב הדמו המלא שלך — כל פוזיציה שנסגרה, אחוז ההצלחה והרווח/הפסד. הדמיה חינוכית בלבד, ללא כסף אמיתי.
           </p>
         </div>
         <button
           onClick={() => {
-            if (confirm("Reset demo portfolio? This clears balance, open positions and all trade history.")) resetPortfolio();
+            if (confirm("לאפס את תיק הדמו? הפעולה מוחקת את היתרה, הפוזיציות הפתוחות וכל היסטוריית העסקאות.")) resetPortfolio();
           }}
           className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[11px] font-mono font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors flex-shrink-0"
         >
-          <Trash2 className="h-3.5 w-3.5" /> Reset
+          <Trash2 className="h-3.5 w-3.5" /> איפוס
         </button>
       </div>
 
       {/* Account row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <StatCard label="Balance" value={`$${fmtUsd(cash, 0)}`} Icon={Wallet} sub={`Deposited $${fmtUsd(totalDeposited, 0)}`} />
-        <StatCard label="Realized P&L" value={`${stats.totalPnl >= 0 ? "+" : ""}$${fmtUsd(stats.totalPnl)}`} color={pnlColor} Icon={stats.totalPnl >= 0 ? TrendingUp : TrendingDown} sub={`${stats.n} closed trades`} />
-        <StatCard label="Win Rate" value={`${stats.winRate.toFixed(0)}%`} Icon={Trophy} sub={`${stats.wins}W · ${stats.losses}L`} />
-        <StatCard label="Profit Factor" value={stats.profitFactor === Infinity ? "∞" : stats.profitFactor.toFixed(2)} Icon={Target} sub={`${stats.autoCount} auto-traded`} />
+        <StatCard label="יתרה" value={`$${fmtUsd(cash, 0)}`} Icon={Wallet} sub={`הופקדו $${fmtUsd(totalDeposited, 0)}`} />
+        <StatCard label="רווח/הפסד ממומש" value={`${stats.totalPnl >= 0 ? "+" : ""}$${fmtUsd(stats.totalPnl)}`} color={pnlColor} Icon={stats.totalPnl >= 0 ? TrendingUp : TrendingDown} sub={`${stats.n} עסקאות סגורות`} />
+        <StatCard label="אחוז הצלחה" value={`${stats.winRate.toFixed(0)}%`} Icon={Trophy} sub={`${stats.wins} נצחונות · ${stats.losses} הפסדים`} />
+        <StatCard label="מקדם רווח" value={stats.profitFactor === Infinity ? "∞" : stats.profitFactor.toFixed(2)} Icon={Target} sub={`${stats.autoCount} אוטומטיות`} />
       </div>
 
       {/* Best/Worst row */}
       <div className="grid grid-cols-2 gap-2">
-        <StatCard label="Best Trade" value={`+$${fmtUsd(stats.best)}`} color="#22c55e" Icon={TrendingUp} />
-        <StatCard label="Worst Trade" value={`-$${fmtUsd(Math.abs(stats.worst))}`} color="#ef4444" Icon={TrendingDown} />
+        <StatCard label="העסקה הטובה ביותר" value={`+$${fmtUsd(stats.best)}`} color="#22c55e" Icon={TrendingUp} />
+        <StatCard label="העסקה הגרועה ביותר" value={`-$${fmtUsd(Math.abs(stats.worst))}`} color="#ef4444" Icon={TrendingDown} />
       </div>
 
       <OpenPositions />
 
+      <TradeAnalytics />
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <FilterGroup label="Type" value={typeF} setValue={(v) => setTypeF(v as TypeFilter)} options={["ALL", "BINANCE", "STOCK", "POLYMARKET"]} render={(o) => (o === "ALL" ? "All" : TYPE_LABEL[o as ClosedTrade["type"]])} />
-        <FilterGroup label="Result" value={resultF} setValue={(v) => setResultF(v as ResultFilter)} options={["ALL", "WINS", "LOSSES"]} render={(o) => o[0] + o.slice(1).toLowerCase()} />
-        <FilterGroup label="Source" value={sourceF} setValue={(v) => setSourceF(v as SourceFilter)} options={["ALL", "AUTO", "MANUAL"]} render={(o) => o[0] + o.slice(1).toLowerCase()} />
+        <FilterGroup label="סוג" value={typeF} setValue={(v) => setTypeF(v as TypeFilter)} options={["ALL", "BINANCE", "STOCK", "POLYMARKET"]} render={(o) => (o === "ALL" ? "הכל" : TYPE_LABEL[o as ClosedTrade["type"]])} />
+        <FilterGroup label="תוצאה" value={resultF} setValue={(v) => setResultF(v as ResultFilter)} options={["ALL", "WINS", "LOSSES"]} render={(o) => ({ ALL: "הכל", WINS: "רווחים", LOSSES: "הפסדים" }[o] ?? o)} />
+        <FilterGroup label="מקור" value={sourceF} setValue={(v) => setSourceF(v as SourceFilter)} options={["ALL", "AUTO", "MANUAL"]} render={(o) => ({ ALL: "הכל", AUTO: "אוטומטי", MANUAL: "ידני" }[o] ?? o)} />
       </div>
 
       {/* Table */}
       {tradeHistory.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-16 text-center">
           <HistoryIcon className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No closed trades yet.</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">Open a demo trade from the Scalp Signals or Simulator page to get started.</p>
+          <p className="text-sm text-muted-foreground">עדיין אין עסקאות סגורות.</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">פתח עסקת דמו ממסך סיגנלי הסקאלפ או הסימולטור כדי להתחיל.</p>
         </div>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-10 text-center">No trades match these filters.</p>
+        <p className="text-sm text-muted-foreground py-10 text-center">אין עסקאות שתואמות את הסינון.</p>
       ) : (
         <div className="rounded-lg border bg-card overflow-hidden">
           <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-2 border-b border-border text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
-            <span>Trade</span><span className="text-right">Exit</span><span className="text-right">Margin</span><span className="text-right">P&amp;L</span><span className="text-right">When</span>
+            <span>עסקה</span><span className="text-right">יציאה</span><span className="text-right">מרג'ין</span><span className="text-right">רווח/הפסד</span><span className="text-right">מתי</span>
           </div>
           <div className="divide-y divide-border/60">
             {filtered.map((t) => {
@@ -364,7 +379,8 @@ export default function HistoryPage() {
                         <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-secondary/40 text-muted-foreground flex items-center gap-0.5"><Hand className="h-2.5 w-2.5" /> MANUAL</span>
                       )}
                     </div>
-                    <div className="font-mono text-[11px] text-foreground/90 truncate mt-0.5">{t.description}</div>
+                    <div className="font-mono text-[11px] text-foreground/90 break-words line-clamp-2 mt-0.5" title={t.description}>{t.description}</div>
+                    {duration(t) && <div className="font-mono text-[9px] text-muted-foreground/60 mt-0.5">משך: {duration(t)}</div>}
                   </div>
                   <div className="text-right sm:order-none order-last col-span-2 sm:col-span-1">
                     <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${ex.color}1a`, color: ex.color }}>{ex.label}</span>
@@ -374,7 +390,10 @@ export default function HistoryPage() {
                     <div className="font-mono text-sm font-bold" style={{ color: up ? "#22c55e" : "#ef4444" }}>{up ? "+" : ""}${fmtUsd(t.pnl)}</div>
                     <div className="font-mono text-[10px]" style={{ color: up ? "#22c55e" : "#ef4444" }}>{up ? "+" : ""}{pct.toFixed(1)}%</div>
                   </div>
-                  <div className="hidden sm:block text-right font-mono text-[10px] text-muted-foreground">{timeAgo(t.closedAt)}</div>
+                  <div className="hidden sm:block text-right font-mono text-[10px] text-muted-foreground">
+                    <div>{timeAgo(t.closedAt)}</div>
+                    {duration(t) && <div className="text-muted-foreground/50">{duration(t)}</div>}
+                  </div>
                 </div>
               );
             })}

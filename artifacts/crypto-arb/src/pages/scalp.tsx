@@ -305,8 +305,8 @@ function AutoTraderPanel() {
               type="number"
               value={settings.maxOpenPositions}
               min={1}
-              max={20}
-              onChange={(e) => update({ maxOpenPositions: Math.max(1, Math.min(20, Number(e.target.value))) })}
+              max={50}
+              onChange={(e) => update({ maxOpenPositions: Math.max(1, Math.min(50, Number(e.target.value))) })}
               className="h-8 font-mono text-sm"
             />
           </div>

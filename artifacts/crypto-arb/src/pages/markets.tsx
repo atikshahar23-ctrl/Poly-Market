@@ -388,7 +388,7 @@ function BtcBetBot() {
               value={settings.polyMaxOpenBets}
               min={1}
               className="h-8 bg-secondary/30 font-mono text-sm"
-              onChange={(e) => update({ polyMaxOpenBets: Math.max(1, Math.min(20, Number(e.target.value))) })}
+              onChange={(e) => update({ polyMaxOpenBets: Math.max(1, Math.min(50, Number(e.target.value))) })}
             />
           </div>
 

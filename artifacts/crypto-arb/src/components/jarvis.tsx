@@ -9,6 +9,7 @@ import {
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { useLocation } from "wouter";
 import { X, Send, Sparkles, ExternalLink, Mic, MicOff, Volume2, VolumeX, Zap } from "lucide-react";
+import logoUrl from "@/assets/logo-heavy-guard.png";
 
 interface MsgLink {
   label: string;
@@ -70,44 +71,32 @@ function newsLink(symbol: string, name: string): MsgLink {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Animated SVG face — eyes blink on a timer, mouth opens/closes
-   while JARVIS is speaking, subtle pupil drift when idle.
+   JARVIS avatar — the brand bull logo inside a glowing ring that
+   pulses while JARVIS is speaking.
    ───────────────────────────────────────────────────────────── */
 function JarvisFace({ speaking, size = 48 }: { speaking: boolean; size?: number }) {
-  const [blink, setBlink] = useState(false);
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout>;
-    const loop = () => {
-      const next = 2200 + Math.random() * 2600;
-      timeout = setTimeout(() => {
-        setBlink(true);
-        setTimeout(() => setBlink(false), 130);
-        loop();
-      }, next);
-    };
-    loop();
-    return () => clearTimeout(timeout);
-  }, []);
-
   const gold = "hsl(32 84% 55%)";
   const cyan = "hsl(190 80% 52%)";
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className="overflow-visible">
-      {/* face ring */}
-      <circle cx="24" cy="24" r="21" fill="hsl(220 15% 9%)" stroke={gold} strokeWidth="1.5" opacity="0.95" />
-      <circle cx="24" cy="24" r="21" fill="none" stroke={cyan} strokeWidth="0.5" opacity="0.45" className="jarvis-ring" />
-      {/* eyes — cyan glow echoing the logo bull */}
-      <g style={{ transition: "transform 80ms", transformOrigin: "center", transform: blink ? "scaleY(0.1)" : "scaleY(1)" }}>
-        <circle cx="16.5" cy="20" r="3.1" fill={cyan} className="jarvis-glow" />
-        <circle cx="31.5" cy="20" r="3.1" fill={cyan} className="jarvis-glow" />
-      </g>
-      {/* mouth — animated bar while speaking */}
-      {speaking ? (
-        <rect x="15" y="30" width="18" height="6" rx="3" fill={gold} className="jarvis-mouth-speak" />
-      ) : (
-        <rect x="17" y="32" width="14" height="2.4" rx="1.2" fill={gold} opacity="0.85" />
-      )}
-    </svg>
+    <div className="relative grid place-items-center rounded-full" style={{ width: size, height: size }}>
+      {/* scanning aura ring echoing the brand bull */}
+      <span
+        className="absolute rounded-full jarvis-ring"
+        style={{ inset: -2, border: `1px dashed ${cyan}`, opacity: 0.5 }}
+      />
+      <img
+        src={logoUrl}
+        alt="JARVIS"
+        draggable={false}
+        className={`h-full w-full rounded-full object-cover ${speaking ? "jarvis-speaking" : ""}`}
+        style={{
+          boxShadow: `inset 0 0 0 1.5px ${gold}`,
+          filter: speaking
+            ? "drop-shadow(0 0 7px hsl(32 84% 55% / 0.85))"
+            : "drop-shadow(0 0 3px hsl(32 84% 55% / 0.5))",
+        }}
+      />
+    </div>
   );
 }
 
