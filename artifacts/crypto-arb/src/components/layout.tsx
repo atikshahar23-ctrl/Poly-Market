@@ -4,9 +4,10 @@ import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-re
 import { usePortfolio } from "@/contexts/portfolio-context";
 import {
   LayoutDashboard, LineChart, CandlestickChart, Zap, Globe, Trophy,
-  TrendingUp, Menu, X, Activity, Gauge, Timer, History, Rocket, Megaphone, Bot, Search,
+  TrendingUp, Menu, X, Activity, Gauge, Timer, History, Rocket, Megaphone, Bot, Search, Newspaper,
 } from "lucide-react";
 import { Jarvis } from "@/components/jarvis";
+import { MarketClock } from "@/components/market-clock";
 import { TopControls } from "@/components/top-controls";
 import { WalletSwitcher } from "@/components/wallet-switcher";
 import { EarthBackground } from "@/components/earth-background";
@@ -75,6 +76,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     {
       title: "כלים",
       links: [
+        { href: "/briefing", label: "תדריך שוק", icon: Newspaper },
         { href: "/research", label: "Research Desk", icon: Search },
         { href: "/history", label: "Trade History", icon: History },
       ],
@@ -97,6 +99,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           style={{ filter: 'drop-shadow(0 0 14px hsl(32 84% 55% / 0.22))' }}
         />
         <p className="text-[9px] short:text-[8px] text-muted-foreground tracking-[0.32em] uppercase font-mono">Sentinel Terminal</p>
+        <MarketClock />
       </div>
 
       <nav className="relative flex-1 px-2.5 py-3 short:py-2 space-y-3 overflow-y-auto">

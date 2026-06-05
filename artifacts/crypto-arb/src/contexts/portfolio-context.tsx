@@ -92,6 +92,10 @@ export interface ClosedTrade {
   exitPrice?: number;
   /** Leverage multiplier (crypto/stock; 1 when none). */
   leverage?: number;
+  /** Planned stop-loss price at open (crypto/stock), for the trade analysis. */
+  slPrice?: number;
+  /** Planned take-profit price at open (crypto/stock), for the trade analysis. */
+  tpPrice?: number;
   /** Units held: contracts notional value (crypto), shares (stock), or units (Polymarket). */
   qty?: number;
   /** Which bot/source opened the trade (e.g. "Scalp signal", "Dip Buyer"). */
@@ -473,6 +477,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           type: "BINANCE",
           symbol: pos.asset,
           description: `${pos.direction} ${pos.asset} ${pos.leverage}x @ $${pos.entryPrice.toLocaleString()} → $${currentPrice.toLocaleString()}`,
+        slPrice: pos.slPrice,
+        tpPrice: pos.tpPrice,
           cost: margin,
           proceeds: Math.max(0, proceeds),
           pnl,
@@ -543,6 +549,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         type: "STOCK",
         symbol: pos.symbol,
         description: `${dir} ${pos.symbol}${pos.leverage > 1 ? ` ${pos.leverage}x` : ""} ${pos.shares.toFixed(2)} sh @ $${pos.entryPrice.toFixed(2)} → $${currentPrice.toFixed(2)}`,
+        slPrice: pos.slPrice,
+        tpPrice: pos.tpPrice,
         cost: pos.cost,
         proceeds,
         pnl,
@@ -600,6 +608,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           type: "BINANCE",
           symbol: pos.asset,
           description: `${hitTP ? "TP" : "SL"} ${pos.direction} ${pos.asset} ${pos.leverage}x @ $${price.toLocaleString()} (entry $${pos.entryPrice.toLocaleString()})`,
+          slPrice: pos.slPrice,
+          tpPrice: pos.tpPrice,
           cost: margin,
           proceeds,
           pnl,
@@ -639,6 +649,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           type: "STOCK",
           symbol: pos.symbol,
           description: `${hitTP ? "TP" : "SL"} ${dir} ${pos.symbol}${pos.leverage > 1 ? ` ${pos.leverage}x` : ""} ${pos.shares.toFixed(2)} sh @ $${price.toFixed(2)} (entry $${pos.entryPrice.toFixed(2)})`,
+          slPrice: pos.slPrice,
+          tpPrice: pos.tpPrice,
           cost: pos.cost,
           proceeds,
           pnl,
@@ -758,6 +770,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           type: "BINANCE",
           symbol: pos.asset,
           description: `LIQ-GUARD ${pos.direction} ${pos.asset} ${pos.leverage}x @ $${price.toLocaleString()} (entry $${pos.entryPrice.toLocaleString()})`,
+          slPrice: pos.slPrice,
+          tpPrice: pos.tpPrice,
           cost: margin,
           proceeds,
           pnl,
@@ -815,6 +829,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         type: "BINANCE",
         symbol: pos.asset,
         description: `KILL-SWITCH ${pos.direction} ${pos.asset} ${pos.leverage}x @ $${price.toLocaleString()} (entry $${pos.entryPrice.toLocaleString()})`,
+        slPrice: pos.slPrice,
+        tpPrice: pos.tpPrice,
         cost: margin,
         proceeds,
         pnl,
@@ -844,6 +860,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         type: "STOCK",
         symbol: pos.symbol,
         description: `KILL-SWITCH ${pos.symbol}${pos.leverage > 1 ? ` ${pos.leverage}x` : ""} ${pos.shares.toFixed(2)} sh @ $${price.toFixed(2)} (entry $${pos.entryPrice.toFixed(2)})`,
+        slPrice: pos.slPrice,
+        tpPrice: pos.tpPrice,
         cost: pos.cost,
         proceeds,
         pnl,

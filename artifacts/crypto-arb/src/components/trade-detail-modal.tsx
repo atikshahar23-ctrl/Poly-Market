@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import {
   X, TrendingUp, TrendingDown, Bot, Hand, Clock, Target, Cpu,
-  ArrowUpRight, ArrowDownRight,
+  ArrowUpRight, ArrowDownRight, Lightbulb, ClipboardList, Flag, Brain,
 } from "lucide-react";
 import type { ClosedTrade } from "@/contexts/portfolio-context";
 import { TradeDetailChart } from "@/components/trade-detail-chart";
@@ -73,6 +73,136 @@ function holdingDuration(t: ClosedTrade): string | null {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} ש׳ ${m % 60} ד׳`;
   return `${Math.floor(h / 24)} ימים ${h % 24} ש׳`;
+}
+
+const SOURCE_REASON: Record<string, string> = {
+  "Dip Buyer": "הבוט זיהה ירידה חדה במחיר וקנה את ה״דיפ״ בציפייה לתיקון כלפי מעלה",
+  "Breakout Hunter": "הבוט זיהה פריצה של התנגדות עם מומנטום וביקש לרכוב על התנועה",
+  "Blue-Chip DCA": "רכישה מדורגת (DCA) של נכס איכותי לטווח ארוך, ללא תזמון שוק",
+  "Scalp signal": "סיגנל סקאלפ זיהה התכנסות של RSI/EMA/ATR לכיוון ברור בטווח קצר",
+  "Momentum surge": "סורק המומנטום זיהה זינוק בנפח ובקצב העלייה (RVol/ROC)",
+  "Smart-Money": "הסוכן החכם זיהה הצטברות סיגנלים טכניים ומשפיענים לאותו כיוון",
+  "Smart-Money (technical + influencer)": "הסוכן החכם שילב איתות טכני עם סנטימנט משפיענים לאותו כיוון",
+  "Quick Trade": "כניסה מהירה ידנית מתוך מסך ההימורים/הסיגנלים",
+};
+
+function fmtRR(rr: number): string {
+  return `1:${rr.toFixed(2)}`;
+}
+
+interface TradeAnalysis {
+  why: string;
+  plan: string[];
+  outcome: string[];
+  lesson: string;
+  lessonTone: "good" | "bad" | "neutral";
+}
+
+/** Build a Hebrew narrative breakdown of one closed trade from its stored fields. */
+function buildAnalysis(t: ClosedTrade): TradeAnalysis {
+  const won = t.pnl >= 0;
+  const lev = t.leverage ?? 1;
+  const dirWord =
+    t.direction === "LONG" ? "עלייה (לונג)" :
+    t.direction === "SHORT" ? "ירידה (שורט)" :
+    t.direction === "YES" ? "כן (YES)" :
+    t.direction === "NO" ? "לא (NO)" : "כיוון";
+
+  // ── Why we entered ──
+  let why: string;
+  if (t.source && SOURCE_REASON[t.source]) why = SOURCE_REASON[t.source];
+  else if (t.auto) why = "האוטו-טריידר זיהה סטאפ שעמד בקריטריונים של הצי ופתח את הפוזיציה אוטומטית";
+  else why = "החלטת כניסה ידנית של הסוחר";
+  why += `. הכיוון שנבחר: ${dirWord}${lev > 1 ? `, במינוף ${lev}x` : ""}.`;
+
+  // ── The plan (targets) ──
+  const plan: string[] = [];
+  if (Number.isFinite(t.entryPrice)) plan.push(`מחיר כניסה מתוכנן: $${fmtPrice(t.entryPrice as number)}`);
+  if (t.tpPrice != null) plan.push(`יעד רווח (TP): $${fmtPrice(t.tpPrice)}`);
+  if (t.slPrice != null) plan.push(`סטופ לוס (SL): $${fmtPrice(t.slPrice)}`);
+  if (t.tpPrice != null && t.slPrice != null && Number.isFinite(t.entryPrice)) {
+    const entry = t.entryPrice as number;
+    const risk = Math.abs(entry - t.slPrice);
+    const reward = Math.abs(t.tpPrice - entry);
+    if (risk > 0) plan.push(`יחס סיכון/סיכוי מתוכנן: ${fmtRR(reward / risk)}`);
+  }
+  if (plan.length === 0) plan.push("לא נשמרה תוכנית מובנית של יעד/סטופ לעסקה זו (עסקה ישנה או כניסה ידנית).");
+
+  // ── What happened ──
+  const outcome: string[] = [];
+  const ex = exitInfo(t);
+  outcome.push(`סיבת היציאה: ${ex.label}`);
+  if (t.exitPrice != null) outcome.push(`מחיר יציאה בפועל: $${fmtPrice(t.exitPrice)}`);
+  const pct = t.cost > 0 ? (t.pnl / t.cost) * 100 : 0;
+  outcome.push(`תוצאה: ${won ? "+" : ""}$${fmtUsd(t.pnl)} (${won ? "+" : ""}${pct.toFixed(2)}% על המרג׳ין)`);
+  const dur = holdingDuration(t);
+  if (dur) outcome.push(`משך החזקה: ${dur}`);
+
+  // ── Lesson ──
+  let lesson: string;
+  let lessonTone: "good" | "bad" | "neutral" = "neutral";
+  if (t.exit === "TP") { lesson = "העסקה הגיעה ליעד הרווח לפי התוכנית — ביצוע ממושמע של אסטרטגיית היציאה. כך נראית עסקה ״לפי הספר״."; lessonTone = "good"; }
+  else if (t.exit === "SL") { lesson = "העסקה נקטעה בסטופ לפי התוכנית — ההפסד הוגבל מראש וזה בדיוק תפקיד הסטופ. ניהול סיכון נכון, גם כשמפסידים."; lessonTone = "bad"; }
+  else if (t.exit === "LIQ") { lesson = "יציאת חירום של מנהל הסיכונים (לפני סיכון מסוכן) — בדוק אם המינוף היה גבוה מדי או הסטופ רחוק מדי."; lessonTone = "bad"; }
+  else if (won) { lesson = "נסגרה ידנית ברווח — שקול אם כדאי היה לתת לרווח לרוץ עד היעד, או שהסגירה המוקדמת נכונה לסטאפ הזה."; lessonTone = "good"; }
+  else { lesson = "נסגרה ידנית בהפסד לפני הסטופ — שים לב לסגירות רגשיות; לרוב עדיף לתת לתוכנית (SL/TP) לעבוד."; lessonTone = "bad"; }
+
+  return { why, plan, outcome, lesson, lessonTone };
+}
+
+function AnalysisBlock({ trade }: { trade: ClosedTrade }) {
+  const a = buildAnalysis(trade);
+  const lessonColor = a.lessonTone === "good" ? "#22c55e" : a.lessonTone === "bad" ? "#ef4444" : "#a1a1aa";
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-1.5">
+        <Brain className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-bold tracking-tight">ניתוח מלא של העסקה</h3>
+      </div>
+
+      <div className="rounded-lg border bg-card/60 p-3 space-y-1">
+        <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          <Lightbulb className="h-3 w-3" /> למה נכנסנו
+        </div>
+        <p className="text-xs text-foreground/85 leading-relaxed">{a.why}</p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-2.5">
+        <div className="rounded-lg border bg-card/60 p-3 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+            <ClipboardList className="h-3 w-3" /> התוכנית והיעדים
+          </div>
+          <ul className="space-y-0.5">
+            {a.plan.map((line, i) => (
+              <li key={i} className="text-[11px] text-foreground/85 leading-relaxed flex gap-1.5">
+                <span className="text-primary/70">•</span> <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-lg border bg-card/60 p-3 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+            <Flag className="h-3 w-3" /> מה קרה בסוף
+          </div>
+          <ul className="space-y-0.5">
+            {a.outcome.map((line, i) => (
+              <li key={i} className="text-[11px] text-foreground/85 leading-relaxed flex gap-1.5">
+                <span className="text-primary/70">•</span> <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="rounded-lg border p-3 space-y-1" style={{ borderColor: `${lessonColor}40`, background: `${lessonColor}0d` }}>
+        <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider" style={{ color: lessonColor }}>
+          <Brain className="h-3 w-3" /> מסקנה ולקח
+        </div>
+        <p className="text-xs text-foreground/90 leading-relaxed">{a.lesson}</p>
+      </div>
+    </div>
+  );
 }
 
 function DetailRow({ label, value, color }: { label: string; value: string; color?: string }) {
@@ -219,6 +349,9 @@ export function TradeDetailModal({ trade, onClose }: Props) {
               </div>
             </div>
           )}
+
+          {/* Full per-trade analysis */}
+          <AnalysisBlock trade={trade} />
 
           <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
             <Cpu className="h-3 w-3" /> הדמיה חינוכית בלבד — ללא כסף אמיתי וללא הבטחת תשואות.

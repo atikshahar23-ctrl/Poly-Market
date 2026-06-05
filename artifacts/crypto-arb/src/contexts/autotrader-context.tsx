@@ -522,6 +522,16 @@ export interface AlphaState {
   total: number;
   /** Distinct signal sources that contributed (scalp / momentum / smart-money). */
   sources: number;
+  /** Rolling win-rate (0-100) over the master's recent closed trades. */
+  recentWinRate: number;
+  /** Number of recent closed trades the win-rate is computed from. */
+  recentSample: number;
+  /**
+   * "Control level" 0-100 — how much command the master has earned from its own
+   * track record. Blends recent win-rate with sample size so a couple of lucky
+   * trades don't inflate it. Higher = the fleet acts with a bit more conviction.
+   */
+  masteryScore: number;
   /** epoch-ms of the last recompute. */
   updatedAt: number;
 }
@@ -533,6 +543,9 @@ export const NEUTRAL_ALPHA: AlphaState = {
   shortVotes: 0,
   total: 0,
   sources: 0,
+  recentWinRate: 0,
+  recentSample: 0,
+  masteryScore: 0,
   updatedAt: 0,
 };
 
@@ -554,9 +567,14 @@ export function alphaAdjust(
   if (!enabled || !alpha || alpha.direction === "NEUTRAL") return { selMult: 1, rankAdd: 0 };
   const strength = Math.min(1, alpha.confluence / 100);
   const aligned = alpha.direction === dir;
+  // Earned "control level" lends the master a small, strictly bounded extra edge
+  // on aligned trades only (max 10% easier). It NEVER loosens an opposing trade,
+  // so a hot streak can't make the fleet reckless against its own conviction.
+  const mastery = Math.min(1, Math.max(0, (alpha.masteryScore ?? 0) / 100));
+  const masteryEase = aligned ? 0.1 * mastery : 0;
   return {
-    // Aligned: up to 35% easier. Opposing: up to 60% stricter.
-    selMult: aligned ? 1 - 0.35 * strength : 1 + 0.6 * strength,
+    // Aligned: up to 35% easier (+ up to 10% from earned mastery). Opposing: up to 60% stricter.
+    selMult: aligned ? 1 - 0.35 * strength - masteryEase : 1 + 0.6 * strength,
     // Once conviction is firm, shift the scalp confidence bar by one notch.
     rankAdd: strength >= 0.5 ? (aligned ? -1 : 1) : 0,
   };

@@ -180,8 +180,23 @@ export function AutoTraderEngine() {
   // source (scalp confidence, momentum surge, smart-money stock votes) and resolve
   // one dominant conviction. Each bot then trades in formation around it — easier
   // entries when aligned, stricter when fighting the consensus.
+  // The master's earned "control level": a rolling win-rate over its recent
+  // auto-trades, damped by sample size so a few lucky trades can't inflate it.
+  // Educational only — it nudges selectivity slightly, it does not predict.
+  const mastery = useMemo(() => {
+    const recent = tradeHistory.filter((t) => t.auto).slice(0, 30);
+    const sample = recent.length;
+    if (sample === 0) return { recentWinRate: 0, recentSample: 0, masteryScore: 0 };
+    const wins = recent.filter((t) => t.pnl >= 0).length;
+    const winRate = (wins / sample) * 100;
+    // Confidence in the win-rate grows with sample size (full weight at ~15 trades).
+    const sampleWeight = Math.min(1, sample / 15);
+    const masteryScore = Math.round(winRate * sampleWeight);
+    return { recentWinRate: Math.round(winRate), recentSample: sample, masteryScore };
+  }, [tradeHistory]);
+
   const alphaState = useMemo<AlphaState>(() => {
-    if (!settings.alphaCoordinatorEnabled) return NEUTRAL_ALPHA;
+    if (!settings.alphaCoordinatorEnabled) return { ...NEUTRAL_ALPHA, ...mastery, updatedAt: Date.now() };
     let longVotes = 0;
     let shortVotes = 0;
     const contributing = new Set<string>();
@@ -207,7 +222,7 @@ export function AutoTraderEngine() {
     }
 
     const total = longVotes + shortVotes;
-    if (total <= 0) return NEUTRAL_ALPHA;
+    if (total <= 0) return { ...NEUTRAL_ALPHA, ...mastery, updatedAt: Date.now() };
     const domVotes = Math.max(longVotes, shortVotes);
     const confluence = Math.round((domVotes / total) * 100);
     const dom: "LONG" | "SHORT" = longVotes >= shortVotes ? "LONG" : "SHORT";
@@ -218,9 +233,10 @@ export function AutoTraderEngine() {
       shortVotes: Math.round(shortVotes),
       total: Math.round(total),
       sources: contributing.size,
+      ...mastery,
       updatedAt: Date.now(),
     };
-  }, [signals, momentum, stockRecs, settings.alphaCoordinatorEnabled]);
+  }, [signals, momentum, stockRecs, settings.alphaCoordinatorEnabled, mastery]);
 
   // Publish the resolved conviction so the Bot Command Center can render it live.
   useEffect(() => {

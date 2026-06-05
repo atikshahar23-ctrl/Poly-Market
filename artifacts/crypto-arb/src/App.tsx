@@ -19,6 +19,7 @@ import History from "@/pages/history";
 import TradeDesk from "@/pages/trade-desk";
 import Bots from "@/pages/bots";
 import Research from "@/pages/research";
+import Briefing from "@/pages/briefing";
 import Layout from "@/components/layout";
 import { PortfolioProvider } from "@/contexts/portfolio-context";
 import { FavoritesProvider } from "@/contexts/favorites-context";
@@ -49,6 +50,7 @@ function Router() {
         <Route path="/smart-money" component={SmartMoney} />
         <Route path="/simulator" component={Simulator} />
         <Route path="/bots" component={Bots} />
+        <Route path="/briefing" component={Briefing} />
         <Route path="/research" component={Research} />
         <Route component={NotFound} />
       </Switch>

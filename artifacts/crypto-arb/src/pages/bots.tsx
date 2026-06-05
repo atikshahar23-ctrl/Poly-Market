@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import {
   Bot, Power, Gauge, Rocket, Megaphone, Timer, TrendingDown, TrendingUp,
   Layers, Brain, RotateCcw, Activity, ShieldCheck, ShieldAlert, Scissors, Zap, Square, Cpu,
-  Network, ArrowUpRight, ArrowDownRight, Minus,
+  Network, ArrowUpRight, ArrowDownRight, Minus, Trophy,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -417,6 +417,25 @@ export default function Bots() {
               <StatChip label="סף כניסה (תואם)" value={committed ? "מרוכך" : "רגיל"} tone={committed ? "good" : undefined} />
               <StatChip label="סף כניסה (נוגד)" value={committed ? "מחמיר" : "רגיל"} tone={committed ? "bad" : undefined} />
               <StatChip label="תוספת מקומות" value={strong ? "+2 כשהצי חזק" : "—"} tone={strong ? "good" : undefined} />
+            </div>
+
+            {/* Earned control level — the master's track record turns into conviction */}
+            <div className="relative mt-3 rounded-lg border border-primary/25 bg-primary/[0.06] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Trophy className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-bold">רמת שליטה של המאסטר</span>
+                </div>
+                <span className="text-sm font-black tabular-nums text-primary">{alpha.masteryScore}%</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-secondary/40 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${alpha.masteryScore}%`, background: "hsl(43 74% 52%)" }} />
+              </div>
+              <p className="mt-1.5 text-[10px] text-muted-foreground leading-relaxed">
+                {alpha.recentSample > 0
+                  ? `נמדד מ-${alpha.recentSample} העסקאות האוטומטיות האחרונות (אחוז הצלחה ${alpha.recentWinRate}%). ככל שהמאסטר מצליח לאורך זמן הוא מקבל מעט יותר ביטחון בעסקאות התואמות לכיוון הצי — בגבול מבוקר, אף פעם לא בעסקאות נוגדות.`
+                  : "עדיין אין מספיק עסקאות אוטומטיות שנסגרו כדי לדרג את המאסטר. רמת השליטה תיבנה מאחוז ההצלחה האמיתי שלו לאורך זמן."}
+              </p>
             </div>
 
             {on && committed && (
