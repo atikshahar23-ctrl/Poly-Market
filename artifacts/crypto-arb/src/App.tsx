@@ -16,6 +16,7 @@ import Scalp from "@/pages/scalp";
 import Momentum from "@/pages/momentum";
 import QuickBets from "@/pages/quickbets";
 import History from "@/pages/history";
+import TradeDesk from "@/pages/trade-desk";
 import Bots from "@/pages/bots";
 import Research from "@/pages/research";
 import Layout from "@/components/layout";
@@ -40,6 +41,7 @@ function Router() {
         <Route path="/momentum" component={Momentum} />
         <Route path="/quickbets" component={QuickBets} />
         <Route path="/history" component={History} />
+        <Route path="/trade-desk" component={TradeDesk} />
         <Route path="/markets" component={Markets} />
         <Route path="/binance" component={Binance} />
         <Route path="/recommendations" component={Recommendations} />

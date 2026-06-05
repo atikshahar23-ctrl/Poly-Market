@@ -48,7 +48,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       title: "מסחר",
       links: [
         { href: "/", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/recommendations", label: "Trade Desk", icon: Zap },
+        { href: "/trade-desk", label: "Trade Desk", icon: Zap },
         { href: "/simulator", label: "Simulator", icon: Trophy, extra: <PortfolioMiniBalance /> },
         { href: "/bots", label: "Bot Command", icon: Bot },
       ],
