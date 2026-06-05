@@ -141,8 +141,41 @@ export function evaluateRiskGuard(
   return next;
 }
 
+/** Pure helper — computes dynamic position sizing based on portfolio state.
+ *  Accepts any array with a `pnl` field so it stays free of circular imports. */
+export interface DynamicSizing { margin: number; leverage: number; }
+export function computeDynamicSizing(
+  cash: number,
+  totalDeposited: number,
+  recentTrades: { pnl: number }[],
+): DynamicSizing {
+  // Portfolio health ratio (1.0 = break-even, >1 = winning, <1 = losing)
+  const ratio = totalDeposited > 0 ? cash / totalDeposited : 1;
+
+  // Win-rate from the last 10 closed trades (default 50% when data is sparse)
+  const sample = recentTrades.slice(0, 10);
+  const wr = sample.length >= 3 ? sample.filter((t) => t.pnl > 0).length / sample.length : 0.5;
+
+  // Position size: 4% of cash, then scaled by portfolio health, $50–$600
+  const rawMargin = cash * 0.04;
+  const sizeScale =
+    ratio >= 1.15 ? 1.25 : ratio >= 1.05 ? 1.1 : ratio <= 0.80 ? 0.65 : ratio <= 0.90 ? 0.80 : 1.0;
+  const margin = Math.max(50, Math.min(600, Math.round((rawMargin * sizeScale) / 10) * 10));
+
+  // Leverage: base 3×, win-rate + health weighted, clamped 2×–8×
+  const winScore    = Math.max(-1, Math.min(1, (wr - 0.5) * 4));
+  const healthScore = Math.max(-1, Math.min(1, (ratio - 1) * 6));
+  const combined    = Math.max(-1, Math.min(1, (winScore + healthScore) / 2));
+  const leverage    = Math.max(2, Math.min(8, Math.round(3 + combined * 3)));
+
+  return { margin, leverage };
+}
+
 export interface AutoTraderSettings {
   enabled: boolean;
+  /** When true the engine overrides all margin/leverage/stake settings with a
+   *  rule-based formula derived from portfolio value, health, and recent win-rate. */
+  dynamicCapitalEnabled: boolean;
   /** Cash committed as margin per auto trade (USD). */
   marginPerTrade: number;
   leverage: number;
@@ -284,6 +317,7 @@ export interface AutoTraderSettings {
 
 export const DEFAULT_SETTINGS: AutoTraderSettings = {
   enabled: false,
+  dynamicCapitalEnabled: false,
   marginPerTrade: 100,
   leverage: 5,
   minConfidence: "HIGH",

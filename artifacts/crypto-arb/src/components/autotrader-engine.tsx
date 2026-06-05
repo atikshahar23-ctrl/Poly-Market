@@ -11,7 +11,7 @@ import {
 import type { ScalpSignal, MomentumCoin, PolymarketMarket, StockRecommendation, InfluencerSignal, StockQuote } from "@workspace/api-client-react";
 import { usePortfolio, type TrailConfig } from "@/contexts/portfolio-context";
 import { recommendLevels } from "@/lib/recommend-levels";
-import { useAutoTrader, type ScalpConfidence } from "@/contexts/autotrader-context";
+import { useAutoTrader, computeDynamicSizing, type ScalpConfidence } from "@/contexts/autotrader-context";
 import { useFavorites } from "@/contexts/favorites-context";
 import { useLivePrices } from "@/contexts/live-price-context";
 import { toast } from "@/hooks/use-toast";
@@ -334,8 +334,12 @@ export function AutoTraderEngine() {
   // Auto-trade evaluation.
   useEffect(() => {
     if (!settings.enabled) return;
-    const margin = settings.marginPerTrade;
-    if (!(margin > 0) || !(settings.leverage >= 1)) return;
+    const dynSizing = settings.dynamicCapitalEnabled
+      ? computeDynamicSizing(cash, totalDeposited, tradeHistory)
+      : null;
+    const margin = dynSizing ? dynSizing.margin : settings.marginPerTrade;
+    const effectiveLeverage = dynSizing ? dynSizing.leverage : settings.leverage;
+    if (!(margin > 0) || !(effectiveLeverage >= 1)) return;
 
     // Daily loss guard — stop opening once today's realized loss hits the cap.
     if (settings.dailyStopEnabled) {
@@ -416,13 +420,13 @@ export function AutoTraderEngine() {
       if (autoOpen >= settings.maxOpenPositions) break;
       if (availableCash < margin) break;
 
-      const notional = margin * settings.leverage;
+      const notional = margin * effectiveLeverage;
       const err = openBinancePosition({
         asset: c.asset,
         direction: c.direction,
         notional,
         entryPrice: c.entry,
-        leverage: settings.leverage,
+        leverage: effectiveLeverage,
         slPrice: c.stopLoss,
         tpPrice: c.takeProfit,
         auto: true,
@@ -436,7 +440,7 @@ export function AutoTraderEngine() {
       autoOpen += 1;
       toast({
         title: `Auto-Trade · ${c.direction} ${c.asset}`,
-        description: `${c.source} (${c.label}) · ${settings.leverage}x · $${margin} @ $${c.entry}`,
+        description: `${c.source} (${c.label}) · ${effectiveLeverage}x · $${margin} @ $${c.entry}`,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -448,7 +452,10 @@ export function AutoTraderEngine() {
   // SHORT paper positions for the strongest agreeing setups (risk-gated).
   useEffect(() => {
     if (!settings.stocksEnabled) return;
-    const stake = settings.stockStakePerTrade;
+    const dynStake = settings.dynamicCapitalEnabled
+      ? computeDynamicSizing(cash, totalDeposited, tradeHistory).margin
+      : null;
+    const stake = dynStake ?? settings.stockStakePerTrade;
     if (!(stake > 0)) return;
 
     // Daily loss guard shared with the rest of the book.

@@ -5,7 +5,7 @@ import {
 } from "@workspace/api-client-react";
 import type { CoinTicker, StockQuote } from "@workspace/api-client-react";
 import { usePortfolio } from "@/contexts/portfolio-context";
-import { useAutoTrader, type NewBotId } from "@/contexts/autotrader-context";
+import { useAutoTrader, computeDynamicSizing, type NewBotId } from "@/contexts/autotrader-context";
 import { useLivePrices } from "@/contexts/live-price-context";
 import { recommendLevels } from "@/lib/recommend-levels";
 import { toast } from "@/hooks/use-toast";
@@ -47,7 +47,7 @@ const BLUE_CHIPS: { symbol: string; name: string }[] = [
  */
 export function ExtraBotsEngine() {
   const {
-    binancePositions, stockPositions, tradeHistory, cash,
+    binancePositions, stockPositions, tradeHistory, cash, totalDeposited,
     openBinancePosition, openStockPosition,
   } = usePortfolio();
   const { settings, getBotStat, recordBotResult, getAssetCaution, evaluateRisk } = useAutoTrader();
@@ -140,7 +140,10 @@ export function ExtraBotsEngine() {
   useEffect(() => {
     if (!settings.dipEnabled || !(settings.dipStake > 0)) return;
     if (pausedBots.has("dipbuyer")) return;
-    const lev = Math.max(1, settings.newBotLeverage);
+    const dynSizing = settings.dynamicCapitalEnabled
+      ? computeDynamicSizing(cash, totalDeposited, tradeHistory) : null;
+    const lev = Math.max(1, dynSizing ? dynSizing.leverage : settings.newBotLeverage);
+    const dipStake = dynSizing ? dynSizing.margin : settings.dipStake;
     const edge = getBotStat("dipbuyer").edge;
     const minDrop = settings.dipMinDropPct * edge;
     const now = Date.now();
@@ -159,19 +162,19 @@ export function ExtraBotsEngine() {
 
     for (const c of ranked) {
       if (open >= settings.dipMaxOpen) break;
-      if (avail < settings.dipStake) break;
+      if (avail < dipStake) break;
       const price = cryptoPrice(c.asset) ?? c.price;
       const { sl, tp } = recommendLevels(price, "LONG", { slPct: 0.03, tpPct: 0.06 });
       const err = openBinancePosition({
-        asset: c.asset, direction: "LONG", notional: settings.dipStake * lev,
+        asset: c.asset, direction: "LONG", notional: dipStake * lev,
         entryPrice: price, leverage: lev, slPrice: sl, tpPrice: tp,
         auto: true, source: SOURCE.dipbuyer,
       });
       if (err) continue;
       cryptoCooldownRef.current[c.asset] = now;
-      avail -= settings.dipStake;
+      avail -= dipStake;
       open += 1;
-      toast({ title: `Dip Buyer · LONG ${c.asset}`, description: `24h ${c.changePercent.toFixed(1)}% · ${lev}x · $${settings.dipStake} @ $${price}` });
+      toast({ title: `Dip Buyer · LONG ${c.asset}`, description: `24h ${c.changePercent.toFixed(1)}% · ${lev}x · $${dipStake} @ $${price}` });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overview, settings, cash, binancePositions]);
@@ -180,7 +183,10 @@ export function ExtraBotsEngine() {
   useEffect(() => {
     if (!settings.breakoutEnabled || !(settings.breakoutStake > 0)) return;
     if (pausedBots.has("breakout")) return;
-    const lev = Math.max(1, settings.newBotLeverage);
+    const dynSizingB = settings.dynamicCapitalEnabled
+      ? computeDynamicSizing(cash, totalDeposited, tradeHistory) : null;
+    const lev = Math.max(1, dynSizingB ? dynSizingB.leverage : settings.newBotLeverage);
+    const breakoutStake = dynSizingB ? dynSizingB.margin : settings.breakoutStake;
     const edge = getBotStat("breakout").edge;
     const minGain = settings.breakoutMinGainPct * edge;
     const now = Date.now();
@@ -199,19 +205,19 @@ export function ExtraBotsEngine() {
 
     for (const c of ranked) {
       if (open >= settings.breakoutMaxOpen) break;
-      if (avail < settings.breakoutStake) break;
+      if (avail < breakoutStake) break;
       const price = cryptoPrice(c.asset) ?? c.price;
       const { sl, tp } = recommendLevels(price, "LONG", { slPct: 0.04, tpPct: 0.08 });
       const err = openBinancePosition({
-        asset: c.asset, direction: "LONG", notional: settings.breakoutStake * lev,
+        asset: c.asset, direction: "LONG", notional: breakoutStake * lev,
         entryPrice: price, leverage: lev, slPrice: sl, tpPrice: tp,
         auto: true, source: SOURCE.breakout,
       });
       if (err) continue;
       cryptoCooldownRef.current[c.asset] = now;
-      avail -= settings.breakoutStake;
+      avail -= breakoutStake;
       open += 1;
-      toast({ title: `Breakout Hunter · LONG ${c.asset}`, description: `24h +${c.changePercent.toFixed(1)}% · ${lev}x · $${settings.breakoutStake} @ $${price}` });
+      toast({ title: `Breakout Hunter · LONG ${c.asset}`, description: `24h +${c.changePercent.toFixed(1)}% · ${lev}x · $${breakoutStake} @ $${price}` });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overview, settings, cash, binancePositions]);
@@ -224,10 +230,13 @@ export function ExtraBotsEngine() {
     // Boost mode buys on a tight 10s cadence instead of the configured minutes.
     const intervalMs = boostActive ? 10_000 : Math.max(1, settings.dcaIntervalMin) * 60_000;
     if (now - lastDcaRef.current < intervalMs) return;
+    const dcaStake = settings.dynamicCapitalEnabled
+      ? computeDynamicSizing(cash, totalDeposited, tradeHistory).margin
+      : settings.dcaStake;
 
     const open = stockPositions.filter((p) => p.source === SOURCE.dca).length;
     if (open >= settings.dcaMaxOpen) return;
-    if (cash < settings.dcaStake) return;
+    if (cash < dcaStake) return;
 
     const priceOf = (sym: string): number | undefined =>
       ((stocks ?? []) as StockQuote[]).find((s) => s.symbol === sym)?.price;
@@ -239,12 +248,12 @@ export function ExtraBotsEngine() {
       if (!price || price <= 0) continue;
       const err = openStockPosition(
         { symbol: pick.symbol, name: pick.name, direction: "LONG", entryPrice: price, auto: true, source: SOURCE.dca },
-        settings.dcaStake, 1,
+        dcaStake, 1,
       );
       if (err) continue;
       dcaIdxRef.current = (dcaIdxRef.current + i + 1) % BLUE_CHIPS.length;
       lastDcaRef.current = now;
-      toast({ title: `Blue-Chip DCA · ${pick.symbol}`, description: `Accumulated $${settings.dcaStake} @ $${price}` });
+      toast({ title: `Blue-Chip DCA · ${pick.symbol}`, description: `Accumulated $${dcaStake} @ $${price}` });
       break;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

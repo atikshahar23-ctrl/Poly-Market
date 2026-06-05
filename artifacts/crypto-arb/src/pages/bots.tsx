@@ -1,14 +1,14 @@
 import { useMemo, useState, useEffect } from "react";
 import {
   Bot, Power, Gauge, Rocket, Megaphone, Timer, TrendingDown, TrendingUp,
-  Layers, Brain, RotateCcw, Activity, ShieldCheck, ShieldAlert, Scissors, Zap, Square,
+  Layers, Brain, RotateCcw, Activity, ShieldCheck, ShieldAlert, Scissors, Zap, Square, Cpu,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import {
-  useAutoTrader, type AutoTraderSettings, type NewBotId, type RiskGuard,
+  useAutoTrader, computeDynamicSizing, type AutoTraderSettings, type NewBotId, type RiskGuard,
 } from "@/contexts/autotrader-context";
 
 function StatChip({ label, value, tone }: { label: string; value: string; tone?: "good" | "bad" }) {
@@ -125,7 +125,7 @@ const NEW_BOT_META: {
 
 export default function Bots() {
   const { settings, update, startBoost, stopBoost, getBotStat, resetBotStats, getAssetCaution, resetAssetStats, getRiskGuard, resetRiskGuard } = useAutoTrader();
-  const { binancePositions, stockPositions, polyPositions } = usePortfolio();
+  const { binancePositions, stockPositions, polyPositions, cash, totalDeposited, tradeHistory } = usePortfolio();
 
   // Live boost countdown — tick once a second only while a boost is running.
   const [now, setNow] = useState(() => Date.now());
@@ -256,6 +256,55 @@ export default function Bots() {
         <StatChip label="Adaptive Mgr" value={settings.adaptiveEnabled ? "ON" : "OFF"} tone={settings.adaptiveEnabled ? "good" : undefined} />
         <StatChip label="Leverage (new)" value={`${settings.newBotLeverage}x`} />
       </div>
+
+      {/* ── Dynamic Capital Agent ── */}
+      {(() => {
+        const dyn = computeDynamicSizing(cash, totalDeposited, tradeHistory);
+        const portfolioRatio = totalDeposited > 0 ? cash / totalDeposited : 1;
+        const ratioLabel = portfolioRatio >= 1.05 ? "מצב רווח" : portfolioRatio <= 0.92 ? "מצב הפסד" : "מאוזן";
+        const ratioTone = portfolioRatio >= 1.05 ? "good" : portfolioRatio <= 0.92 ? "bad" : undefined;
+        const recent = tradeHistory.slice(0, 10);
+        const wr = recent.length >= 3 ? (recent.filter((t) => t.pnl > 0).length / recent.length * 100).toFixed(0) + "%" : "—";
+        return (
+          <section className="rounded-lg border p-4" style={{ borderColor: "hsl(196 80% 55% / 0.35)", background: "hsl(196 80% 55% / 0.04)" }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-md flex items-center justify-center shrink-0" style={{ background: "hsl(196 80% 55% / 0.15)" }}>
+                  <Cpu className="h-4 w-4" style={{ color: "hsl(196 80% 60%)" }} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold tracking-wide">מנהל הון דינמי</h2>
+                  <p className="text-[11px] text-muted-foreground" dir="rtl">
+                    עוקף את כל הגדרות המרג׳ין והמינוף של הבוטים — מחשב אוטומטית גודל פוזיציה ומינוף לפי שווי תיק המסחר, יחס בריאות ואחוז הניצחונות האחרון.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={settings.dynamicCapitalEnabled}
+                onCheckedChange={(v) => update({ dynamicCapitalEnabled: v })}
+                aria-label="Toggle dynamic capital agent"
+              />
+            </div>
+            {/* Live preview */}
+            <div className="mt-4 rounded-md border border-border/40 bg-background/40 p-3">
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono mb-2">
+                {settings.dynamicCapitalEnabled ? "ערכים פעילים כעת (עוקפים הגדרות ידניות)" : "תצוגה מקדימה — מה יהיה אם תופעל"}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatChip label="מרג׳ין לעסקה" value={`$${dyn.margin}`} tone={settings.dynamicCapitalEnabled ? "good" : undefined} />
+                <StatChip label="מינוף" value={`${dyn.leverage}x`} tone={settings.dynamicCapitalEnabled ? "good" : undefined} />
+                <StatChip label="מצב תיק" value={ratioLabel} tone={ratioTone} />
+                <StatChip label="אחוז ניצחון (10 אחרונות)" value={wr} />
+              </div>
+              {settings.dynamicCapitalEnabled && (
+                <p className="mt-2 text-[10px] text-muted-foreground" dir="rtl">
+                  הגדרות המרג׳ין, המינוף וגודל ה-Stake שהגדרת ידנית <span className="text-amber-400 font-semibold">מושבתות זמנית</span> — הסוכן הדינמי מחשב הכל מחדש לפי מצב התיק הנוכחי.
+                </p>
+              )}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Adaptive Manager */}
       <section className="rounded-lg border p-4" style={{ borderColor: "hsl(32 84% 55% / 0.35)", background: "hsl(32 84% 55% / 0.04)" }}>
