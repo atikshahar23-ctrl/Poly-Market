@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useGetMarketOverview, getGetMarketOverviewQueryKey } from "@workspace/api-client-react";
 import {
   History as HistoryIcon, TrendingUp, TrendingDown, Trophy, Target,
-  Bot, Hand, Wallet, Trash2, Activity, Cpu, LineChart as ChartIcon,
+  Bot, Hand, Wallet, Activity, Cpu, LineChart as ChartIcon,
 } from "lucide-react";
 import { usePortfolio, type ClosedTrade, type BinancePosition, type StockPosition } from "@/contexts/portfolio-context";
 import { CryptoIcon } from "@/components/crypto-icon";
@@ -306,7 +306,7 @@ function OpenPositions() {
 
 export default function HistoryPage() {
   const [, navigate] = useLocation();
-  const { tradeHistory, resetPortfolio, cash, totalDeposited } = usePortfolio();
+  const { tradeHistory, cash, totalDeposited } = usePortfolio();
   const [typeF, setTypeF] = useState<TypeFilter>("ALL");
   const [resultF, setResultF] = useState<ResultFilter>("ALL");
   const [sourceF, setSourceF] = useState<SourceFilter>("ALL");
@@ -358,14 +358,6 @@ export default function HistoryPage() {
             מעקב הדמו המלא שלך — כל פוזיציה שנסגרה, אחוז ההצלחה והרווח/הפסד. הדמיה חינוכית בלבד, ללא כסף אמיתי.
           </p>
         </div>
-        <button
-          onClick={() => {
-            if (confirm("לאפס את תיק הדמו? הפעולה מוחקת את היתרה, הפוזיציות הפתוחות וכל היסטוריית העסקאות.")) resetPortfolio();
-          }}
-          className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[11px] font-mono font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors flex-shrink-0"
-        >
-          <Trash2 className="h-3.5 w-3.5" /> איפוס
-        </button>
       </div>
 
       {/* Account row */}
