@@ -290,6 +290,24 @@ function FuturesPositionsPanel({ binancePrices, posFilter, setPosFilter }: { bin
           <History className="h-3 w-3 text-muted-foreground" />
           <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">History</span>
         </div>
+        {binanceTrades.length > 0 && (() => {
+          const botPnl = binanceTrades.filter(t => t.auto).reduce((s, t) => s + t.pnl, 0);
+          const manualPnl = binanceTrades.filter(t => !t.auto).reduce((s, t) => s + t.pnl, 0);
+          return (
+            <div className="flex items-center gap-3 px-3 py-1.5 border-b border-border/50 bg-secondary/10 shrink-0 flex-wrap">
+              <div className="flex items-center gap-1 text-[9px] font-mono">
+                <Bot className="h-2.5 w-2.5 text-amber-400" />
+                <span className="text-muted-foreground">Bot:</span>
+                <span className={`font-black ${pnlColor(botPnl)}`}>{botPnl >= 0 ? "+" : ""}{fmtUsd(botPnl)}</span>
+              </div>
+              <div className="h-3 w-px bg-border/60" />
+              <div className="flex items-center gap-1 text-[9px] font-mono">
+                <span className="text-muted-foreground">Manual:</span>
+                <span className={`font-black ${pnlColor(manualPnl)}`}>{manualPnl >= 0 ? "+" : ""}{fmtUsd(manualPnl)}</span>
+              </div>
+            </div>
+          );
+        })()}
         <div className="overflow-y-auto flex-1">
           {binanceTrades.length === 0 ? (
             <div className="px-3 py-3 text-[10px] text-muted-foreground font-mono text-center">No closed trades</div>
@@ -959,12 +977,26 @@ function TradeHistoryPanel() {
   const { tradeHistory } = usePortfolio();
   const nonBinance = tradeHistory.filter(t => t.type !== "BINANCE");
   if (nonBinance.length === 0) return null;
+  const botPnl = nonBinance.filter(t => t.auto).reduce((s, t) => s + t.pnl, 0);
+  const manualPnl = nonBinance.filter(t => !t.auto).reduce((s, t) => s + t.pnl, 0);
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <History className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground">Trade History</span>
         <div className="flex-1 h-px bg-border" />
+      </div>
+      <div className="flex items-center gap-3 px-3 py-1.5 rounded border border-border/50 bg-secondary/10 flex-wrap">
+        <div className="flex items-center gap-1 text-[10px] font-mono">
+          <Bot className="h-3 w-3 text-amber-400" />
+          <span className="text-muted-foreground">Bot:</span>
+          <span className={`font-black ${pnlColor(botPnl)}`}>{botPnl >= 0 ? "+" : ""}{fmtUsd(botPnl)}</span>
+        </div>
+        <div className="h-3 w-px bg-border/60" />
+        <div className="flex items-center gap-1 text-[10px] font-mono">
+          <span className="text-muted-foreground">Manual:</span>
+          <span className={`font-black ${pnlColor(manualPnl)}`}>{manualPnl >= 0 ? "+" : ""}{fmtUsd(manualPnl)}</span>
+        </div>
       </div>
       <div className="space-y-1.5">
         {nonBinance.slice(0, 10).map(t => (
