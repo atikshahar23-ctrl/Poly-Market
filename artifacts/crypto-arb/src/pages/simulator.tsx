@@ -182,11 +182,10 @@ function PosFilterToggle({ value, onChange, counts }: { value: PosFilter; onChan
   );
 }
 
-function FuturesPositionsPanel({ binancePrices }: { binancePrices: Record<string, number> }) {
+function FuturesPositionsPanel({ binancePrices, posFilter, setPosFilter }: { binancePrices: Record<string, number>; posFilter: PosFilter; setPosFilter: (v: PosFilter) => void }) {
   const { binancePositions, closeBinancePosition, tradeHistory } = usePortfolio();
   const binanceTrades = tradeHistory.filter(t => t.type === "BINANCE");
   const autoBinancePositions = binancePositions.filter(p => p.auto);
-  const [posFilter, setPosFilter] = useState<PosFilter>("ALL");
 
   function closeAllBotBinance() {
     if (!confirm(`Close all ${autoBinancePositions.length} bot-placed futures position${autoBinancePositions.length !== 1 ? "s" : ""}?`)) return;
@@ -314,7 +313,7 @@ function FuturesPositionsPanel({ binancePrices }: { binancePrices: Record<string
 }
 
 /* ─── Professional Futures Terminal ─── */
-function BinanceFuturesTerminal({ binancePrices, initialAsset }: { binancePrices: Record<string, number>; initialAsset?: string }) {
+function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPosFilter }: { binancePrices: Record<string, number>; initialAsset?: string; posFilter: PosFilter; setPosFilter: (v: PosFilter) => void }) {
   const { cash, openBinancePosition } = usePortfolio();
   // Allow ANY asset (e.g. deep-linked from trade history), not just the strip's presets.
   const [selectedAsset, setSelectedAsset] = useState<string>(initialAsset ? initialAsset.toUpperCase() : "BTC");
@@ -508,25 +507,24 @@ function BinanceFuturesTerminal({ binancePrices, initialAsset }: { binancePrices
 
         {/* RIGHT: Positions + History — large screens only */}
         <div className="hidden lg:flex w-[270px] border-l border-border flex-col shrink-0 overflow-hidden">
-          <FuturesPositionsPanel binancePrices={binancePrices} />
+          <FuturesPositionsPanel binancePrices={binancePrices} posFilter={posFilter} setPosFilter={setPosFilter} />
         </div>
       </div>
 
       {/* Mobile: positions below trade form */}
       <div className="lg:hidden border-t border-border overflow-y-auto" style={{ maxHeight: "280px" }}>
-        <FuturesPositionsPanel binancePrices={binancePrices} />
+        <FuturesPositionsPanel binancePrices={binancePrices} posFilter={posFilter} setPosFilter={setPosFilter} />
       </div>
     </div>
   );
 }
 
 /* ─── Polymarket Tab ─── */
-function PolymarketTab({ allMarkets }: { allMarkets: { conditionId: string; question: string; yesPrice: number; noPrice: number; assetTag: string; slug: string | null }[] }) {
+function PolymarketTab({ allMarkets, posFilter, setPosFilter }: { allMarkets: { conditionId: string; question: string; yesPrice: number; noPrice: number; assetTag: string; slug: string | null }[]; posFilter: PosFilter; setPosFilter: (v: PosFilter) => void }) {
   const { polyPositions, cash, openPolyPosition, closePolyPosition } = usePortfolio();
   const [search, setSearch] = useState("");
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [posFilter, setPosFilter] = useState<PosFilter>("ALL");
 
   const autoPolyPositions = polyPositions.filter(p => p.auto);
 
@@ -711,10 +709,9 @@ function StockRecommendationsStrip({ recs, onPick }: { recs: StockRecommendation
 }
 
 /* ─── Stocks Tab ─── */
-function StocksTab({ stocks, stockPrices }: { stocks: StockQuote[]; stockPrices: Record<string, number> }) {
+function StocksTab({ stocks, stockPrices, posFilter, setPosFilter }: { stocks: StockQuote[]; stockPrices: Record<string, number>; posFilter: PosFilter; setPosFilter: (v: PosFilter) => void }) {
   const { stockPositions, cash, openStockPosition, closeStockPosition } = usePortfolio();
   const autoStockPositions = stockPositions.filter(p => p.auto);
-  const [posFilter, setPosFilter] = useState<PosFilter>("ALL");
 
   function closeAllBotStocks() {
     if (!confirm(`Close all ${autoStockPositions.length} bot-placed stock position${autoStockPositions.length !== 1 ? "s" : ""}?`)) return;
@@ -1000,6 +997,9 @@ export default function SimulatorPage() {
   const initialAsset = initialParams.get("asset") ?? undefined;
   const [tab, setTab] = useState<"futures" | "prediction" | "stocks">(initialTab);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [futuresFilter, setFuturesFilter] = useState<PosFilter>("ALL");
+  const [stocksFilter, setStocksFilter] = useState<PosFilter>("ALL");
+  const [polyFilter, setPolyFilter] = useState<PosFilter>("ALL");
   const { polyPositions, binancePositions, stockPositions, cash, resetPortfolio, checkSlTp } = usePortfolio();
   const { intervalFor } = useRefresh();
 
@@ -1151,7 +1151,7 @@ export default function SimulatorPage() {
               {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40" />)}
             </div>
           ) : (
-            <BinanceFuturesTerminal binancePrices={binancePrices} initialAsset={initialAsset} />
+            <BinanceFuturesTerminal binancePrices={binancePrices} initialAsset={initialAsset} posFilter={futuresFilter} setPosFilter={setFuturesFilter} />
           )
         )}
         {tab === "stocks" && (
@@ -1167,7 +1167,7 @@ export default function SimulatorPage() {
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48" />)}
               </div>
             ) : (
-              <StocksTab stocks={stocks} stockPrices={stockPrices} />
+              <StocksTab stocks={stocks} stockPrices={stockPrices} posFilter={stocksFilter} setPosFilter={setStocksFilter} />
             )}
             <TradeHistoryPanel />
           </div>
@@ -1179,7 +1179,7 @@ export default function SimulatorPage() {
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
               </div>
             ) : (
-              <PolymarketTab allMarkets={allMarkets} />
+              <PolymarketTab allMarkets={allMarkets} posFilter={polyFilter} setPosFilter={setPolyFilter} />
             )}
           </div>
         )}
