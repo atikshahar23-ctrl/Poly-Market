@@ -19,6 +19,8 @@ import { toast } from "@/hooks/use-toast";
 const CONF_RANK: Record<ScalpConfidence, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 /** Don't re-open the same asset within this window after an auto action. */
 const COOLDOWN_MS = 10 * 60 * 1000;
+/** Boost mode: collapse the per-asset cooldown to a few seconds for rapid churn. */
+const BOOST_COOLDOWN_MS = 4 * 1000;
 /** Don't re-bet the same Polymarket condition within this window. */
 const POLY_COOLDOWN_MS = 30 * 60 * 1000;
 
@@ -99,6 +101,9 @@ export function AutoTraderEngine() {
   } = usePortfolio();
   const { settings, update } = useAutoTrader();
   const { isFavorite } = useFavorites();
+  // Boost mode: while the deadline is in the future every bot trades at maximum
+  // cadence — tiny cooldowns, faster polling and fast profit-banking.
+  const boostActive = settings.boostUntil > Date.now();
   // Sub-second crypto prices from the free Binance WebSocket — lets SL/TP and the
   // pre-liquidation guard react near-instantly instead of waiting on 30s polling.
   const { get: getLivePrice, version: liveVersion } = useLivePrices();
@@ -114,16 +119,16 @@ export function AutoTraderEngine() {
   const { data: stockRecs } = useGetStockRecommendations({
     query: {
       queryKey: getGetStockRecommendationsQueryKey(),
-      refetchInterval: settings.stocksEnabled ? 60000 : false,
-      staleTime: 45000,
+      refetchInterval: settings.stocksEnabled ? (boostActive ? 15000 : 60000) : false,
+      staleTime: boostActive ? 10000 : 45000,
       enabled: settings.stocksEnabled,
     },
   });
   const { data: influencers } = useGetInfluencerSignals({
     query: {
       queryKey: getGetInfluencerSignalsQueryKey(),
-      refetchInterval: settings.stocksEnabled ? 120000 : false,
-      staleTime: 90000,
+      refetchInterval: settings.stocksEnabled ? (boostActive ? 20000 : 120000) : false,
+      staleTime: boostActive ? 15000 : 90000,
       enabled: settings.stocksEnabled,
     },
   });
@@ -132,8 +137,8 @@ export function AutoTraderEngine() {
   const { data: shortTerm } = useGetShortTermMarkets({
     query: {
       queryKey: getGetShortTermMarketsQueryKey(),
-      refetchInterval: settings.polyEnabled ? 90000 : false,
-      staleTime: 60000,
+      refetchInterval: settings.polyEnabled ? (boostActive ? 20000 : 90000) : false,
+      staleTime: boostActive ? 15000 : 60000,
       enabled: settings.polyEnabled,
     },
   });
@@ -144,16 +149,16 @@ export function AutoTraderEngine() {
   const { data: signals } = useGetScalpSignals({
     query: {
       queryKey: getGetScalpSignalsQueryKey(),
-      refetchInterval: settings.enabled && useScalp ? 60000 : false,
-      staleTime: 45000,
+      refetchInterval: settings.enabled && useScalp ? (boostActive ? 12000 : 60000) : false,
+      staleTime: boostActive ? 8000 : 45000,
       enabled: settings.enabled && useScalp,
     },
   });
   const { data: momentum } = useGetMomentumCoins({
     query: {
       queryKey: getGetMomentumCoinsQueryKey(),
-      refetchInterval: settings.enabled && useMomentum ? 60000 : false,
-      staleTime: 45000,
+      refetchInterval: settings.enabled && useMomentum ? (boostActive ? 12000 : 60000) : false,
+      staleTime: boostActive ? 8000 : 45000,
       enabled: settings.enabled && useMomentum,
     },
   });
@@ -194,6 +199,13 @@ export function AutoTraderEngine() {
     // ever closes positions that are in profit, so it never deepens a loss.
     if (settings.smartExitEnabled) {
       const now = Date.now();
+      // In Boost mode, bank wins on the tiniest favorable tick and recycle even
+      // flat-green trades within seconds — the whole point is rapid turnover.
+      const takeProfitPct = boostActive ? Math.min(settings.scalpTakeProfitPct, 0.2) : settings.scalpTakeProfitPct;
+      const givebackPct = boostActive ? 0.1 : settings.scalpGivebackPct;
+      const recycleSec = boostActive
+        ? Math.min(settings.maxScalpHoldSec || 12, 12)
+        : settings.maxScalpHoldSec;
       for (const pos of binancePositions) {
         if (!pos.auto) continue;
         const price = priceMap[pos.asset];
@@ -216,9 +228,10 @@ export function AutoTraderEngine() {
         // Once enough profit has been tasted, protect it with a peak-pullback
         // trail. Strong movers past the runner threshold get a wider giveback
         // so they can keep running; ordinary scalps are banked on a tiny dip.
-        if (peakGainPct >= settings.scalpTakeProfitPct) {
-          const isRunner = peakGainPct >= settings.runnerTriggerPct;
-          const giveback = isRunner ? settings.runnerTrailPct : settings.scalpGivebackPct;
+        if (peakGainPct >= takeProfitPct) {
+          // Boost never lets a trade graduate to a "runner" — bank everything fast.
+          const isRunner = !boostActive && peakGainPct >= settings.runnerTriggerPct;
+          const giveback = isRunner ? settings.runnerTrailPct : givebackPct;
           const trailStop = isLong ? peak * (1 - giveback / 100) : peak * (1 + giveback / 100);
           // Only bank when still green — never let the trail close below breakeven.
           const hit = (isLong ? price <= trailStop : price >= trailStop) && gainPct > 0;
@@ -234,7 +247,7 @@ export function AutoTraderEngine() {
         }
 
         // Stale-but-green trades: recycle the capital for the next fast setup.
-        if (settings.maxScalpHoldSec > 0 && ageMs >= settings.maxScalpHoldSec * 1000 && gainPct > 0) {
+        if (recycleSec > 0 && ageMs >= recycleSec * 1000 && gainPct > 0) {
           closeBinancePosition(pos.id, price, "TP");
           peakRef.current.delete(pos.id);
           toast({
@@ -358,10 +371,11 @@ export function AutoTraderEngine() {
       if (!existing || c.score > existing.score) byAsset.set(c.asset, c);
     }
 
+    const cooldown = boostActive ? BOOST_COOLDOWN_MS : COOLDOWN_MS;
     const ranked = [...byAsset.values()]
       .filter((c) => !settings.favoritesOnly || isFavorite(`coin:${c.asset}`))
       .filter((c) => !openAssets.has(c.asset))
-      .filter((c) => now - (cooldownRef.current[c.asset] ?? 0) > COOLDOWN_MS)
+      .filter((c) => now - (cooldownRef.current[c.asset] ?? 0) > cooldown)
       .sort((a, b) => b.score - a.score);
 
     const trail: TrailConfig | undefined = settings.trailingEnabled
@@ -484,9 +498,10 @@ export function AutoTraderEngine() {
       });
     }
 
+    const stockCooldown = boostActive ? BOOST_COOLDOWN_MS : COOLDOWN_MS;
     const ranked = candidates
       .filter((c) => !openSymbols.has(c.symbol))
-      .filter((c) => now - (stockCooldownRef.current[c.symbol] ?? 0) > COOLDOWN_MS)
+      .filter((c) => now - (stockCooldownRef.current[c.symbol] ?? 0) > stockCooldown)
       // Reward agreement across both sources, then raw conviction.
       .sort((a, b) => Number(b.multiSource) - Number(a.multiSource) || b.conviction - a.conviction);
 

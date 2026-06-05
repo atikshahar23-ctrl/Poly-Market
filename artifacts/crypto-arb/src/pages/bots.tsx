@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Bot, Power, Gauge, Rocket, Megaphone, Timer, TrendingDown, TrendingUp,
-  Layers, Brain, RotateCcw, Activity, ShieldCheck, ShieldAlert, Scissors,
+  Layers, Brain, RotateCcw, Activity, ShieldCheck, ShieldAlert, Scissors, Zap, Square,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -124,8 +124,21 @@ const NEW_BOT_META: {
 ];
 
 export default function Bots() {
-  const { settings, update, getBotStat, resetBotStats, getRiskGuard, resetRiskGuard } = useAutoTrader();
+  const { settings, update, startBoost, stopBoost, getBotStat, resetBotStats, getRiskGuard, resetRiskGuard } = useAutoTrader();
   const { binancePositions, stockPositions, polyPositions } = usePortfolio();
+
+  // Live boost countdown — tick once a second only while a boost is running.
+  const [now, setNow] = useState(() => Date.now());
+  const boostActive = settings.boostUntil > now;
+  const boostRemainMs = Math.max(0, settings.boostUntil - now);
+  useEffect(() => {
+    if (settings.boostUntil <= Date.now()) return;
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [settings.boostUntil]);
+  const boostClock = `${Math.floor(boostRemainMs / 60000)}:${String(
+    Math.floor((boostRemainMs % 60000) / 1000),
+  ).padStart(2, "0")}`;
 
   // ── Existing core bots, derived from the original engine's settings ──
   const scalpOn = settings.enabled && (settings.strategy === "SCALP" || settings.strategy === "BOTH");
@@ -173,16 +186,59 @@ export default function Bots() {
             מרכז שליטה אחד לכל הבוטים — סימולציית מסחר בלבד (כסף וירטואלי).
           </p>
         </div>
-        <Button
-          onClick={() => armAll(!anyOn)}
-          className="gap-2 font-mono"
-          variant={anyOn ? "destructive" : "default"}
-          aria-pressed={anyOn}
-        >
-          <Power className="h-4 w-4" />
-          {anyOn ? "כבה הכול" : "הפעל הכול"}
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {boostActive ? (
+            <div
+              className="flex items-center gap-2 rounded-md border px-3 py-1.5 animate-pulse"
+              style={{ borderColor: "hsl(43 74% 52% / 0.6)", background: "hsl(43 74% 52% / 0.12)" }}
+            >
+              <Zap className="h-4 w-4 text-primary" />
+              <span className="font-mono text-base font-bold text-primary tabular-nums">{boostClock}</span>
+              <span className="text-[10px] text-muted-foreground" dir="rtl">בוסט פעיל</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[10px] gap-1"
+                onClick={stopBoost}
+              >
+                <Square className="h-3 w-3" /> עצור
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={() => startBoost()}
+              variant="outline"
+              className="gap-2 font-mono border-primary/60 text-primary hover:bg-primary/10"
+              title="מפעיל את כל הבוטים במצב מסחר מהיר ל-5 דקות"
+            >
+              <Zap className="h-4 w-4" />
+              בוסט · 5 דק'
+            </Button>
+          )}
+          <Button
+            onClick={() => armAll(!anyOn)}
+            className="gap-2 font-mono"
+            variant={anyOn ? "destructive" : "default"}
+            aria-pressed={anyOn}
+          >
+            <Power className="h-4 w-4" />
+            {anyOn ? "כבה הכול" : "הפעל הכול"}
+          </Button>
+        </div>
       </header>
+
+      {boostActive && (
+        <div
+          className="rounded-lg border px-4 py-2.5 flex items-center gap-3"
+          style={{ borderColor: "hsl(43 74% 52% / 0.4)", background: "hsl(43 74% 52% / 0.06)" }}
+          dir="rtl"
+        >
+          <Zap className="h-4 w-4 text-primary shrink-0" />
+          <p className="text-[11px] text-muted-foreground">
+            <span className="text-primary font-semibold">מצב בוסט פעיל</span> — כל הבוטים סוחרים בקצב המהיר ביותר (קירור מינימלי, מימוש רווחים זריז) כדי לבצע הרבה עסקאות קטנות. הקצב חוזר לרגיל בעוד <span className="font-mono text-primary">{boostClock}</span>.
+          </p>
+        </div>
+      )}
 
       {/* Live summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-lg border border-border bg-secondary/20 p-4">

@@ -12,6 +12,8 @@ import { toast } from "@/hooks/use-toast";
 
 /** Don't re-open the same asset within this window after an auto action. */
 const COOLDOWN_MS = 10 * 60 * 1000;
+/** Boost mode: collapse the per-asset cooldown to a few seconds for rapid churn. */
+const BOOST_COOLDOWN_MS = 4 * 1000;
 
 /** Unique per-bot source labels — also used to attribute closed-trade results. */
 const SOURCE: Record<NewBotId, string> = {
@@ -51,21 +53,24 @@ export function ExtraBotsEngine() {
   const { settings, getBotStat, recordBotResult, evaluateRisk } = useAutoTrader();
   const { get: getLivePrice } = useLivePrices();
 
+  // Boost mode: tiny cooldowns + faster polling so these bots churn quickly too.
+  const boostActive = settings.boostUntil > Date.now();
+  const cooldownMs = boostActive ? BOOST_COOLDOWN_MS : COOLDOWN_MS;
   const cryptoArmed = settings.dipEnabled || settings.breakoutEnabled;
 
   const { data: overview } = useGetMarketOverview({
     query: {
       queryKey: getGetMarketOverviewQueryKey(),
-      refetchInterval: cryptoArmed ? 30000 : false,
-      staleTime: 20000,
+      refetchInterval: cryptoArmed ? (boostActive ? 12000 : 30000) : false,
+      staleTime: boostActive ? 8000 : 20000,
       enabled: cryptoArmed,
     },
   });
   const { data: stocks } = useGetStocks({
     query: {
       queryKey: getGetStocksQueryKey(),
-      refetchInterval: settings.dcaEnabled ? 30000 : false,
-      staleTime: 20000,
+      refetchInterval: settings.dcaEnabled ? (boostActive ? 12000 : 30000) : false,
+      staleTime: boostActive ? 8000 : 20000,
       enabled: settings.dcaEnabled,
     },
   });
@@ -148,7 +153,7 @@ export function ExtraBotsEngine() {
       .filter((c) => Number.isFinite(c.price) && c.price > 0)
       .filter((c) => c.changePercent <= -minDrop)
       .filter((c) => !openAssets.has(c.asset))
-      .filter((c) => now - (cryptoCooldownRef.current[c.asset] ?? 0) > COOLDOWN_MS)
+      .filter((c) => now - (cryptoCooldownRef.current[c.asset] ?? 0) > cooldownMs)
       .sort((a, b) => a.changePercent - b.changePercent);
 
     for (const c of ranked) {
@@ -187,7 +192,7 @@ export function ExtraBotsEngine() {
       .filter((c) => Number.isFinite(c.price) && c.price > 0)
       .filter((c) => c.changePercent >= minGain)
       .filter((c) => !openAssets.has(c.asset))
-      .filter((c) => now - (cryptoCooldownRef.current[c.asset] ?? 0) > COOLDOWN_MS)
+      .filter((c) => now - (cryptoCooldownRef.current[c.asset] ?? 0) > cooldownMs)
       .sort((a, b) => b.changePercent - a.changePercent);
 
     for (const c of ranked) {
@@ -214,7 +219,8 @@ export function ExtraBotsEngine() {
     if (!settings.dcaEnabled || !(settings.dcaStake > 0)) return;
     if (pausedBots.has("dca")) return;
     const now = Date.now();
-    const intervalMs = Math.max(1, settings.dcaIntervalMin) * 60_000;
+    // Boost mode buys on a tight 10s cadence instead of the configured minutes.
+    const intervalMs = boostActive ? 10_000 : Math.max(1, settings.dcaIntervalMin) * 60_000;
     if (now - lastDcaRef.current < intervalMs) return;
 
     const open = stockPositions.filter((p) => p.source === SOURCE.dca).length;

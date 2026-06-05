@@ -135,6 +135,13 @@ export interface AutoTraderSettings {
   /** Only auto-trade assets the user has starred. */
   favoritesOnly: boolean;
 
+  /**
+   * Boost mode: epoch-ms deadline until which every bot trades at maximum
+   * cadence (near-zero cooldowns, fast profit-banking, faster polling) to rack
+   * up many small, quick paper trades. 0 = off / expired.
+   */
+  boostUntil: number;
+
   /* ── Warrior-trading additions ── */
   /** Signal sources: scalp setups, momentum runners, or both. */
   strategy: TradeStrategy;
@@ -247,6 +254,7 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
   allowShort: true,
   maxOpenPositions: 5,
   favoritesOnly: false,
+  boostUntil: 0,
 
   strategy: "BOTH",
   minMomentumScore: 55,
@@ -307,10 +315,17 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
 
 const STORAGE_KEY = "arb_scan_autotrader";
 
+/** Default length of a Boost run (max-cadence trading) in milliseconds. */
+export const BOOST_DURATION_MS = 5 * 60 * 1000;
+
 interface AutoTraderContextValue {
   settings: AutoTraderSettings;
   update: (patch: Partial<AutoTraderSettings>) => void;
   toggleEnabled: () => void;
+  /** Arm every bot and run max-cadence Boost mode for durationMs (default 5 min). */
+  startBoost: (durationMs?: number) => void;
+  /** End Boost mode immediately; bots stay armed at their normal cadence. */
+  stopBoost: () => void;
   /** Read a bot's scorecard (returns a fresh blank one if untracked). */
   getBotStat: (botId: string) => BotStat;
   /** Record one closed paper trade for a bot; the manager adapts its edge. */
@@ -356,6 +371,40 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
   const toggleEnabled = useCallback(() => {
     setSettings((prev) => ({ ...prev, enabled: !prev.enabled }));
   }, []);
+
+  const startBoost = useCallback((durationMs = BOOST_DURATION_MS) => {
+    setSettings((prev) => ({
+      ...prev,
+      // Arm every bot so the whole fleet participates in the boost.
+      enabled: true,
+      strategy: "BOTH",
+      stocksEnabled: true,
+      polyEnabled: true,
+      dipEnabled: true,
+      breakoutEnabled: true,
+      dcaEnabled: true,
+      boostUntil: Date.now() + Math.max(1000, durationMs),
+    }));
+  }, []);
+
+  const stopBoost = useCallback(() => {
+    setSettings((prev) => (prev.boostUntil ? { ...prev, boostUntil: 0 } : prev));
+  }, []);
+
+  // Auto-clear the boost deadline once it lapses so the UI and engines revert to
+  // their normal cadence without anyone having to press "stop".
+  useEffect(() => {
+    if (!settings.boostUntil) return;
+    const ms = settings.boostUntil - Date.now();
+    if (ms <= 0) {
+      setSettings((prev) => (prev.boostUntil ? { ...prev, boostUntil: 0 } : prev));
+      return;
+    }
+    const t = setTimeout(() => {
+      setSettings((prev) => (prev.boostUntil ? { ...prev, boostUntil: 0 } : prev));
+    }, ms);
+    return () => clearTimeout(t);
+  }, [settings.boostUntil]);
 
   const getBotStat = useCallback(
     (botId: string): BotStat => settings.botStats[botId] ?? freshBotStat(),
@@ -420,7 +469,7 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
 
   return (
     <AutoTraderContext.Provider
-      value={{ settings, update, toggleEnabled, getBotStat, recordBotResult, resetBotStats, getRiskGuard, evaluateRisk, resetRiskGuard }}
+      value={{ settings, update, toggleEnabled, startBoost, stopBoost, getBotStat, recordBotResult, resetBotStats, getRiskGuard, evaluateRisk, resetRiskGuard }}
     >
       {children}
     </AutoTraderContext.Provider>
