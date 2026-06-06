@@ -11,7 +11,7 @@ import {
 import type { ScalpSignal, MomentumCoin, PolymarketMarket, StockRecommendation, InfluencerSignal, StockQuote } from "@workspace/api-client-react";
 import { usePortfolio, type TrailConfig } from "@/contexts/portfolio-context";
 import { recommendLevels } from "@/lib/recommend-levels";
-import { useAutoTrader, computeDynamicSizing, cashReserveFloor, intensityProfile, alphaAdjust, NEUTRAL_ALPHA, ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT, type AlphaState, type ScalpConfidence } from "@/contexts/autotrader-context";
+import { useAutoTrader, resolveSizing, cashReserveFloor, intensityProfile, alphaAdjust, NEUTRAL_ALPHA, ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT, type AlphaState, type ScalpConfidence } from "@/contexts/autotrader-context";
 import { useFavorites } from "@/contexts/favorites-context";
 import { useLivePrices } from "@/contexts/live-price-context";
 import { toast } from "@/hooks/use-toast";
@@ -431,11 +431,9 @@ export function AutoTraderEngine() {
   // Auto-trade evaluation.
   useEffect(() => {
     if (!settings.enabled) return;
-    const dynSizing = settings.dynamicCapitalEnabled
-      ? computeDynamicSizing(cash, totalDeposited, tradeHistory, settings.cashFloorPct)
-      : null;
-    const margin = dynSizing ? dynSizing.margin : settings.marginPerTrade;
-    const effectiveLeverage = dynSizing ? dynSizing.leverage : settings.leverage;
+    const sizing = resolveSizing(settings, cash, totalDeposited, tradeHistory, "scalp");
+    const margin = sizing.margin;
+    const effectiveLeverage = sizing.leverage;
     if (!(margin > 0) || !(effectiveLeverage >= 1)) return;
     // Account Manager cash reserve: never commit below the protected floor.
     const cashFloor = cashReserveFloor(totalDeposited, settings.cashFloorPct);
@@ -571,10 +569,8 @@ export function AutoTraderEngine() {
   // SHORT paper positions for the strongest agreeing setups (risk-gated).
   useEffect(() => {
     if (!settings.stocksEnabled) return;
-    const dynStake = settings.dynamicCapitalEnabled
-      ? computeDynamicSizing(cash, totalDeposited, tradeHistory, settings.cashFloorPct).margin
-      : null;
-    const stake = dynStake ?? settings.stockStakePerTrade;
+    const sizing = resolveSizing(settings, cash, totalDeposited, tradeHistory, "stocks");
+    const stake = sizing.margin;
     if (!(stake > 0)) return;
     // Account Manager cash reserve: never commit below the protected floor.
     const cashFloor = cashReserveFloor(totalDeposited, settings.cashFloorPct);
@@ -746,9 +742,8 @@ export function AutoTraderEngine() {
 
     // Auto-Pilot / Account-Manager: size each bet dynamically from portfolio
     // health; otherwise use the user's fixed stake.
-    const polyStake = settings.dynamicCapitalEnabled
-      ? computeDynamicSizing(cash, totalDeposited, tradeHistory, settings.cashFloorPct).margin
-      : settings.polyStakePerBet;
+    const sizing = resolveSizing(settings, cash, totalDeposited, tradeHistory, "poly");
+    const polyStake = sizing.margin;
     if (!(polyStake > 0)) return;
     // Account Manager cash reserve: never commit below the protected floor.
     const cashFloor = cashReserveFloor(totalDeposited, settings.cashFloorPct);

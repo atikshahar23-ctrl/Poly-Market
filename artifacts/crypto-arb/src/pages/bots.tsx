@@ -392,46 +392,31 @@ export default function Bots() {
             <Sparkles className="h-4 w-4" />
             {autoPilotOn ? "אוטומטי פעיל" : "אוטומטי"}
           </Button>
+          <Button
+            onClick={() => boostActive ? stopBoost() : startBoost(settings.boostDurationMin * 60_000)}
+            className="gap-2 font-mono font-bold"
+            variant={boostActive ? "default" : "outline"}
+            aria-pressed={boostActive}
+            title={boostActive ? "מכבה את מהירות האור" : "מפעיל את כל הבוטים במצב מסחר מהיר"}
+            style={boostActive ? { boxShadow: "0 0 18px hsl(43 74% 52% / 0.5)" } : undefined}
+          >
+            <Zap className="h-4 w-4" />
+            {boostActive ? "מהירות האור פעילה" : "מהירות האור"}
+          </Button>
           {boostActive ? (
-            <div
-              className="flex items-center gap-2 rounded-md border px-3 py-1.5 animate-pulse"
-              style={{ borderColor: "hsl(43 74% 52% / 0.6)", background: "hsl(43 74% 52% / 0.12)" }}
-            >
-              <Zap className="h-4 w-4 text-primary" />
-              <span className="font-mono text-base font-bold text-primary tabular-nums">{boostClock}</span>
-              <span className="text-[10px] text-muted-foreground" dir="rtl">בוסט פעיל</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-[10px] gap-1"
-                onClick={stopBoost}
-              >
-                <Square className="h-3 w-3" /> עצור
-              </Button>
-            </div>
+            <span className="font-mono text-base font-bold text-primary tabular-nums">{boostClock}</span>
           ) : (
-            <div className="flex items-center gap-1.5">
-              <Button
-                onClick={() => startBoost(settings.boostDurationMin * 60_000)}
-                variant="outline"
-                className="gap-2 font-mono border-primary/60 text-primary hover:bg-primary/10"
-                title={`מפעיל את כל הבוטים במצב מסחר מהיר ל-${boostDurationLabel(settings.boostDurationMin)}`}
-              >
-                <Zap className="h-4 w-4" />
-                בוסט · {boostDurationLabel(settings.boostDurationMin)}
-              </Button>
-              <select
-                value={settings.boostDurationMin}
-                onChange={(e) => update({ boostDurationMin: Number(e.target.value) })}
-                className="h-9 rounded-md border border-primary/40 bg-background/60 px-2 text-xs font-mono text-primary focus:outline-none focus:ring-1 focus:ring-primary/50"
-                aria-label="Boost duration"
-                title="משך הבוסט"
-              >
-                {BOOST_PRESETS.map((m) => (
-                  <option key={m} value={m}>{boostDurationLabel(m)}</option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={settings.boostDurationMin}
+              onChange={(e) => update({ boostDurationMin: Number(e.target.value) })}
+              className="h-9 rounded-md border border-primary/40 bg-background/60 px-2 text-xs font-mono text-primary focus:outline-none focus:ring-1 focus:ring-primary/50"
+              aria-label="Boost duration"
+              title="משך הבוסט"
+            >
+              {BOOST_PRESETS.map((m) => (
+                <option key={m} value={m}>{boostDurationLabel(m)}</option>
+              ))}
+            </select>
           )}
           <Button
             onClick={() => armAll(!anyOn)}
@@ -441,15 +426,6 @@ export default function Bots() {
           >
             <Power className="h-4 w-4" />
             {anyOn ? "כבה הכול" : "הפעל הכול"}
-          </Button>
-          <Button
-            onClick={cancelLightSpeed}
-            variant="outline"
-            className="gap-2 font-mono border-primary/60 text-primary hover:bg-primary/10"
-            title="ביטול מהירות האור: הבוטים ממשיכים לסחור בקצב רגיל ושקול (לא עוצר את המסחר)"
-          >
-            <Gauge className="h-4 w-4" />
-            ביטול מהירות האור
           </Button>
           <Button
             onClick={emergencyStop}
@@ -910,6 +886,90 @@ export default function Bots() {
           </section>
         );
       })()}
+
+      {/* ── Global fleet overrides ── */}
+      <section className="rounded-lg border p-4" style={{ borderColor: "hsl(43 74% 52% / 0.35)", background: "hsl(43 74% 52% / 0.04)" }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+              <Layers className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold tracking-wide">הגדרות גלובליות לכל הבוטים</h2>
+              <p className="text-[11px] text-muted-foreground" dir="rtl">
+                מינוף וסכום השקעה אחיד לכל הבוטים בבת אחת. הגדרות האלה מופעלות את ההגדרות המקומיות של כל בוט.
+                {settings.dynamicCapitalEnabled && <span className="text-amber-400 font-semibold"> (מושבת בזמן שהמנהל הדינמי פעיל.)</span>}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Global leverage */}
+        <div className="mt-3 rounded-md border border-border/40 bg-background/40 p-3" dir="rtl">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold">מינוף גלובלי</span>
+              <span className="font-mono text-sm font-bold text-primary">{settings.globalLeverage}x</span>
+            </div>
+            <Switch
+              checked={settings.globalLeverageEnabled}
+              onCheckedChange={(v) => update({ globalLeverageEnabled: v })}
+              aria-label="Toggle global leverage"
+              disabled={settings.dynamicCapitalEnabled}
+            />
+          </div>
+          <Slider
+            value={[settings.globalLeverage]}
+            min={1}
+            max={10}
+            step={1}
+            onValueChange={([v]) => update({ globalLeverage: v })}
+            disabled={!settings.globalLeverageEnabled || settings.dynamicCapitalEnabled}
+            className="w-full"
+            aria-label="Global leverage"
+          />
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            {settings.globalLeverageEnabled
+              ? `כל הבוטים סוחרים במינוף ${settings.globalLeverage}x. ההגדרות האישיות של כל בוט מושבתות זמנית.`
+              : "כל בוט משתמש בהגדרת המינוף של עצמו."}
+          </p>
+        </div>
+
+        {/* Fixed amount */}
+        <div className="mt-3 rounded-md border border-border/40 bg-background/40 p-3" dir="rtl">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold">סכום השקעה קבוע</span>
+              <span className="font-mono text-sm font-bold text-primary">${settings.fixedAmount}</span>
+            </div>
+            <Switch
+              checked={settings.fixedAmountEnabled}
+              onCheckedChange={(v) => update({ fixedAmountEnabled: v })}
+              aria-label="Toggle fixed amount"
+              disabled={settings.dynamicCapitalEnabled}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-muted-foreground">$</span>
+            <Input
+              type="number"
+              min={10}
+              max={10000}
+              step={10}
+              value={settings.fixedAmount}
+              onChange={(e) => update({ fixedAmount: Math.max(10, Math.min(10000, Number(e.target.value) || 10)) })}
+              disabled={!settings.fixedAmountEnabled || settings.dynamicCapitalEnabled}
+              className="h-8 font-mono text-sm bg-background/60"
+              aria-label="Fixed amount USD"
+            />
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            {settings.fixedAmountEnabled
+              ? `כל הבוטים משקיעים $${settings.fixedAmount} לעסקה. ההגדרות האישיות של כל בוט מושבתות זמנית.`
+              : "כל בוט משתמש בהגדרת הסכום של עצמו."}
+          </p>
+        </div>
+      </section>
 
       {/* Adaptive Manager */}
       <section className="rounded-lg border p-4" style={{ borderColor: "hsl(32 84% 55% / 0.35)", background: "hsl(32 84% 55% / 0.04)" }}>

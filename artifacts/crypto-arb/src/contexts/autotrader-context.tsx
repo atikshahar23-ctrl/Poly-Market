@@ -206,6 +206,38 @@ export function computeDynamicSizing(
 }
 
 /**
+ * Resolve the effective leverage and margin for any bot, respecting the
+ * precedence: dynamic capital (Account Manager) > global overrides > per-bot
+ * static settings.
+ *
+ * Engines should call this instead of reading `settings.marginPerTrade` /
+ * `settings.leverage` directly. The `botId` selects the correct per-bot static
+ * fallback when neither dynamic capital nor global overrides are active.
+ */
+export function resolveSizing(
+  settings: AutoTraderSettings,
+  cash: number,
+  totalDeposited: number,
+  tradeHistory: { pnl: number }[],
+  botId: "scalp" | "momentum" | "dipbuyer" | "breakout" | "dca" | "stocks" | "poly",
+): { margin: number; leverage: number; recoveryMode: boolean } {
+  if (settings.dynamicCapitalEnabled) {
+    return computeDynamicSizing(cash, totalDeposited, tradeHistory, settings.cashFloorPct);
+  }
+  let leverage = settings.leverage;
+  let margin = settings.marginPerTrade;
+  if (botId === "dipbuyer" || botId === "breakout") leverage = settings.newBotLeverage;
+  if (botId === "dipbuyer") margin = settings.dipStake;
+  else if (botId === "breakout") margin = settings.breakoutStake;
+  else if (botId === "dca") margin = settings.dcaStake;
+  else if (botId === "stocks") margin = settings.stockStakePerTrade;
+  else if (botId === "poly") margin = settings.polyStakePerBet;
+  if (settings.globalLeverageEnabled) leverage = settings.globalLeverage;
+  if (settings.fixedAmountEnabled) margin = settings.fixedAmount;
+  return { margin, leverage, recoveryMode: false };
+}
+
+/**
  * Resolved knobs for one trading-intensity gear (1-5). These multipliers are
  * applied uniformly by every bot engine so the whole fleet shifts together,
  * economy↔sport style. Boost mode overrides this with its own max cadence.
@@ -408,6 +440,16 @@ export interface AutoTraderSettings {
   /** Close a bet once its value is down this % from entry (irreversible-bet exit). */
   polyStopLossPct: number;
 
+  /* ── Global fleet-wide overrides ── */
+  /** When on, all bots use the same fleet-wide leverage (globalLeverage). */
+  globalLeverageEnabled: boolean;
+  /** Fleet-wide leverage override applied to every bot when enabled. */
+  globalLeverage: number;
+  /** When on, every bot stakes the same fixed amount (fixedAmount) per trade. */
+  fixedAmountEnabled: boolean;
+  /** Fixed USD amount every bot commits when fixedAmountEnabled is true. */
+  fixedAmount: number;
+
   /* ── Adaptive manager + 3 additional simulator bots ── */
   /** Let the manager nudge each new bot's selectivity from its own track record. */
   adaptiveEnabled: boolean;
@@ -527,6 +569,10 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
   polyStopLossPct: 50,
 
   adaptiveEnabled: true,
+  globalLeverageEnabled: false,
+  globalLeverage: 3,
+  fixedAmountEnabled: false,
+  fixedAmount: 100,
   newBotLeverage: 3,
 
   dipEnabled: false,

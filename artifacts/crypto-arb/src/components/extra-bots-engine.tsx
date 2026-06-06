@@ -5,7 +5,7 @@ import {
 } from "@workspace/api-client-react";
 import type { CoinTicker, StockQuote } from "@workspace/api-client-react";
 import { usePortfolio } from "@/contexts/portfolio-context";
-import { useAutoTrader, computeDynamicSizing, cashReserveFloor, intensityProfile, type NewBotId } from "@/contexts/autotrader-context";
+import { useAutoTrader, resolveSizing, cashReserveFloor, intensityProfile, type NewBotId } from "@/contexts/autotrader-context";
 import { useLivePrices } from "@/contexts/live-price-context";
 import { recommendLevels } from "@/lib/recommend-levels";
 import { toast } from "@/hooks/use-toast";
@@ -139,12 +139,12 @@ export function ExtraBotsEngine() {
 
   // ── Dip Buyer — buys the biggest crypto 24h losers (contrarian LONG) ──
   useEffect(() => {
-    if (!settings.dipEnabled || !(settings.dipStake > 0)) return;
+    if (!settings.dipEnabled) return;
     if (pausedBots.has("dipbuyer")) return;
-    const dynSizing = settings.dynamicCapitalEnabled
-      ? computeDynamicSizing(cash, totalDeposited, tradeHistory, settings.cashFloorPct) : null;
-    const lev = Math.max(1, dynSizing ? dynSizing.leverage : settings.newBotLeverage);
-    const dipStake = dynSizing ? dynSizing.margin : settings.dipStake;
+    const sizing = resolveSizing(settings, cash, totalDeposited, tradeHistory, "dipbuyer");
+    const lev = Math.max(1, sizing.leverage);
+    const dipStake = sizing.margin;
+    if (!(dipStake > 0)) return;
     const cashFloor = cashReserveFloor(totalDeposited, settings.cashFloorPct);
     const edge = getBotStat("dipbuyer").edge;
     // Intensity gear: calm demands a deeper dip; turbo steps in sooner.
@@ -185,12 +185,12 @@ export function ExtraBotsEngine() {
 
   // ── Breakout Hunter — buys the strongest crypto 24h gainers (LONG) ──
   useEffect(() => {
-    if (!settings.breakoutEnabled || !(settings.breakoutStake > 0)) return;
+    if (!settings.breakoutEnabled) return;
     if (pausedBots.has("breakout")) return;
-    const dynSizingB = settings.dynamicCapitalEnabled
-      ? computeDynamicSizing(cash, totalDeposited, tradeHistory, settings.cashFloorPct) : null;
-    const lev = Math.max(1, dynSizingB ? dynSizingB.leverage : settings.newBotLeverage);
-    const breakoutStake = dynSizingB ? dynSizingB.margin : settings.breakoutStake;
+    const sizing = resolveSizing(settings, cash, totalDeposited, tradeHistory, "breakout");
+    const lev = Math.max(1, sizing.leverage);
+    const breakoutStake = sizing.margin;
+    if (!(breakoutStake > 0)) return;
     const cashFloor = cashReserveFloor(totalDeposited, settings.cashFloorPct);
     const edge = getBotStat("breakout").edge;
     // Intensity gear: calm demands a stronger breakout; turbo chases earlier.
@@ -231,7 +231,7 @@ export function ExtraBotsEngine() {
 
   // ── Blue-Chip DCA — periodic small large-cap accumulation buys ──
   useEffect(() => {
-    if (!settings.dcaEnabled || !(settings.dcaStake > 0)) return;
+    if (!settings.dcaEnabled) return;
     if (pausedBots.has("dca")) return;
     const now = Date.now();
     // Boost mode buys on a tight 10s cadence; otherwise the intensity gear scales
@@ -240,9 +240,8 @@ export function ExtraBotsEngine() {
       ? 10_000
       : Math.max(5_000, (Math.max(1, settings.dcaIntervalMin) * 60_000) / prof.tradeRate);
     if (now - lastDcaRef.current < intervalMs) return;
-    const dcaStake = settings.dynamicCapitalEnabled
-      ? computeDynamicSizing(cash, totalDeposited, tradeHistory, settings.cashFloorPct).margin
-      : settings.dcaStake;
+    const sizing = resolveSizing(settings, cash, totalDeposited, tradeHistory, "dca");
+    const dcaStake = sizing.margin;
     const cashFloor = cashReserveFloor(totalDeposited, settings.cashFloorPct);
 
     const dcaMaxOpen = Math.max(1, Math.round(settings.dcaMaxOpen * prof.maxOpenMult));
