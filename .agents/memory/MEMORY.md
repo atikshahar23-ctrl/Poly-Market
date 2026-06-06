@@ -31,5 +31,6 @@
 - [Bot loss diagnosis](bot-loss-diagnosis.md) — why paper bots booked big losses/tiny gains; the risk-budget + leverage + always-set-SL principles that fix it.
 - [Calendar cell selection](calendar-cell-selection.md) — padded grid cells must carry their own absolute year/month or clicking a spillover day maps to the wrong date; never freeze "today" in state.
 - [Stock Desk & expensive rate limit](stock-desk-and-rate-limit.md) — /stock-desk one-window aggregator; recs backfill HOLD to a min count; 12/min expensiveRateLimit trips on dev reload+curl bursts → transient 429/empty, wait 60s not loosen
+- [Master Advisor](master-advisor.md) — /advisor single top-level rule-based he/en persona; pure engine builds read+ranked moves, page maps action.kind→existing helpers, Approve/Dismiss gated, no new pipelines
 - [Auto-Pilot + cancel light-speed](autopilot-and-light-speed.md) — "אוטומטי" master flips all mgmt switches + dynamicCapital + arms all; light-speed=BOOST is the only real flooding source (normal loops already 1-pos/asset + 10min cooldown), so cancel = stopBoost (keep armed), full kill stays separate.
 - [JARVIS boost advisor](jarvis-boost-advisor.md) — JARVIS reads live momentum+scalp "heat" to recommend WHEN/how-long to run boost and one-tap-activates via useAutoTrader.startBoost; share query keys to avoid fan-out.

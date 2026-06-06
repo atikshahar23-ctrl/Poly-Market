@@ -19,6 +19,7 @@ import QuickBets from "@/pages/quickbets";
 import History from "@/pages/history";
 import TradeDesk from "@/pages/trade-desk";
 import Bots from "@/pages/bots";
+import MasterAdvisor from "@/pages/master-advisor";
 import Research from "@/pages/research";
 import Briefing from "@/pages/briefing";
 import Tools from "@/pages/tools";
@@ -53,6 +54,7 @@ function Router() {
         <Route path="/smart-money" component={SmartMoney} />
         <Route path="/simulator" component={Simulator} />
         <Route path="/bots" component={Bots} />
+        <Route path="/advisor" component={MasterAdvisor} />
         <Route path="/briefing" component={Briefing} />
         <Route path="/tools" component={Tools} />
         <Route path="/research" component={Research} />
