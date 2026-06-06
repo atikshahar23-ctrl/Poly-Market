@@ -5,7 +5,9 @@ description: How sub-second crypto prices and live candles are streamed for free
 
 # Live real-time layer (zero-cost)
 
-- Crypto live prices come from one shared browser WebSocket to Binance miniTicker (`live-price-context.tsx`), exposed via `useLivePrices()`/`useLivePrice()`. The AutoTrader engine overlays these over the polled overview priceMap so SL/TP/guards react near-instantly.
+- Crypto live prices come from one shared browser WebSocket to Binance miniTicker (`live-price-context.tsx`), exposed via `useLivePrices()`/`useLivePrice()`. The AutoTrader engine, simulator, and trade-desk all overlay these over their polled REST baseline so displayed prices + SL/TP/guards react near-instantly (REST is just fallback/asset-list).
+- **The live store keys on the BASE asset (`BTC`), not the pair (`BTCUSDT`)** — it does `sym.slice(0,-4)` on ingest. Pass the base asset to `useLivePrice`/`live.get`, or the lookup silently misses and you fall back to the slow REST price (this bit trade-desk's `useCryptoPrice`).
+- Once the WS is the real-time path, floor the REST `binance/multi` poll at 5s even in fast mode (`intervalFor(5000, 5000)`). Fast-mode sub-2s polling blew the server's global 120/min per-IP limiter → 429 storm that froze the baseline. The WS keeps prices fresh regardless, so flooring the REST is pure upside.
 - Candlestick charts seed from REST (`data-api.binance.vision`) then switch to a per-symbol kline WebSocket; REST polling is only a fallback if the socket never opens.
 
 ## Binance interval casing gotcha

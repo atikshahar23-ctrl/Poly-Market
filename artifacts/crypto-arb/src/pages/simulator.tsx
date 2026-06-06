@@ -10,6 +10,7 @@ import {
   usePortfolio, STARTING_BALANCE,
 } from "@/contexts/portfolio-context";
 import { useRefresh } from "@/contexts/refresh-context";
+import { useLivePrices } from "@/contexts/live-price-context";
 import { recommendLevels } from "@/lib/recommend-levels";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1105,8 +1106,11 @@ export default function SimulatorPage() {
   const { polyPositions, binancePositions, stockPositions, cash, resetPortfolio, checkSlTp, closeAllBotPositions } = usePortfolio();
   const { intervalFor } = useRefresh();
 
+  // REST is only the slow baseline / asset list now — the live WS (below) is the
+  // real-time price source. Floor it at 5s even in fast mode so it stops blowing
+  // the server's global rate limit (which was 429-ing and freezing the baseline).
   const { data: binanceData, isLoading: binanceLoading } = useGetBinanceMulti({
-    query: { queryKey: getGetBinanceMultiQueryKey(), refetchInterval: intervalFor(5000) }
+    query: { queryKey: getGetBinanceMultiQueryKey(), refetchInterval: intervalFor(5000, 5000) }
   });
   const { data: allMarketsData, isLoading: marketsLoading } = useGetAllMarkets(
     {},
@@ -1116,11 +1120,21 @@ export default function SimulatorPage() {
     query: { queryKey: getGetStocksQueryKey(), refetchInterval: intervalFor(30000, 30000) }
   });
 
+  // Sub-second live prices straight from Binance's public WS (browser-direct,
+  // free, ~1/sec). Overlaid on the 5s REST baseline so the displayed price
+  // tracks Binance in real time instead of lagging the poll interval.
+  const live = useLivePrices();
+  const liveVersion = live.version;
   const binancePrices = useMemo(() => {
     const map: Record<string, number> = {};
-    (binanceData ?? []).forEach(b => { map[b.asset] = b.markPrice; });
+    (binanceData ?? []).forEach(b => {
+      const lp = live.get(b.asset);
+      map[b.asset] = lp && lp.price > 0 ? lp.price : b.markPrice;
+    });
     return map;
-  }, [binanceData]);
+    // live.get reads current store state; recompute when a new WS batch lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [binanceData, liveVersion]);
 
   const stocks = useMemo(() => stocksData ?? [], [stocksData]);
   const stockPrices = useMemo(() => {

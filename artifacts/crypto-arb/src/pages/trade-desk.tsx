@@ -49,7 +49,9 @@ function SourceBadge({ auto, source }: { auto?: boolean; source?: string }) {
 
 /* ─── Live price hook for a single crypto asset ─── */
 function useCryptoPrice(asset: string, fallback: number): number {
-  const live = useLivePrice(asset + "USDT");
+  // The live-price store keys on the base asset (e.g. "BTC"), not the pair
+  // ("BTCUSDT"). Pass the base asset so the WS overlay actually hits.
+  const live = useLivePrice(asset);
   return live?.price ?? fallback;
 }
 
@@ -307,8 +309,10 @@ export default function TradeDesk() {
     cash, totalDeposited,
   } = usePortfolio();
 
+  // Live prices come from the WS overlay per-position; this REST call is only the
+  // baseline/fallback, so floor it at 5s (even in fast mode) to avoid 429s.
   const { data: binanceData } = useGetBinanceMulti({
-    query: { queryKey: getGetBinanceMultiQueryKey(), refetchInterval: intervalFor(5000) },
+    query: { queryKey: getGetBinanceMultiQueryKey(), refetchInterval: intervalFor(5000, 5000) },
   });
   const { data: stocksData } = useGetStocks({
     query: { queryKey: getGetStocksQueryKey(), refetchInterval: intervalFor(30000, 30000) },
