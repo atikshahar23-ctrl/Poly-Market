@@ -53,6 +53,13 @@ function fmtPrice(n: number) {
 function pct(n: number, d = 2) {
   return `${n >= 0 ? "+" : ""}${n.toFixed(d)}%`;
 }
+function fmtCompact(n: number | null) {
+  if (n == null) return "—";
+  if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
+  return String(n);
+}
 
 /** Build a fully-Hebrew, rule-based rationale from the structured signal fields. */
 function hebrewRationale(rec: StockRecommendation): string {
@@ -254,6 +261,9 @@ function AgentRow({ rec, quote, onOpen }: {
             <span className={rec.changePercent >= 0 ? "text-emerald-400" : "text-red-400"}>היום {pct(rec.changePercent)}</span>
             <span className={momUp ? "text-emerald-400/80" : "text-red-400/80"}>5 ימים {pct(rec.momentum5dPercent, 1)}</span>
             <span className="text-muted-foreground">טווח {Math.round(rec.rangePositionPercent)}%</span>
+            {quote?.shortInterest != null && (
+              <span className="text-amber-400/80" title="Synthetic short interest for educational purposes">שורט {fmtCompact(quote.shortInterest)} ({quote.shortPercentOfFloat?.toFixed(1)}%)</span>
+            )}
           </div>
 
           {/* Educational levels */}

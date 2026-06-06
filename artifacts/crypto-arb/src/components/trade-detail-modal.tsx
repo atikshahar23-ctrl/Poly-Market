@@ -135,7 +135,8 @@ function buildAnalysis(t: ClosedTrade): TradeAnalysis {
   outcome.push(`סיבת היציאה: ${ex.label}`);
   if (t.exitPrice != null) outcome.push(`מחיר יציאה בפועל: $${fmtPrice(t.exitPrice)}`);
   const pct = t.cost > 0 ? (t.pnl / t.cost) * 100 : 0;
-  outcome.push(`תוצאה: ${won ? "+" : ""}$${fmtUsd(t.pnl)} (${won ? "+" : ""}${pct.toFixed(2)}% על המרג׳ין)`);
+  const feeStr = (t.fees ?? 0) > 0 ? ` · עמלות: $${fmtUsd(t.fees!)}` : "";
+  outcome.push(`תוצאה: ${won ? "+" : ""}$${fmtUsd(t.pnl)} (${won ? "+" : ""}${pct.toFixed(2)}% על המרג׳ין)${feeStr}`);
   const dur = holdingDuration(t);
   if (dur) outcome.push(`משך החזקה: ${dur}`);
 
@@ -333,6 +334,9 @@ export function TradeDetailModal({ trade, onClose }: Props) {
               <DetailRow label="נפתחה" value={trade.openedAt ? fmtDateTime(trade.openedAt) : "—"} />
               <DetailRow label="נסגרה" value={fmtDateTime(trade.closedAt)} />
               <DetailRow label="תקבול" value={`$${fmtUsd(trade.proceeds)}`} />
+              {(trade.fees ?? 0) > 0 && (
+                <DetailRow label="עמלות מסחר" value={`$${fmtUsd(trade.fees!)}`} color="#f59e0b" />
+              )}
             </div>
           ) : (
             // Legacy trade without structured fields — show description + basics.

@@ -842,6 +842,15 @@ components:
           description: Symbol formatted for TradingView links (dot notation for class shares)
         fetchedAt:
           type: string
+        shortInterest:
+          type: ["number", "null"]
+          description: Short interest (shares short). Null if unavailable.
+        shortRatio:
+          type: ["number", "null"]
+          description: Short ratio = days to cover. Null if unavailable.
+        shortPercentOfFloat:
+          type: ["number", "null"]
+          description: Short interest as % of float. Null if unavailable.
 
     StockCandle:
       type: object

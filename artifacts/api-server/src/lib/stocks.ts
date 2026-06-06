@@ -19,6 +19,12 @@ export interface StockQuote {
   currency: string;
   tradingViewSymbol: string;
   fetchedAt: string;
+  /** Synthetic short-interest (shares short). Purely educational; NOT real data. */
+  shortInterest: number | null;
+  /** Days-to-cover ratio. Synthetic. */
+  shortRatio: number | null;
+  /** Short % of float. Synthetic. */
+  shortPercentOfFloat: number | null;
 }
 
 export type StockAction = "BUY" | "SELL" | "HOLD";
@@ -160,6 +166,89 @@ const TICKERS: TickerDef[] = [
 
 const YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart";
 
+// ── Synthetic Short Interest Estimation ──────────────────────────────────────
+// Free short-interest APIs are geo-blocked or require auth. We generate synthetic
+// estimates for educational scenario-building. These are NOT real data.
+
+const HIGH_SHORT_SYMBOLS = new Set([
+  "PLTR", "GME", "AMC", "RIVN", "LCID", "NVAX", "NIO", "SPCE", "BYND",
+  "SNAP", "UBER", "COIN", "PYPL", "INTC", "AMD", "TSLA", "META", "AI",
+  "NVDA", "HOOD", "UPST", "DKNG", "TDOC", "MSTR", "CHPT", "QS", "SKLZ",
+  "ROOT", "RBLX", "DASH", "ABNB", "UBER", "LYFT", "PLUG", "FSR", "NKLA",
+  "WKHS", "OPEN", "PTON", "APP", "ASTS", "SOFI", "MQ", "SOFI", "ARBE",
+  "SPWR", "JKS", "ENPH", "SEDG", "RUN", "BE",
+]);
+const LOW_SHORT_SYMBOLS = new Set([
+  "SPY", "QQQ", "DIA", "IWM", "VTI", "VOO", "EEM", "GLD", "SLV", "USO",
+  "BRK-B", "JNJ", "PG", "KO", "PEP", "WMT", "COST", "UNH", "LLY", "ABBV",
+  "PFE", "MRK", "VZ", "T", "XOM", "CVX", "NEE", "DUK", "SO",
+  "AAPL", "MSFT", "GOOGL", "AMZN", "AVGO", "JPM", "V", "MA", "BAC", "GS",
+  "WFC", "MS", "SCHW", "BLK", "TROW", "SYK", "BDX", "ISRG", "ZTS", "ELV",
+  "CI", "HUM", "ANTM", "UNP", "CSX", "NSC", "FDX", "UPS", "LMT", "RTX",
+  "NOC", "GD", "TDG", "HWM", "CAT", "DE", "PCAR", "PH", "ITW", "EMR",
+  "ETN", "AME", "DOV", "ROP", "GWW", "FMC", "IFF", "ALB", "EMN", "CE",
+  "APD", "LIN", "SHW", "PPG", "ECL", "NUE", "STLD", "RS", "MT", "CLF",
+  "FCX", "NEM", "GOLD", "AEM", "WPM", "TECK", "SCCO", "VALE", "RIO", "BHP",
+  "SLB", "HAL", "BKR", "NOV", "FTI", "HP", "PTEN", "NBR", "LBRT", "STEP",
+  "MPC", "VLO", "PSX", "HES", "DVN", "MRO", "APA", "CNX", "EQT", "RRC",
+  "SWN", "CHK", "CTRA", "OVV", "MUR", "SM", "PDCE", "MTDR", "PXD", "EOG",
+  "OXY", "COP", "MPC", "PSX", "VLO", "MPC", "CVX", "XOM", "MPC", "PSX",
+  "ENB", "TRP", "EPD", "ET", "MPLX", "WES", "PAA", "KMI", "OKE", "ETP",
+]);
+
+function estimateShortInterest(
+  symbol: string,
+  price: number,
+  volume: number | null,
+  momentum5d: number | null,
+  changePct: number,
+): number | null {
+  // Purely synthetic. Returns a plausible number of shorted shares.
+  const upper = symbol.toUpperCase();
+  if (HIGH_SHORT_SYMBOLS.has(upper)) {
+    // Meme / high-beta / growth names: 60–180M shares short
+    const base = 60_000_000 + ((upper.charCodeAt(0) * 7) % 120_000_000);
+    return Math.round(base / 1_000_000) * 1_000_000;
+  }
+  if (LOW_SHORT_SYMBOLS.has(upper)) {
+    // Mega-cap / blue-chip / defensive: 10–60M shares short
+    const base = 10_000_000 + ((upper.charCodeAt(0) * 3) % 50_000_000);
+    return Math.round(base / 1_000_000) * 1_000_000;
+  }
+  // Mid-range: infer from volatility signal
+  const volProxy = Math.abs(momentum5d ?? 0) + Math.abs(changePct);
+  const base = 15_000_000 + Math.round(volProxy * 5_000_000);
+  return Math.round(base / 1_000_000) * 1_000_000;
+}
+
+function estimateShortRatio(
+  shortInterest: number | null,
+  volume: number | null,
+): number | null {
+  if (!shortInterest || !volume || volume === 0) return null;
+  const avgDailyVolume = Math.max(volume, 500_000);
+  return Math.round((shortInterest / avgDailyVolume) * 10) / 10;
+}
+
+function estimateShortPercentOfFloat(
+  shortInterest: number | null,
+  symbol: string,
+): number | null {
+  if (!shortInterest) return null;
+  const upper = symbol.toUpperCase();
+  // Approximate float from price range (very rough heuristic)
+  let floatProxy: number;
+  if (LOW_SHORT_SYMBOLS.has(upper)) {
+    floatProxy = 1_500_000_000 + ((upper.charCodeAt(0) * 50) % 3_000_000_000);
+  } else if (HIGH_SHORT_SYMBOLS.has(upper)) {
+    floatProxy = 300_000_000 + ((upper.charCodeAt(0) * 30) % 800_000_000);
+  } else {
+    floatProxy = 600_000_000 + ((upper.charCodeAt(0) * 20) % 1_000_000_000);
+  }
+  const pct = (shortInterest / floatProxy) * 100;
+  return Math.round(pct * 100) / 100;
+}
+
 // TradingView uses dot notation for class shares (BRK.B not BRK-B)
 function toTradingViewSymbol(symbol: string): string {
   return symbol.replace("-", ".");
@@ -222,6 +311,12 @@ async function fetchOneQuote(def: TickerDef): Promise<StockQuote | null> {
       if (ref5 && ref5 !== 0) momentum5dPercent = ((price - ref5) / ref5) * 100;
     }
 
+    // Synthetic short-interest estimates for educational scenario-building.
+    const volume = meta.regularMarketVolume ?? null;
+    const shortInterest = estimateShortInterest(def.symbol, price, volume, momentum5dPercent, changePercent);
+    const shortRatio = estimateShortRatio(shortInterest, volume);
+    const shortPercentOfFloat = estimateShortPercentOfFloat(shortInterest, def.symbol);
+
     return {
       symbol: def.symbol,
       name: def.name,
@@ -235,10 +330,13 @@ async function fetchOneQuote(def: TickerDef): Promise<StockQuote | null> {
       monthHigh,
       monthLow,
       momentum5dPercent,
-      volume: meta.regularMarketVolume ?? null,
+      volume,
       currency: meta.currency ?? "USD",
       tradingViewSymbol: toTradingViewSymbol(def.symbol),
       fetchedAt: new Date().toISOString(),
+      shortInterest,
+      shortRatio,
+      shortPercentOfFloat,
     };
   } catch (err) {
     logger.warn({ symbol: def.symbol, err: String(err) }, "Yahoo chart fetch failed");

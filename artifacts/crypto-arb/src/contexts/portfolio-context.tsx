@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
 import { toast } from "@/hooks/use-toast";
+import { calcCloseFeeForBinance, calcCloseFeeForStock, calcCloseFeeForPoly, FEE_RATES } from "@/lib/fees";
 
 export const STARTING_BALANCE = 10_000;
 
@@ -101,6 +102,8 @@ export interface ClosedTrade {
   cost: number;
   proceeds: number;
   pnl: number;
+  /** Total round-trip fees paid on this trade (open + close). */
+  fees: number;
   closedAt: string;
   openedAt?: string;
   /** Closed by an automatic SL/TP trigger or auto-traded position. */
@@ -420,10 +423,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       if (amountUsd <= 0) return "Amount must be positive";
       if (!Number.isFinite(market.entryPrice) || market.entryPrice <= 0 || market.entryPrice >= 1)
         return "Invalid market price";
-      if (stateRef.current.cash < amountUsd) return "Insufficient balance";
+      const openFee = amountUsd * FEE_RATES.poly.open;
+      const totalOut = amountUsd + openFee;
+      if (stateRef.current.cash < totalOut) return "Insufficient balance";
       // Account Manager cash reserve: enforced atomically against live cash so
       // concurrent same-tick opens across bots can't collectively breach it.
-      if (stateRef.current.cash - amountUsd < Math.max(0, minCashReserve)) return "Below cash reserve";
+      if (stateRef.current.cash - totalOut < Math.max(0, minCashReserve)) return "Below cash reserve";
       const shares = amountUsd / market.entryPrice;
       const position: PolyPosition = {
         ...market,
@@ -434,12 +439,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       };
       stateRef.current = {
         ...stateRef.current,
-        cash: stateRef.current.cash - amountUsd,
+        cash: stateRef.current.cash - totalOut,
         polyPositions: [...stateRef.current.polyPositions, position],
       };
       setState((prev) => ({
         ...prev,
-        cash: prev.cash - amountUsd,
+        cash: prev.cash - totalOut,
         polyPositions: [...prev.polyPositions, position],
       }));
       return null;
@@ -451,7 +456,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const pos = prev.polyPositions.find((p) => p.id === id);
       if (!pos) return prev;
-      const proceeds = pos.shares * currentPrice;
+      const grossProceeds = pos.shares * currentPrice;
+      const fees = calcCloseFeeForPoly(grossProceeds);
+      const proceeds = Math.max(0, grossProceeds - fees);
       const pnl = proceeds - pos.cost;
       const closed: ClosedTrade = {
         id: crypto.randomUUID(),
@@ -461,6 +468,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         cost: pos.cost,
         proceeds,
         pnl,
+        fees,
         closedAt: new Date().toISOString(),
         openedAt: pos.openedAt,
         direction: pos.side,
@@ -485,10 +493,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     (pos: Omit<BinancePosition, "id" | "openedAt">, minCashReserve = 0) => {
       if (pos.notional <= 0) return "Amount must be positive";
       const margin = pos.notional / pos.leverage;
-      if (stateRef.current.cash < margin) return "Insufficient margin";
+      const openFee = pos.notional * FEE_RATES.perp.open;
+      const totalOut = margin + openFee;
+      if (stateRef.current.cash < totalOut) return "Insufficient margin + fee";
       // Account Manager cash reserve: enforced atomically against live cash so
       // concurrent same-tick opens across bots can't collectively breach it.
-      if (stateRef.current.cash - margin < Math.max(0, minCashReserve)) return "Below cash reserve";
+      if (stateRef.current.cash - totalOut < Math.max(0, minCashReserve)) return "Below cash reserve";
       const position: BinancePosition = {
         ...pos,
         id: crypto.randomUUID(),
@@ -496,12 +506,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       };
       stateRef.current = {
         ...stateRef.current,
-        cash: stateRef.current.cash - margin,
+        cash: stateRef.current.cash - totalOut,
         binancePositions: [...stateRef.current.binancePositions, position],
       };
       setState((prev) => ({
         ...prev,
-        cash: prev.cash - margin,
+        cash: prev.cash - totalOut,
         binancePositions: [...prev.binancePositions, position],
       }));
       return null;
@@ -519,8 +529,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           pos.direction === "LONG"
             ? (currentPrice - pos.entryPrice) / pos.entryPrice
             : (pos.entryPrice - currentPrice) / pos.entryPrice;
-        const pnl = priceDelta * pos.notional;
-        const proceeds = margin + pnl;
+        const grossPnl = priceDelta * pos.notional;
+        const fees = calcCloseFeeForBinance(pos.notional);
+        const pnl = grossPnl - fees;
+        const proceeds = Math.max(0, margin + pnl);
         const closed: ClosedTrade = {
           id: crypto.randomUUID(),
           type: "BINANCE",
@@ -529,8 +541,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         slPrice: pos.slPrice,
         tpPrice: pos.tpPrice,
           cost: margin,
-          proceeds: Math.max(0, proceeds),
+          proceeds,
           pnl,
+          fees,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,
@@ -544,7 +557,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         };
         return {
           ...prev,
-          cash: prev.cash + Math.max(0, proceeds),
+          cash: prev.cash + proceeds,
           binancePositions: prev.binancePositions.filter((p) => p.id !== id),
           tradeHistory: [closed, ...prev.tradeHistory].slice(0, 200),
         };
@@ -603,6 +616,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           cost: pos.notionalPerLeg,
           proceeds,
           pnl,
+          fees: 0,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,
@@ -654,11 +668,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       if (amountUsd <= 0) return "Amount must be positive";
       if (stock.entryPrice <= 0) return "Price unavailable";
       const lev = leverage >= 1 ? leverage : 1;
-      if (stateRef.current.cash < amountUsd) return "Insufficient balance";
+      const shares = (amountUsd * lev) / stock.entryPrice;
+      const openFee = shares * stock.entryPrice * FEE_RATES.stock.open;
+      const totalOut = amountUsd + openFee;
+      if (stateRef.current.cash < totalOut) return "Insufficient balance + fee";
       // Account Manager cash reserve: enforced atomically against live cash so
       // concurrent same-tick opens across bots can't collectively breach it.
-      if (stateRef.current.cash - amountUsd < Math.max(0, minCashReserve)) return "Below cash reserve";
-      const shares = (amountUsd * lev) / stock.entryPrice;
+      if (stateRef.current.cash - totalOut < Math.max(0, minCashReserve)) return "Below cash reserve";
       const position: StockPosition = {
         ...stock,
         id: crypto.randomUUID(),
@@ -669,12 +685,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       };
       stateRef.current = {
         ...stateRef.current,
-        cash: stateRef.current.cash - amountUsd,
+        cash: stateRef.current.cash - totalOut,
         stockPositions: [...stateRef.current.stockPositions, position],
       };
       setState((prev) => ({
         ...prev,
-        cash: prev.cash - amountUsd,
+        cash: prev.cash - totalOut,
         stockPositions: [...prev.stockPositions, position],
       }));
       return null;
@@ -687,7 +703,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       const pos = prev.stockPositions.find((p) => p.id === id);
       if (!pos) return prev;
       const dir = pos.direction ?? "LONG";
-      const pnl = pos.shares * (dir === "SHORT" ? pos.entryPrice - currentPrice : currentPrice - pos.entryPrice);
+      const grossPnl = pos.shares * (dir === "SHORT" ? pos.entryPrice - currentPrice : currentPrice - pos.entryPrice);
+      const fees = calcCloseFeeForStock(pos.shares, currentPrice);
+      const pnl = grossPnl - fees;
       const proceeds = Math.max(0, pos.cost + pnl);
       const closed: ClosedTrade = {
         id: crypto.randomUUID(),
@@ -699,6 +717,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         cost: pos.cost,
         proceeds,
         pnl,
+        fees,
         closedAt: new Date().toISOString(),
         openedAt: pos.openedAt,
         auto: pos.auto,
@@ -745,7 +764,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           pos.direction === "LONG"
             ? (price - pos.entryPrice) / pos.entryPrice
             : (pos.entryPrice - price) / pos.entryPrice;
-        const pnl = priceDelta * pos.notional;
+        const grossPnl = priceDelta * pos.notional;
+        const fees = calcCloseFeeForBinance(pos.notional);
+        const pnl = grossPnl - fees;
         const proceeds = Math.max(0, margin + pnl);
 
         const closed: ClosedTrade = {
@@ -758,6 +779,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           cost: margin,
           proceeds,
           pnl,
+          fees,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,
@@ -786,7 +808,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         const hitTP = pos.tpPrice != null && (dir === "SHORT" ? price <= pos.tpPrice : price >= pos.tpPrice);
         if (!hitSL && !hitTP) continue;
 
-        const pnl = pos.shares * (dir === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice);
+        const grossPnl = pos.shares * (dir === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice);
+        const fees = calcCloseFeeForStock(pos.shares, price);
+        const pnl = grossPnl - fees;
         const proceeds = Math.max(0, pos.cost + pnl);
 
         const closed: ClosedTrade = {
@@ -799,6 +823,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           cost: pos.cost,
           proceeds,
           pnl,
+          fees,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,
@@ -905,7 +930,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           pos.direction === "LONG"
             ? (price - pos.entryPrice) / pos.entryPrice
             : (pos.entryPrice - price) / pos.entryPrice;
-        const pnl = priceDelta * pos.notional;
+        const grossPnl = priceDelta * pos.notional;
+        const fees = calcCloseFeeForBinance(pos.notional);
+        const pnl = grossPnl - fees;
         // Only fire on losers whose loss has eaten the configured share of margin.
         if (pnl >= 0 || -pnl < margin * lossFrac) continue;
 
@@ -920,6 +947,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           cost: margin,
           proceeds,
           pnl,
+          fees,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,
@@ -967,7 +995,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         pos.direction === "LONG"
           ? (price - pos.entryPrice) / pos.entryPrice
           : (pos.entryPrice - price) / pos.entryPrice;
-      const pnl = priceDelta * pos.notional;
+      const grossPnl = priceDelta * pos.notional;
+      const fees = calcCloseFeeForBinance(pos.notional);
+      const pnl = grossPnl - fees;
       const proceeds = Math.max(0, margin + pnl);
       const closed: ClosedTrade = {
         id: crypto.randomUUID(),
@@ -979,6 +1009,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         cost: margin,
         proceeds,
         pnl,
+        fees,
         closedAt: new Date().toISOString(),
         openedAt: pos.openedAt,
         auto: pos.auto,
@@ -998,7 +1029,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     for (const pos of prev.stockPositions) {
       const price = prices[pos.symbol];
       if (!price || !Number.isFinite(price)) { keptStocks.push(pos); continue; }
-      const pnl = pos.shares * (pos.direction === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice);
+      const grossPnl = pos.shares * (pos.direction === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice);
+      const fees = calcCloseFeeForStock(pos.shares, price);
+      const pnl = grossPnl - fees;
       const proceeds = Math.max(0, pos.cost + pnl);
       const closed: ClosedTrade = {
         id: crypto.randomUUID(),
@@ -1010,6 +1043,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         cost: pos.cost,
         proceeds,
         pnl,
+        fees,
         closedAt: new Date().toISOString(),
         openedAt: pos.openedAt,
         auto: pos.auto,
@@ -1040,6 +1074,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         cost: pos.notionalPerLeg,
         proceeds,
         pnl,
+        fees: 0,
         closedAt: new Date().toISOString(),
         openedAt: pos.openedAt,
         auto: pos.auto,
@@ -1091,7 +1126,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           pos.direction === "LONG"
             ? (price - pos.entryPrice) / pos.entryPrice
             : (pos.entryPrice - price) / pos.entryPrice;
-        const pnl = priceDelta * pos.notional;
+        const grossPnl = priceDelta * pos.notional;
+        const fees = calcCloseFeeForBinance(pos.notional);
+        const pnl = grossPnl - fees;
         const proceeds = Math.max(0, margin + pnl);
         const closed: ClosedTrade = {
           id: crypto.randomUUID(),
@@ -1103,6 +1140,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           cost: margin,
           proceeds,
           pnl,
+          fees,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,
@@ -1124,7 +1162,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         const price = stockPrices[pos.symbol];
         if (!price || !Number.isFinite(price)) { keptStocks.push(pos); continue; }
         const dir = pos.direction ?? "LONG";
-        const pnl = pos.shares * (dir === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice);
+        const grossPnl = pos.shares * (dir === "SHORT" ? pos.entryPrice - price : price - pos.entryPrice);
+        const fees = calcCloseFeeForStock(pos.shares, price);
+        const pnl = grossPnl - fees;
         const proceeds = Math.max(0, pos.cost + pnl);
         const closed: ClosedTrade = {
           id: crypto.randomUUID(),
@@ -1136,6 +1176,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           cost: pos.cost,
           proceeds,
           pnl,
+          fees,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,
@@ -1155,7 +1196,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       for (const pos of prev.polyPositions) {
         if (!pos.auto) { keptPoly.push(pos); continue; }
         const price = polyPrices[pos.conditionId] ?? pos.entryPrice;
-        const proceeds = pos.shares * price;
+        const grossProceeds = pos.shares * price;
+        const fees = calcCloseFeeForPoly(grossProceeds);
+        const proceeds = Math.max(0, grossProceeds - fees);
         const pnl = proceeds - pos.cost;
         const closed: ClosedTrade = {
           id: crypto.randomUUID(),
@@ -1165,6 +1208,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           cost: pos.cost,
           proceeds,
           pnl,
+          fees,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           direction: pos.side,
@@ -1195,6 +1239,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           cost: pos.notionalPerLeg,
           proceeds,
           pnl,
+          fees: 0,
           closedAt: new Date().toISOString(),
           openedAt: pos.openedAt,
           auto: pos.auto,

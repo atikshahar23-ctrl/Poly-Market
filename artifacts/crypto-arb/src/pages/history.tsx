@@ -319,7 +319,8 @@ export default function HistoryPage() {
     const grossWin = tradeHistory.filter((t) => t.pnl > 0).reduce((a, t) => a + t.pnl, 0);
     const grossLoss = Math.abs(tradeHistory.filter((t) => t.pnl < 0).reduce((a, t) => a + t.pnl, 0));
     const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? Infinity : 0;
-    return { n, wins, losses, totalPnl, best, worst, winRate, autoCount, profitFactor };
+    const totalFees = tradeHistory.reduce((a, t) => a + (t.fees ?? 0), 0);
+    return { n, wins, losses, totalPnl, best, worst, winRate, autoCount, profitFactor, totalFees };
   }, [tradeHistory]);
 
   const filtered = useMemo(() => {
@@ -357,11 +358,12 @@ export default function HistoryPage() {
       </div>
 
       {/* Account row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
         <StatCard label="יתרה" value={`$${fmtUsd(cash, 0)}`} Icon={Wallet} sub={`הופקדו $${fmtUsd(totalDeposited, 0)}`} />
         <StatCard label="רווח/הפסד ממומש" value={`${stats.totalPnl >= 0 ? "+" : ""}$${fmtUsd(stats.totalPnl)}`} color={pnlColor} Icon={stats.totalPnl >= 0 ? TrendingUp : TrendingDown} sub={`${stats.n} עסקאות סגורות`} />
         <StatCard label="אחוז הצלחה" value={`${stats.winRate.toFixed(0)}%`} Icon={Trophy} sub={`${stats.wins} נצחונות · ${stats.losses} הפסדים`} />
         <StatCard label="מקדם רווח" value={stats.profitFactor === Infinity ? "∞" : stats.profitFactor.toFixed(2)} Icon={Target} sub={`${stats.autoCount} אוטומטיות`} />
+        <StatCard label="עמלות מסחר" value={`$${fmtUsd(stats.totalFees)}`} color="#f59e0b" Icon={Activity} sub="סה&quot;כ עמלות" />
       </div>
 
       {/* Best/Worst row */}
@@ -488,11 +490,17 @@ function TradeTooltip({ trade, x, y }: { trade: ClosedTrade; x: number; y: numbe
             <span className="text-muted-foreground">תמורה</span>
             <span>${fmtUsd(trade.proceeds)}</span>
           </div>
+          {(trade.fees ?? 0) > 0 && (
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">עמלות</span>
+              <span className="text-amber-400">${fmtUsd(trade.fees!)}</span>
+            </div>
+          )}
         </div>
 
         {/* P&L bar */}
         <div className="mx-3 mb-2 rounded px-2 py-1.5 flex justify-between items-center" style={{ background: up ? "#22c55e14" : "#ef444414" }}>
-          <span className="text-muted-foreground">רווח / הפסד</span>
+          <span className="text-muted-foreground">רווח / הפסד (נטו)</span>
           <div className="text-right">
             <span className="font-black text-sm" style={{ color: up ? "#22c55e" : "#ef4444" }}>
               {up ? "+" : ""}{fmtUsd(trade.pnl)}

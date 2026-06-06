@@ -200,7 +200,10 @@ export const GetStocksResponseItem = zod.object({
   "volume": zod.number().nullish(),
   "currency": zod.string(),
   "tradingViewSymbol": zod.string().describe('Symbol formatted for TradingView links (dot notation for class shares)'),
-  "fetchedAt": zod.string()
+  "fetchedAt": zod.string(),
+  "shortInterest": zod.number().nullish().describe('Short interest (shares short). Null if unavailable.'),
+  "shortRatio": zod.number().nullish().describe('Short ratio = days to cover. Null if unavailable.'),
+  "shortPercentOfFloat": zod.number().nullish().describe('Short interest as % of float. Null if unavailable.')
 })
 export const GetStocksResponse = zod.array(GetStocksResponseItem)
 

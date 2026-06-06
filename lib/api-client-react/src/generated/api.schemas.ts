@@ -194,6 +194,21 @@ export interface StockQuote {
   /** Symbol formatted for TradingView links (dot notation for class shares) */
   tradingViewSymbol: string;
   fetchedAt: string;
+  /**
+     * Short interest (shares short). Null if unavailable.
+     * @nullable
+     */
+  shortInterest?: number | null;
+  /**
+     * Short ratio = days to cover. Null if unavailable.
+     * @nullable
+     */
+  shortRatio?: number | null;
+  /**
+     * Short interest as % of float. Null if unavailable.
+     * @nullable
+     */
+  shortPercentOfFloat?: number | null;
 }
 
 export interface StockCandle {

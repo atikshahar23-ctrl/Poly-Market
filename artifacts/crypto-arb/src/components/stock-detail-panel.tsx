@@ -25,6 +25,13 @@ function fmtVolume(n: number | null) {
   if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
   return String(n);
 }
+function fmtCompact(n: number | null) {
+  if (n == null) return "—";
+  if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
+  return String(n);
+}
 function rangePos(price: number, lo: number | null | undefined, hi: number | null | undefined): number | null {
   if (lo == null || hi == null || hi === lo) return null;
   return ((price - lo) / (hi - lo)) * 100;
@@ -193,6 +200,20 @@ export function StockDetailPanel({ stock: s, onClose }: Props) {
               <Metric label="Month low" value={s.monthLow == null ? "—" : `$${fmt(s.monthLow)}`} />
               <Metric label="Month range" value={monthPos == null ? "—" : `${monthPos.toFixed(0)}%`} sub="of range" />
             </div>
+            {/* Short interest (funding rate equivalent for stocks) */}
+            {s.shortInterest != null && (
+              <div className="mt-3 rounded-md border border-border bg-secondary/10 p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Short Interest (synthetic)</span>
+                  <span className="text-[9px] font-mono text-amber-400/70">educational only</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Metric label="Short interest" value={fmtCompact(s.shortInterest)} sub="shares" />
+                  <Metric label="Short ratio" value={s.shortRatio == null ? "—" : `${s.shortRatio.toFixed(1)}d`} sub="days to cover" />
+                  <Metric label="Short % float" value={s.shortPercentOfFloat == null ? "—" : `${s.shortPercentOfFloat.toFixed(1)}%`} />
+                </div>
+              </div>
+            )}
             {monthPos != null && s.monthLow != null && s.monthHigh != null && (
               <div className="mt-3">
                 <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">Position in monthly range</div>
