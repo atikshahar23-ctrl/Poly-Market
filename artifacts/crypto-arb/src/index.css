@@ -1,7 +1,9 @@
+@layer theme, base, clerk, components, utilities;
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
+@import "@clerk/themes/shadcn.css";
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant short (@media (max-height: 600px));
