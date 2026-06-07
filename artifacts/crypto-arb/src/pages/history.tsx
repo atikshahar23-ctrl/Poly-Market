@@ -611,11 +611,28 @@ function OpenPositions() {
 
 export default function HistoryPage() {
   const { tradeHistory, cash, totalDeposited } = usePortfolio();
+  const [, navigate] = useLocation();
   const [typeF, setTypeF] = useState<TypeFilter>("ALL");
   const [resultF, setResultF] = useState<ResultFilter>("ALL");
   const [sourceF, setSourceF] = useState<SourceFilter>("ALL");
   const [botF, setBotF] = useState<BotFilter>("ALL");
   const [selected, setSelected] = useState<ClosedTrade | null>(null);
+
+  // Long-press / right-click on an active bot chip jumps to that bot's panel on /bots.
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  const goToBotPanel = useCallback((key: string) => {
+    sessionStorage.setItem("scrollToBotId", `bot-${key}`);
+    navigate("/bots");
+  }, [navigate]);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   function handleSourceF(v: SourceFilter) {
     setSourceF(v);
@@ -737,7 +754,27 @@ export default function HistoryPage() {
                 return (
                   <button
                     key={bd.key}
-                    onClick={() => setBotF(bd.key as BotFilter)}
+                    onClick={() => {
+                      if (longPressFired.current) { longPressFired.current = false; return; }
+                      setBotF(bd.key as BotFilter);
+                    }}
+                    onContextMenu={(e) => {
+                      if (!active) return;
+                      e.preventDefault();
+                      goToBotPanel(bd.key);
+                    }}
+                    onPointerDown={() => {
+                      if (!active) return;
+                      longPressFired.current = false;
+                      longPressTimer.current = setTimeout(() => {
+                        longPressFired.current = true;
+                        goToBotPanel(bd.key);
+                      }, 500);
+                    }}
+                    onPointerUp={clearLongPress}
+                    onPointerLeave={clearLongPress}
+                    onPointerCancel={clearLongPress}
+                    title={active ? `${bd.title} — לחיצה ארוכה לפתיחת לוח הבוט` : bd.title}
                     className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono font-bold transition-colors ${active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"} ${empty && !active ? "opacity-40" : ""}`}
                     style={active ? { boxShadow: "inset 0 0 0 1px hsl(32 84% 55% / 0.3)" } : {}}
                   >
