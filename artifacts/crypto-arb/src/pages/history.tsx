@@ -651,6 +651,20 @@ export default function HistoryPage() {
     });
   }, [tradeHistory, typeF, resultF, sourceF, botF]);
 
+  const botCounts = useMemo(() => {
+    const base = tradeHistory.filter((t) => {
+      if (typeF !== "ALL" && t.type !== typeF) return false;
+      if (resultF === "WINS" && t.pnl <= 0) return false;
+      if (resultF === "LOSSES" && t.pnl >= 0) return false;
+      if (sourceF === "AUTO" && !t.auto) return false;
+      if (sourceF === "MANUAL" && t.auto) return false;
+      return true;
+    });
+    const counts: Record<string, number> = {};
+    for (const bd of BOT_DEFS) counts[bd.key] = base.filter(bd.match).length;
+    return counts;
+  }, [tradeHistory, typeF, resultF, sourceF]);
+
   const pnlColor = stats.totalPnl > 0 ? "#22c55e" : stats.totalPnl < 0 ? "#ef4444" : undefined;
 
   function exit(t: ClosedTrade) {
@@ -718,15 +732,18 @@ export default function HistoryPage() {
               {BOT_DEFS.map((bd) => {
                 const Icon = bd.icon;
                 const active = botF === bd.key;
+                const count = botCounts[bd.key] ?? 0;
+                const empty = count === 0;
                 return (
                   <button
                     key={bd.key}
                     onClick={() => setBotF(bd.key as BotFilter)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono font-bold transition-colors ${active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"}`}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono font-bold transition-colors ${active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"} ${empty && !active ? "opacity-40" : ""}`}
                     style={active ? { boxShadow: "inset 0 0 0 1px hsl(32 84% 55% / 0.3)" } : {}}
                   >
                     <Icon className="h-2.5 w-2.5" />
                     {bd.title}
+                    <span className={`tabular-nums ${active ? "text-primary/80" : "text-muted-foreground/70"}`}>({count})</span>
                   </button>
                 );
               })}
