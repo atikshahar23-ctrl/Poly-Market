@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import {
   Brain, Gauge, TrendingUp, TrendingDown, BarChart3, Cpu, Sparkles,
   Clock, CalendarDays, Timer, Zap, Target, Activity,
@@ -43,7 +43,8 @@ function groupStats(arr: ClosedTrade[]) {
   return { n, wins, winRate: n ? (wins / n) * 100 : 0, net };
 }
 
-function Sparkline({ pts }: { pts: number[] }) {
+export function Sparkline({ pts, className = "w-full h-24" }: { pts: number[]; className?: string }) {
+  const gid = useId();
   if (pts.length < 2) return null;
   const W = 600;
   const H = 120;
@@ -57,15 +58,15 @@ function Sparkline({ pts }: { pts: number[] }) {
   const stroke = last >= 0 ? "#22c55e" : "#ef4444";
   const zeroY = toY(0);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-24">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className={className}>
       <defs>
-        <linearGradient id="eqfill" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={stroke} stopOpacity="0.28" />
           <stop offset="100%" stopColor={stroke} stopOpacity="0" />
         </linearGradient>
       </defs>
       <line x1="0" y1={zeroY} x2={W} y2={zeroY} stroke="hsl(0 0% 100% / 0.12)" strokeWidth="1" strokeDasharray="4 4" />
-      <path d={`${path} L ${W} ${H} L 0 ${H} Z`} fill="url(#eqfill)" />
+      <path d={`${path} L ${W} ${H} L 0 ${H} Z`} fill={`url(#${gid})`} />
       <path d={path} fill="none" stroke={stroke} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );

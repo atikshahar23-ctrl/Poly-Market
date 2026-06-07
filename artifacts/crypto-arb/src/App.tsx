@@ -22,6 +22,7 @@ const FundingArb = lazy(() => import("@/pages/funding-arb"));
 const Momentum = lazy(() => import("@/pages/momentum"));
 const QuickBets = lazy(() => import("@/pages/quickbets"));
 const History = lazy(() => import("@/pages/history"));
+const Insights = lazy(() => import("@/pages/insights"));
 const TradeDesk = lazy(() => import("@/pages/trade-desk"));
 const Bots = lazy(() => import("@/pages/bots"));
 const MasterAdvisor = lazy(() => import("@/pages/master-advisor"));
@@ -157,6 +158,7 @@ function Router() {
         <Route path="/momentum" component={Momentum} />
         <Route path="/quickbets" component={QuickBets} />
         <Route path="/history" component={History} />
+        <Route path="/insights" component={Insights} />
         <Route path="/trade-desk" component={TradeDesk} />
         <Route path="/markets" component={Markets} />
         <Route path="/binance" component={Binance} />
