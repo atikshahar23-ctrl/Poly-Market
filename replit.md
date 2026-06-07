@@ -33,7 +33,8 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 Hebrew-language paper-trading simulator (educational only — no real money, no win-rate/return promises):
 - Market Scanner dashboard (Binance futures × Polymarket crowd sentiment), scalp/momentum signals, stocks, smart-money headlines.
 - Simulator with multi-wallet portfolios and equity curve.
-- Bot Command Center (`/bots`): 7 paper-trading bots (incl. Dip Buyer, Breakout Hunter, Blue-Chip DCA) with a master arm/disarm and an adaptive manager that nudges each bot's selectivity from its own rolling win-rate.
+- Bot Command Center (`/bots`): paper-trading bots (incl. Dip Buyer, Breakout Hunter, Blue-Chip DCA) with a master arm/disarm and an adaptive manager that nudges each bot's selectivity from its own rolling win-rate.
+- Scalp Squad: 5 coordinated scalp bots (each a distinct specialist) that split scalp signals, load-balance entries so two members don't crowd the same coin, and surface a live Hebrew "comms" feed of entries/exits/hand-offs. One-tap "Max Performance" (מצב מקסימום) pushes the whole fleet to top leverage/cadence/open-caps while honoring fixed-vs-dynamic sizing and keeping the $3,000 cash floor + losing-bot auto-pause safety nets.
 - Research Desk (`/research`): free symbol/company lookup (stocks + crypto) with live prices and keyless external research links (TradingView, Yahoo, StockAnalysis, Google News, SEC, CoinGecko).
 - Jarvis assistant: free rule-based brain (NO paid AI), bilingual he/en, silent on open.
 

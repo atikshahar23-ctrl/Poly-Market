@@ -552,6 +552,18 @@ export interface AutoTraderSettings {
    * concentrates the bots' agreement, it does not move any real market.
    */
   alphaCoordinatorEnabled: boolean;
+
+  /* ── Max Performance mode ── */
+  /**
+   * One-tap "max mode": push the whole fleet to maximum intensity (gear 5),
+   * fleet-wide top leverage, the fastest cadence and the highest open-position
+   * caps. It NEVER overrides the user's fixed-vs-dynamic sizing choice, and it
+   * always keeps the safety nets — the $3,000 cash floor and the Risk Manager's
+   * auto-pause-on-losses guards — active. The overrides are computed on top of
+   * the saved settings (see `effectiveSettings`), so toggling it off restores
+   * every original value untouched.
+   */
+  maxPerfEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: AutoTraderSettings = {
@@ -643,6 +655,8 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
   riskGuards: {},
 
   alphaCoordinatorEnabled: true,
+
+  maxPerfEnabled: false,
 };
 
 /**
@@ -719,6 +733,129 @@ export function alphaAdjust(
     // Once conviction is firm, shift the scalp confidence bar by one notch.
     rankAdd: strength >= 0.5 ? (aligned ? -1 : 1) : 0,
   };
+}
+
+/* ── Scalp Squad: five coordinated scalp bots ─────────────────────────────── */
+
+/** A minimal scalp setup the coordinator reasons about when distributing work. */
+export interface ScalpCandidate {
+  asset: string;
+  direction: "LONG" | "SHORT";
+  score: number;
+  confidence: ScalpConfidence;
+}
+
+/** One member of the scalp squad — a persona with its own preferred slice of
+ *  the live scalp signals. `fit` returns 0-1: how well a candidate suits it. */
+export interface ScalpSquadMember {
+  id: string;
+  /** Hebrew display name. */
+  name: string;
+  /** Hebrew role tag (short). */
+  role: string;
+  /** Hebrew one-line description of what this bot hunts. */
+  tagline: string;
+  /** Trade source tag — counts/fleet attribution match on "Scalp" substring. */
+  source: string;
+  fit: (c: ScalpCandidate) => number;
+}
+
+const CONF_WEIGHT: Record<ScalpConfidence, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+
+/**
+ * The five-member scalp squad. Each persona leans toward a different slice of
+ * the live scalp feed so the squad spreads across the book instead of all five
+ * piling onto one coin. The coordinator (`assignScalpSquad`) blends each fit
+ * with a load penalty so work is shared.
+ */
+export const SCALP_SQUAD: ScalpSquadMember[] = [
+  {
+    id: "vanguard",
+    name: "חוד החנית",
+    role: "מוביל",
+    tagline: "תופס את הסטאפים החזקים ביותר, בלי קשר לכיוון",
+    source: "Scalp Squad · חוד החנית",
+    // Loves the highest-conviction setups regardless of direction.
+    fit: (c) => 0.4 + 0.3 * (CONF_WEIGHT[c.confidence] / 2) + 0.3 * Math.min(1, c.score / 100),
+  },
+  {
+    id: "longrider",
+    name: "רוכב המגמה",
+    role: "לונג",
+    tagline: "מתמחה בעליות — רוכב על מומנטום חיובי",
+    source: "Scalp Squad · רוכב המגמה",
+    fit: (c) => (c.direction === "LONG" ? 0.85 + 0.15 * Math.min(1, c.score / 100) : 0.1),
+  },
+  {
+    id: "shorthunter",
+    name: "צייד השורטים",
+    role: "שורט",
+    tagline: "מתמחה בירידות — מנצל חולשה וסטאפים שליליים",
+    source: "Scalp Squad · צייד השורטים",
+    fit: (c) => (c.direction === "SHORT" ? 0.85 + 0.15 * Math.min(1, c.score / 100) : 0.1),
+  },
+  {
+    id: "scout",
+    name: "הסייר",
+    role: "זריז",
+    tagline: "תופס הזדמנויות בינוניות וזריזות לפני שהן מתחזקות",
+    source: "Scalp Squad · הסייר",
+    fit: (c) => 0.5 + 0.35 * (c.confidence === "MEDIUM" ? 1 : 0.35) + 0.1 * Math.min(1, c.score / 100),
+  },
+  {
+    id: "sweeper",
+    name: "המגבה",
+    role: "גיבוי",
+    tagline: "רשת הביטחון — אוסף את מה שנשאר ומגבה את הצוות",
+    source: "Scalp Squad · המגבה",
+    // Flat fit: the safety net that mops up leftovers the others skipped.
+    fit: () => 0.45,
+  },
+];
+
+/** Look up a squad member by its trade `source` tag. */
+export function squadMemberBySource(source: string | undefined | null): ScalpSquadMember | undefined {
+  if (!source) return undefined;
+  return SCALP_SQUAD.find((m) => m.source === source);
+}
+
+/**
+ * Coordinator: distribute scalp candidates across the five squad members by fit,
+ * sharing the load so it behaves like a squad (not one greedy bot). Strongest
+ * setups are placed first; each member has a soft per-member cap so no single
+ * bot hoards every slot. Returns a map of asset → assigned member.
+ *
+ * Asset-level de-duping (one position per coin) is handled upstream by the
+ * engine, so two members never hold the same coin unless the engine's own
+ * confluence rules open an extra slot.
+ */
+export function assignScalpSquad(
+  candidates: ScalpCandidate[],
+  opts: { perMemberMax: number },
+): Map<string, ScalpSquadMember> {
+  const out = new Map<string, ScalpSquadMember>();
+  const load: Record<string, number> = {};
+  for (const m of SCALP_SQUAD) load[m.id] = 0;
+  const perMemberMax = Math.max(1, opts.perMemberMax);
+  const sorted = [...candidates].sort((a, b) => b.score - a.score);
+  for (const c of sorted) {
+    let best: ScalpSquadMember | null = null;
+    let bestScore = -Infinity;
+    for (const m of SCALP_SQUAD) {
+      if (load[m.id] >= perMemberMax) continue;
+      // Blend fit with a load penalty so work spreads across the squad.
+      const s = m.fit(c) - load[m.id] * 0.15;
+      if (s > bestScore) {
+        bestScore = s;
+        best = m;
+      }
+    }
+    // Every member is full → fall back to the sweeper (the safety net).
+    if (!best) best = SCALP_SQUAD[SCALP_SQUAD.length - 1];
+    out.set(c.asset, best);
+    load[best.id] += 1;
+  }
+  return out;
 }
 
 const STORAGE_KEY = "arb_scan_autotrader";
@@ -813,6 +950,7 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
         fundingEnabled: false,
         alphaCoordinatorEnabled: false,
         dynamicCapitalEnabled: false,
+        maxPerfEnabled: false,
         boostUntil: 0,
       }));
     };
@@ -1018,7 +1156,34 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
   const effectiveSettings = useMemo<AutoTraderSettings>(() => {
     const perWallet = activeWalletId ? settings.intensityByWallet[activeWalletId] : undefined;
     const level = perWallet ?? settings.intensity;
-    return level === settings.intensity ? settings : { ...settings, intensity: level };
+    let eff = level === settings.intensity ? settings : { ...settings, intensity: level };
+
+    // ── Max Performance overrides ──
+    // Layer the top-end fleet settings on top of the saved values WITHOUT
+    // mutating them, so toggling max mode off restores the user's originals.
+    // We intentionally leave dynamicCapitalEnabled / fixedAmount untouched —
+    // resolveSizing honors dynamic sizing first, so max mode never overrides the
+    // user's fixed-vs-dynamic choice. The $3,000 floor (cashReserveFloor) and
+    // the Risk Manager guards stay active; riskManagerEnabled is forced on so
+    // the auto-pause-on-losses net can never be bypassed by max mode.
+    if (settings.maxPerfEnabled) {
+      eff = {
+        ...eff,
+        intensity: 5,
+        tradeMode: "NORMAL",
+        globalLeverageEnabled: true,
+        globalLeverage: Math.max(eff.globalLeverage, 10),
+        maxOpenPositions: Math.max(eff.maxOpenPositions, 12),
+        stockMaxOpen: Math.max(eff.stockMaxOpen, 10),
+        polyMaxOpenBets: Math.max(eff.polyMaxOpenBets, 8),
+        dipMaxOpen: Math.max(eff.dipMaxOpen, 6),
+        breakoutMaxOpen: Math.max(eff.breakoutMaxOpen, 6),
+        dcaMaxOpen: Math.max(eff.dcaMaxOpen, 10),
+        fundingMaxOpen: Math.max(eff.fundingMaxOpen, 8),
+        riskManagerEnabled: true,
+      };
+    }
+    return eff;
   }, [settings, activeWalletId]);
 
   return (

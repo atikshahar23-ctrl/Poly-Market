@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { usePortfolio, type ClosedTrade } from "@/contexts/portfolio-context";
 import {
-  useAutoTrader, computeDynamicSizing, intensityProfile,
+  useAutoTrader, computeDynamicSizing, intensityProfile, SCALP_SQUAD,
   ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT,
   type AutoTraderSettings, type NewBotId, type RiskGuard, type TradeMode,
 } from "@/contexts/autotrader-context";
 import { useLivePrices } from "@/contexts/live-price-context";
+import { useSquadComms, clearSquadMessages, type SquadMessage } from "@/lib/squad-comms";
 import { toast } from "@/hooks/use-toast";
 import {
   useGetMarketOverview, getGetMarketOverviewQueryKey,
@@ -149,6 +150,30 @@ const NEW_BOT_META: {
   },
 ];
 
+/** Lucide icon per squad member id. */
+const SQUAD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  vanguard: Crosshair,
+  longrider: TrendingUp,
+  shorthunter: TrendingDown,
+  scout: Rabbit,
+  sweeper: ShieldCheck,
+};
+
+/** Color accent per comms message kind. */
+const COMMS_TONE: Record<SquadMessage["kind"], string> = {
+  entry: "text-emerald-400",
+  exit: "text-amber-300",
+  backup: "text-primary",
+  info: "text-muted-foreground",
+};
+
+/** Short HH:MM:SS clock for a comms timestamp. */
+function commsClock(at: number): string {
+  const d = new Date(at);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 export default function Bots() {
   const { settings, update, startBoost, stopBoost, getBotStat, resetBotStats, getAssetCaution, resetAssetStats, getRiskGuard, resetRiskGuard, alpha } = useAutoTrader();
   const { binancePositions, stockPositions, polyPositions, fundingPositions, cash, totalDeposited, tradeHistory, closeAllBotPositions } = usePortfolio();
@@ -223,6 +248,23 @@ export default function Bots() {
       funding: fundingPositions.filter((p) => p.source === "Funding Arb Agent").length,
     };
   }, [binancePositions, stockPositions, polyPositions, fundingPositions]);
+
+  // ── Scalp Squad ── per-member live open count + realized track record,
+  // attributed by the member's exact `source` tag.
+  const squadRows = useMemo(() => {
+    return SCALP_SQUAD.map((m) => {
+      const open = binancePositions.filter((p) => p.source === m.source).length;
+      const ts = tradeHistory.filter((t) => t.source === m.source);
+      const trades = ts.length;
+      const wins = ts.filter((t) => t.pnl > 0).length;
+      const net = ts.reduce((a, t) => a + t.pnl, 0);
+      return { member: m, open, trades, wins, net, wr: trades > 0 ? (wins / trades) * 100 : 0 };
+    });
+  }, [binancePositions, tradeHistory]);
+  const squadOpen = squadRows.reduce((a, r) => a + r.open, 0);
+
+  // Live squad coordination feed (entries, exits, hand-offs, backup calls).
+  const comms = useSquadComms();
 
   // ── Mega-Agent Coordinator ──
   // One supervisor view over the whole fleet: every bot's realized track record
@@ -384,6 +426,30 @@ export default function Bots() {
     });
   };
 
+  // ── Max Performance ("מצב מקסימום") — one tap pushes the whole fleet to the top ──
+  // Sets max intensity, top fleet-wide leverage, the fastest cadence and the
+  // highest open caps (all computed in effectiveSettings, so turning it off
+  // restores the user's values), and arms every bot. It honors the user's
+  // fixed-vs-dynamic sizing choice and KEEPS the $3,000 cash floor and the
+  // auto-pause-on-losses risk guards active. Paper-trading/educational only.
+  const maxPerfOn = settings.maxPerfEnabled;
+  const toggleMaxPerf = () => {
+    if (maxPerfOn) {
+      update({ maxPerfEnabled: false });
+      toast({
+        title: "מצב מקסימום כבוי",
+        description: "ההגדרות חוזרות לערכים שבחרת — עוצמה, מינוף ותקרות פוזיציות.",
+      });
+      return;
+    }
+    update({ maxPerfEnabled: true });
+    armAll(true);
+    toast({
+      title: "מצב מקסימום מופעל",
+      description: "כל הבוטים חמושים בעוצמה מקסימלית — מינוף, קצב ותקרות במקס. רשתות הביטחון ($3,000 ומגני ההפסד) נשארות פעילות.",
+    });
+  };
+
   const totalOpenAuto = binancePositions.filter((p) => p.auto).length +
     stockPositions.filter((p) => p.auto).length + polyPositions.filter((p) => p.auto).length +
     fundingPositions.filter((p) => p.auto).length;
@@ -414,6 +480,17 @@ export default function Bots() {
           >
             <Sparkles className="h-4 w-4" />
             {autoPilotOn ? "אוטומטי פעיל" : "אוטומטי"}
+          </Button>
+          <Button
+            onClick={toggleMaxPerf}
+            className="gap-2 font-mono font-bold"
+            variant={maxPerfOn ? "default" : "outline"}
+            aria-pressed={maxPerfOn}
+            title="מצב מקסימום: עוצמה, מינוף, קצב ותקרות פוזיציות במקסימום — מכבד בחירת סכום קבוע/דינמי ושומר על רצפת ה-$3,000 ומגני ההפסד"
+            style={maxPerfOn ? { boxShadow: "0 0 18px hsl(43 74% 52% / 0.5)" } : undefined}
+          >
+            <Rocket className="h-4 w-4" />
+            {maxPerfOn ? "מקסימום פעיל" : "מצב מקסימום"}
           </Button>
           <Button
             onClick={() => {
@@ -1359,13 +1436,112 @@ export default function Bots() {
         </div>
       </section>
 
+      {/* Scalp Squad — five coordinated scalp bots under one master switch */}
+      <section id="bot-scalp" className="space-y-3 scroll-mt-24">
+        <div
+          className="rounded-lg border border-border bg-secondary/20 p-4 transition-all"
+          style={scalpOn ? { borderColor: "hsl(32 84% 55% / 0.5)", boxShadow: "0 0 0 1px hsl(32 84% 55% / 0.25)" } : {}}
+        >
+          {/* Squad header + master arm/disarm */}
+          <div className="flex items-start gap-3">
+            <div
+              className="mt-0.5 h-9 w-9 shrink-0 rounded-md flex items-center justify-center"
+              style={{ background: scalpOn ? "hsl(32 84% 55% / 0.15)" : "hsl(0 0% 12%)" }}
+            >
+              <Network className={`h-4 w-4 ${scalpOn ? "text-primary" : "text-muted-foreground"}`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold tracking-wide truncate">Scalp Squad · חמ״ל הסקאלפרים</h3>
+                <Switch checked={scalpOn} onCheckedChange={(v) => applyCrypto(v, momOn)} aria-label="Toggle Scalp Squad" />
+              </div>
+              <p className="text-[11px] text-muted-foreground">5 בוטים מתואמים שמחלקים ביניהם את איתותי הסקאלפ</p>
+              <p className="text-[10px] text-muted-foreground/70 mt-0.5" dir="rtl">
+                כל בוט מתמחה בפלח אחר (לונג / שורט / חזק / זריז / גיבוי); שניים לא נכנסים לאותו מטבע אלא בקונצנזוס גבוה
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {squadOpen > 0 ? (
+                <span className="text-primary">{squadOpen} פוזיציות פתוחות</span>
+              ) : (
+                <span>אין פוזיציות פתוחות</span>
+              )}
+            </span>
+            <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${scalpOn ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/40 text-muted-foreground"}`}>
+              {scalpOn ? "ON" : "OFF"}
+            </span>
+          </div>
+
+          {/* Member roster */}
+          <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {squadRows.map(({ member, open, trades, wins, net }) => {
+              const Icon = SQUAD_ICONS[member.id] ?? Gauge;
+              return (
+                <div
+                  key={member.id}
+                  className="rounded-md border border-border/60 bg-background/40 p-3"
+                  style={scalpOn && open > 0 ? { borderColor: "hsl(32 84% 55% / 0.4)" } : {}}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 shrink-0 rounded-md flex items-center justify-center" style={{ background: scalpOn ? "hsl(32 84% 55% / 0.12)" : "hsl(0 0% 12%)" }}>
+                      <Icon className={`h-3.5 w-3.5 ${scalpOn ? "text-primary" : "text-muted-foreground"}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <h4 className="text-xs font-semibold truncate" dir="rtl">{member.name}</h4>
+                        <span className="text-[8px] font-mono px-1 py-0.5 rounded bg-muted/40 text-muted-foreground shrink-0">{member.role}</span>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground/70 leading-tight mt-0.5" dir="rtl">{member.tagline}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-1">
+                    <StatChip label="פתוח" value={String(open)} tone={open > 0 ? "good" : undefined} />
+                    <StatChip label="עסקאות" value={trades > 0 ? `${wins}/${trades}` : "—"} />
+                    <StatChip label="רווח" value={trades > 0 ? `${net >= 0 ? "+" : "-"}$${Math.abs(Math.round(net))}` : "—"} tone={trades > 0 ? (net >= 0 ? "good" : "bad") : undefined} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Live comms feed */}
+          <div className="mt-3 pt-3 border-t border-border/60">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Megaphone className="h-3 w-3" /> תקשורת הצוות
+              </h4>
+              {comms.length > 0 && (
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-muted-foreground" onClick={clearSquadMessages}>
+                  <RotateCcw className="h-3 w-3" /> ניקוי
+                </Button>
+              )}
+            </div>
+            <div className="max-h-44 overflow-y-auto space-y-1 pr-1" dir="rtl">
+              {comms.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground/60 py-3 text-center">
+                  {scalpOn ? "ממתין לאיתותים — הצוות ידווח על כניסות, יציאות וגיבוי בזמן אמת." : "הפעל את הצוות כדי לראות תקשורת חיה."}
+                </p>
+              ) : (
+                comms.map((m) => (
+                  <div key={m.id} className="flex items-start gap-2 text-[10px] font-mono leading-snug">
+                    <span className="text-muted-foreground/50 tabular-nums shrink-0" dir="ltr">{commsClock(m.at)}</span>
+                    <span className={`${COMMS_TONE[m.kind]} min-w-0`}>{m.text}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Existing core bots */}
       <section className="space-y-3">
         <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
           <ShieldCheck className="h-3.5 w-3.5" /> בוטים קיימים
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <BotCard id="bot-scalp" icon={Gauge} title="Scalp Bot" subtitle="RSI / EMA / ATR scalps" hint="עסקאות קצרות לפי איתותי סקאלפ" active={scalpOn} onToggle={(v) => applyCrypto(v, momOn)} open={counts.scalp} />
           <BotCard id="bot-momentum" icon={Rocket} title="Momentum Bot" subtitle="Volume-surge runners" hint="רוכב על מטבעות עם זינוק נפח ומומנטום" active={momOn} onToggle={(v) => applyCrypto(scalpOn, v)} open={counts.momentum} />
           <BotCard id="bot-smart" icon={Megaphone} title="Smart-Money Stocks" subtitle="Technical + influencer fusion" hint="מניות לפי שילוב טכני וסנטימנט משפיענים" active={settings.stocksEnabled} onToggle={(v) => update({ stocksEnabled: v })} open={counts.smart} />
           <BotCard id="bot-poly" icon={Timer} title="Polymarket BTC" subtitle="Same-day up/down bets" hint="הימורי כיוון יומיים על ביטקוין" active={settings.polyEnabled} onToggle={(v) => update({ polyEnabled: v })} open={counts.poly} />

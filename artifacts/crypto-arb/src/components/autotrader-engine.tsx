@@ -11,10 +11,16 @@ import {
 import type { ScalpSignal, MomentumCoin, PolymarketMarket, StockRecommendation, InfluencerSignal, StockQuote } from "@workspace/api-client-react";
 import { usePortfolio, type TrailConfig } from "@/contexts/portfolio-context";
 import { recommendLevels } from "@/lib/recommend-levels";
-import { useAutoTrader, resolveSizing, cashReserveFloor, intensityProfile, alphaAdjust, NEUTRAL_ALPHA, ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT, type AlphaState, type ScalpConfidence } from "@/contexts/autotrader-context";
+import { useAutoTrader, resolveSizing, cashReserveFloor, intensityProfile, alphaAdjust, assignScalpSquad, squadMemberBySource, SCALP_SQUAD, NEUTRAL_ALPHA, ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT, type AlphaState, type ScalpConfidence, type ScalpSquadMember } from "@/contexts/autotrader-context";
 import { useFavorites } from "@/contexts/favorites-context";
 import { useLivePrices } from "@/contexts/live-price-context";
+import { pushSquadMessage, clearSquadMessages, squadIso } from "@/lib/squad-comms";
 import { toast } from "@/hooks/use-toast";
+
+/** Compact signed USD string for squad chatter (e.g. "+$12" / "-$4"). */
+function fmtUsd(n: number): string {
+  return `${n >= 0 ? "+" : "-"}$${Math.abs(Math.round(n))}`;
+}
 
 const CONF_RANK: Record<ScalpConfidence, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 /** Don't re-open the same asset within this window after an auto action. */
@@ -73,6 +79,8 @@ interface Candidate {
   score: number;
   source: string;
   label: string;
+  /** Scalp confidence (only set for scalp-sourced candidates) — drives squad fit. */
+  confidence?: ScalpConfidence;
 }
 
 /** Sum realized PnL from trades closed today (local time). */
@@ -98,6 +106,7 @@ export function AutoTraderEngine() {
     binancePositions, stockPositions, polyPositions, cash, totalDeposited, tradeHistory,
     openBinancePosition, openPolyPosition, closePolyPosition, openStockPosition,
     closeBinancePosition, checkSlTp, updateTrailingStops, checkRiskGuards, flattenAll,
+    activeWalletId,
   } = usePortfolio();
   const { settings, update, getAssetCaution, recordAssetResult, publishAlpha } = useAutoTrader();
   const { isFavorite } = useFavorites();
@@ -174,6 +183,12 @@ export function AutoTraderEngine() {
   const peakRef = useRef<Map<string, number>>(new Map());
   /** Closed-trade ids already folded into per-asset caution (avoids double counting). */
   const assetRecordedRef = useRef<Set<string> | null>(null);
+  /** Closed-trade ids already announced in the squad comms feed (exit chatter). */
+  const squadExitSeenRef = useRef<Set<string> | null>(null);
+  /** Wallet the comms seen-set belongs to — reseed (don't replay) on wallet switch. */
+  const squadWalletRef = useRef<string | null>(null);
+  /** Last "backup call" timestamp — throttles strong-confluence coordination chatter. */
+  const lastBackupRef = useRef<number>(0);
 
   // ── Alpha Convergence Coordinator ──────────────────────────────────────────
   // The fleet "brain": tally weighted directional votes across every live signal
@@ -264,6 +279,48 @@ export function AutoTraderEngine() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tradeHistory]);
+
+  // ── Squad comms: announce exits + recycle freed capital ──
+  // Watch the closed-trade ledger for newly-closed squad positions (any exit
+  // path — SL, TP, smart-exit, manual flatten) and publish exit chatter plus a
+  // "capital freed, redeploying" note so the feed shows real coordination. On
+  // first run we just seed the seen-set so we never replay historical exits.
+  useEffect(() => {
+    // First run, or a wallet switch: reseed the seen-set from THIS wallet's
+    // current ledger (tradeHistory is wallet-scoped) and clear any old-wallet
+    // chatter so we never replay another wallet's historical exits.
+    if (squadExitSeenRef.current === null || squadWalletRef.current !== activeWalletId) {
+      if (squadWalletRef.current !== null && squadWalletRef.current !== activeWalletId) {
+        clearSquadMessages();
+      }
+      squadExitSeenRef.current = new Set(tradeHistory.map((t) => t.id));
+      squadWalletRef.current = activeWalletId;
+      return;
+    }
+    const seen = squadExitSeenRef.current;
+    for (const t of tradeHistory) {
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+      const src = t.source ?? "";
+      if (!src.startsWith("Scalp Squad")) continue;
+      const member = squadMemberBySource(src);
+      const name = member?.name ?? "הצוות";
+      const sym = t.symbol ?? "";
+      pushSquadMessage({
+        memberId: member?.id ?? "squad",
+        memberName: name,
+        kind: "exit",
+        text: `${name} סגר ${squadIso(sym)} ${t.pnl >= 0 ? "ברווח" : "בהפסד"} ${squadIso(fmtUsd(t.pnl))}`,
+      });
+      pushSquadMessage({
+        memberId: "squad",
+        memberName: "תיאום",
+        kind: "info",
+        text: `הון פנוי שוחרר מ-${squadIso(sym)} — מגויס מחדש לסטאפ הבא`,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tradeHistory, activeWalletId]);
 
   // Build a live price map (crypto + stocks); trail first, then SL/TP exits.
   const priceMap: Record<string, number> = {};
@@ -486,6 +543,7 @@ export function AutoTraderEngine() {
           score: s.score,
           source: "Scalp signal",
           label: `${s.confidence} scalp`,
+          confidence: s.confidence,
         });
       }
     }
@@ -532,6 +590,42 @@ export function AutoTraderEngine() {
       ? { activatePct: settings.trailActivatePct, distancePct: settings.trailDistancePct }
       : undefined;
 
+    // ── Scalp Squad coordinator ──
+    // Distribute the tradeable scalp candidates across the five squad members by
+    // fit (long/short/strong/quick/sweeper) with a load penalty so the work is
+    // shared. The assignment decides which persona "owns" each new scalp trade —
+    // its source tag, per-member stats and comms chatter all follow from this.
+    const scalpRanked = ranked.filter((c) => c.source === "Scalp signal");
+    const perMemberMax = Math.max(1, Math.ceil(maxOpen / 2));
+    const squadAssign = assignScalpSquad(
+      scalpRanked.map((c) => ({
+        asset: c.asset,
+        direction: c.direction,
+        score: c.score,
+        confidence: c.confidence ?? "MEDIUM",
+      })),
+      { perMemberMax },
+    );
+
+    // Strong-confluence backup call (throttled) — the coordinator rallies the
+    // squad toward the dominant move so aligned entries get backup.
+    if (
+      settings.alphaCoordinatorEnabled &&
+      alphaState.direction !== "NEUTRAL" &&
+      alphaState.confluence >= ALPHA_STRONG_PCT &&
+      scalpRanked.length > 0 &&
+      now - lastBackupRef.current > 45000
+    ) {
+      lastBackupRef.current = now;
+      const dirHe = alphaState.direction === "LONG" ? "לונג" : "שורט";
+      pushSquadMessage({
+        memberId: "squad",
+        memberName: "תיאום",
+        kind: "backup",
+        text: `קונצנזוס ${squadIso(dirHe)} חזק (${squadIso(alphaState.confluence + "%")}) — הצוות מתכנס לכיוון, גיבוי מוכן`,
+      });
+    }
+
     for (const c of ranked) {
       if (autoOpen >= maxOpen) break;
       if (availableCash - margin < cashFloor) break;
@@ -549,6 +643,11 @@ export function AutoTraderEngine() {
       const tpPrice = c.takeProfit ?? (c.direction === "LONG"
         ? c.entry * (1 + fallbackTpPct)
         : c.entry * (1 - fallbackTpPct));
+      // Scalp trades are owned by the assigned squad member: tag with its source
+      // so per-member stats, fleet counts and comms all attribute correctly.
+      const member: ScalpSquadMember | undefined =
+        c.source === "Scalp signal" ? squadAssign.get(c.asset) : undefined;
+      const source = member ? member.source : c.source;
       const err = openBinancePosition({
         asset: c.asset,
         direction: c.direction,
@@ -558,7 +657,7 @@ export function AutoTraderEngine() {
         slPrice,
         tpPrice,
         auto: true,
-        source: c.source,
+        source,
         trail,
       }, cashFloor);
       if (err) continue;
@@ -566,9 +665,18 @@ export function AutoTraderEngine() {
       cooldownRef.current[c.asset] = now;
       availableCash -= margin;
       autoOpen += 1;
+      if (member) {
+        const dirHe = c.direction === "LONG" ? "לונג" : "שורט";
+        pushSquadMessage({
+          memberId: member.id,
+          memberName: member.name,
+          kind: "entry",
+          text: `${member.name} פתח ${squadIso(dirHe)} על ${squadIso(c.asset)}`,
+        });
+      }
       toast({
         title: `Auto-Trade · ${c.direction} ${c.asset}`,
-        description: `${c.source} (${c.label}) · ${effectiveLeverage}x · $${margin} @ $${c.entry}`,
+        description: `${source} (${c.label}) · ${effectiveLeverage}x · $${margin} @ $${c.entry}`,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
