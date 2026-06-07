@@ -237,6 +237,49 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
           )}
 
           {err && <p className="px-2 pt-1 text-[10px] text-red-400 font-mono">{err}</p>}
+
+          {wallets.length >= 2 && (
+            <>
+              <div className="h-px bg-border mt-2 mb-1" />
+              <div className="px-1 pb-1">
+                <p className="px-1 pb-1 text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
+                  השוואת ארנקים
+                </p>
+                <div className="flex flex-col gap-0.5">
+                  {wallets.map((w) => {
+                    const g = walletGear(w.id);
+                    const gc = GEAR_COLORS[g.level - 1];
+                    const isActive = w.id === activeWalletId;
+                    return (
+                      <button
+                        key={w.id}
+                        onClick={() => { switchWallet(w.id); setOpen(false); setPickingGearFor(null); }}
+                        className={`flex items-center gap-2 rounded-md px-2 py-1 w-full transition-colors ${
+                          isActive
+                            ? "bg-primary/10 border border-primary/20"
+                            : "hover:bg-secondary/20 border border-transparent"
+                        }`}
+                      >
+                        <span
+                          className={`shrink-0 inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[9px] font-mono font-bold leading-none ${gc}`}
+                          title={g.label}
+                        >
+                          <Gauge className="h-2.5 w-2.5" />
+                          {g.level}
+                        </span>
+                        <span className="flex-1 min-w-0 truncate text-[11px] font-mono font-bold text-right" dir="rtl">
+                          {w.name}
+                        </span>
+                        <span className="shrink-0 text-[10px] font-mono text-muted-foreground tabular-nums">
+                          {fmtUsd(w.cash)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
