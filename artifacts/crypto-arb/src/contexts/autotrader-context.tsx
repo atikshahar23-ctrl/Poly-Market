@@ -148,9 +148,13 @@ export function evaluateRiskGuard(
  * of "never run the account down to almost no money": new positions are only
  * opened while free cash stays above this floor. `cashFloorPct` is clamped 0-90.
  */
+export const MIN_CASH_FLOOR_USD = 3_000;
+
 export function cashReserveFloor(totalDeposited: number, cashFloorPct: number): number {
   const pct = Math.max(0, Math.min(90, cashFloorPct || 0));
-  return Math.max(0, (totalDeposited || 0) * (pct / 100));
+  const pctFloor = Math.max(0, (totalDeposited || 0) * (pct / 100));
+  // The user never wants to trade below $3,000 cash regardless of % settings.
+  return Math.max(MIN_CASH_FLOOR_USD, pctFloor);
 }
 
 /** Pure helper — computes dynamic position sizing based on portfolio state.

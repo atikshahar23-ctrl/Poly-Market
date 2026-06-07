@@ -2,9 +2,11 @@ import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-react";
 import { usePortfolio } from "@/contexts/portfolio-context";
+import { Show, useClerk, useUser } from "@clerk/react";
 import {
   LayoutDashboard, LineChart, CandlestickChart, Zap, Globe, Trophy,
   TrendingUp, Menu, X, Activity, Gauge, Timer, History, Rocket, Megaphone, Bot, Search, Newspaper, Calculator, Compass, Coins,
+  LogIn, LogOut, User,
 } from "lucide-react";
 import { Jarvis } from "@/components/jarvis";
 import { MarketClock } from "@/components/market-clock";
@@ -26,6 +28,76 @@ function PortfolioMiniBalance() {
       {openCount > 0 && (
         <span className="text-[9px] font-mono bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">{openCount} pos</span>
       )}
+    </div>
+  );
+}
+
+function AuthSection() {
+  const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
+  const [showMenu, setShowMenu] = useState(false);
+
+  if (!isLoaded) {
+    return (
+      <div className="relative px-4 py-3 border-t border-border/70 shrink-0">
+        <div className="h-4 w-full bg-secondary/30 rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative px-4 py-3 border-t border-border/70 shrink-0">
+      <Show when="signed-out">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/sign-in"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded px-3 py-2 text-[11px] font-bold font-mono bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+          >
+            <LogIn className="h-3.5 w-3.5" />
+            התחבר
+          </Link>
+          <Link
+            href="/sign-up"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded px-3 py-2 text-[11px] font-bold font-mono bg-secondary/60 text-foreground hover:bg-secondary/80 transition-colors"
+          >
+            <User className="h-3.5 w-3.5" />
+            הרשמה
+          </Link>
+        </div>
+      </Show>
+      <Show when="signed-in">
+        <div className="relative">
+          <button
+            onClick={() => setShowMenu((v) => !v)}
+            className="w-full flex items-center gap-2 rounded px-3 py-2 text-[11px] font-medium hover:bg-secondary/40 transition-colors"
+          >
+            <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-black text-primary">
+              {(user?.firstName?.[0] ?? user?.emailAddresses?.[0]?.emailAddress?.[0] ?? "U").toUpperCase()}
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <p className="truncate text-foreground text-[11px] font-medium">
+                {user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? "User"}
+              </p>
+              <p className="text-[9px] text-muted-foreground">מחובר</p>
+            </div>
+            <LogOut className="h-3 w-3 text-muted-foreground" />
+          </button>
+          {showMenu && (
+            <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-border bg-card p-2 shadow-lg z-50">
+              <button
+                onClick={() => {
+                  signOut({ redirectUrl: "/" });
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 rounded px-3 py-2 text-[11px] font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                התנתק
+              </button>
+            </div>
+          )}
+        </div>
+      </Show>
     </div>
   );
 }
@@ -155,6 +227,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
+
+      {/* ── Auth Section ── */}
+      <AuthSection />
     </>
   );
 
