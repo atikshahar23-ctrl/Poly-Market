@@ -7,6 +7,7 @@ import {
   Gauge, Rocket, Megaphone, Timer, Layers, Coins,
 } from "lucide-react";
 import { usePortfolio, type ClosedTrade, type BinancePosition, type StockPosition, STARTING_BALANCE } from "@/contexts/portfolio-context";
+import { BotStatsPopover } from "@/components/bot-stats-popover";
 import { CryptoIcon } from "@/components/crypto-icon";
 import { StockIcon } from "@/components/stock-icon";
 import { TradeAnalytics } from "@/components/trade-analytics";
@@ -33,24 +34,6 @@ function botName(source: string | undefined): string | null {
   return BOT_SOURCE_LABEL[source] ?? null;
 }
 
-function sourceToBotId(source: string | undefined, type?: string): string | null {
-  if (type === "POLYMARKET") return "bot-poly";
-  if (type === "FUNDING") return "bot-funding";
-  if (!source) return null;
-  if (source.includes("Scalp")) return "bot-scalp";
-  if (source.includes("Momentum")) return "bot-momentum";
-  if (source.includes("Smart-Money")) return "bot-smart";
-  if (source === "Dip Buyer") return "bot-dipbuyer";
-  if (source === "Breakout Hunter") return "bot-breakout";
-  if (source === "Blue-Chip DCA") return "bot-dca";
-  return null;
-}
-
-function navigateToBotPanel(source: string | undefined, type: string | undefined, navigate: (to: string) => void) {
-  const botId = sourceToBotId(source, type);
-  if (botId) sessionStorage.setItem("scrollToBotId", botId);
-  navigate("/bots");
-}
 
 function fmtUsd(n: number, dp = 2): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
@@ -977,21 +960,18 @@ function ClosedTradeTable({ trades, onSelect }: { trades: ClosedTrade[]; onSelec
                     {(first.source || first.type === "POLYMARKET" || first.type === "FUNDING") && !isGroup && (
                       <div className="mt-0.5">
                         {first.source ? (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigateToBotPanel(first.source, first.type, navigate); }}
+                          <BotStatsPopover
+                            source={first.source}
+                            type={first.type}
+                            label={botName(first.source) ?? first.source}
                             className="font-mono text-[8px] font-bold px-1 py-0.5 rounded bg-amber-400/15 text-amber-400 border border-amber-400/25 hover:bg-amber-400/30 transition-colors cursor-pointer"
-                            title={`עבור לבוט: ${first.source}`}
-                          >
-                            {botName(first.source) ?? first.source}
-                          </button>
+                          />
                         ) : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigateToBotPanel(undefined, first.type, navigate); }}
+                          <BotStatsPopover
+                            type={first.type}
+                            label={first.type === "POLYMARKET" ? "Polymarket Bot" : "Funding Arb"}
                             className="font-mono text-[8px] font-bold px-1 py-0.5 rounded bg-amber-400/15 text-amber-400 border border-amber-400/25 hover:bg-amber-400/30 transition-colors cursor-pointer"
-                            title="עבור לבוט"
-                          >
-                            {first.type === "POLYMARKET" ? "Polymarket Bot" : "Funding Arb"}
-                          </button>
+                          />
                         )}
                       </div>
                     )}

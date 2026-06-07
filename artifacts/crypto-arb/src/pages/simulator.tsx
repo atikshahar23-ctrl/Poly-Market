@@ -16,6 +16,7 @@ import { recommendLevels } from "@/lib/recommend-levels";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { BotStatsPopover } from "@/components/bot-stats-popover";
 import { CandlestickChart } from "@/components/candlestick-chart";
 import { OrderBook } from "@/components/order-book";
 import { WalletSwitcher } from "@/components/wallet-switcher";
@@ -46,24 +47,6 @@ function pnlBg(n: number) {
   return n > 0 ? "bg-emerald-500/10 border-emerald-500/20" : n < 0 ? "bg-red-500/10 border-red-500/20" : "bg-secondary/30 border-border";
 }
 
-function sourceToBotId(source: string | undefined, type?: string): string | null {
-  if (type === "POLYMARKET") return "bot-poly";
-  if (type === "FUNDING") return "bot-funding";
-  if (!source) return null;
-  if (source.includes("Scalp")) return "bot-scalp";
-  if (source.includes("Momentum")) return "bot-momentum";
-  if (source.includes("Smart-Money")) return "bot-smart";
-  if (source === "Dip Buyer") return "bot-dipbuyer";
-  if (source === "Breakout Hunter") return "bot-breakout";
-  if (source === "Blue-Chip DCA") return "bot-dca";
-  return null;
-}
-
-function navigateToBotPanel(source: string | undefined, type: string | undefined, navigate: (to: string) => void) {
-  const botId = sourceToBotId(source, type);
-  if (botId) sessionStorage.setItem("scrollToBotId", botId);
-  navigate("/bots");
-}
 
 /* ─── Deposit Dialog ─── */
 function DepositDialog({ cash, onClose, onDeposit }: { cash: number; onClose: () => void; onDeposit: (n: number) => void }) {
@@ -351,13 +334,12 @@ function FuturesPositionsPanel({ binancePrices, posFilter, setPosFilter, onSelec
                 <div key={t.id} className="px-3 py-1.5 flex items-center gap-2">
                   <span className="text-[10px] font-mono text-muted-foreground truncate flex-1">{t.description}</span>
                   {t.source ? (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigateToBotPanel(t.source, t.type, navigate); }}
+                    <BotStatsPopover
+                      source={t.source}
+                      type={t.type}
+                      label={t.source}
                       className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-amber-400/15 text-amber-400 border border-amber-400/25 shrink-0 max-w-[72px] truncate hover:bg-amber-400/30 transition-colors cursor-pointer"
-                      title={`עבור לבוט: ${t.source}`}
-                    >
-                      {t.source}
-                    </button>
+                    />
                   ) : t.auto ? null : (
                     <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-secondary/40 text-muted-foreground border border-border/40 shrink-0">
                       Manual
@@ -1096,13 +1078,12 @@ function TradeHistoryPanel() {
               <span className="text-muted-foreground truncate font-mono">{t.description}</span>
             </div>
             {t.source ? (
-              <button
-                onClick={(e) => { e.stopPropagation(); navigateToBotPanel(t.source, t.type, navigate); }}
+              <BotStatsPopover
+                source={t.source}
+                type={t.type}
+                label={t.source}
                 className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-amber-400/15 text-amber-400 border border-amber-400/25 flex-shrink-0 max-w-[72px] truncate hover:bg-amber-400/30 transition-colors cursor-pointer"
-                title={`עבור לבוט: ${t.source}`}
-              >
-                {t.source}
-              </button>
+              />
             ) : !t.auto ? (
               <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-secondary/40 text-muted-foreground border border-border/40 flex-shrink-0">
                 Manual
