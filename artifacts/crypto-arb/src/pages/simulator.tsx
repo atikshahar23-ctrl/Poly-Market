@@ -9,7 +9,9 @@ import {
 } from "@workspace/api-client-react";
 import {
   usePortfolio, STARTING_BALANCE,
+  type OptionPosition,
 } from "@/contexts/portfolio-context";
+import { optionPositionValue, yearsToExpiry } from "@/lib/options-model";
 import { useRefresh } from "@/contexts/refresh-context";
 import { useLivePrices } from "@/contexts/live-price-context";
 import { recommendLevels } from "@/lib/recommend-levels";
@@ -26,7 +28,7 @@ import {
   TrendingUp, TrendingDown, Wallet, RotateCcw, Search,
   ChartCandlestick, BarChart3, Trophy, History, X, Plus,
   ArrowUpRight, ArrowDownRight, LineChart, Lightbulb, ExternalLink,
-  ShieldAlert, Target, Clock, Bot,
+  ShieldAlert, Target, Clock, Bot, Sparkles,
 } from "lucide-react";
 
 const LEVERAGE_OPTIONS = [1, 2, 3, 5, 10] as const;
@@ -128,11 +130,11 @@ function WalletAge() {
 
 /* ─── Compact Stats Bar ─── */
 function CompactStats({ unrealizedPnl, totalPositionValue }: { unrealizedPnl: number; totalPositionValue: number }) {
-  const { cash, totalDeposited, tradeHistory, polyPositions, binancePositions, stockPositions } = usePortfolio();
+  const { cash, totalDeposited, tradeHistory, polyPositions, binancePositions, stockPositions, optionPositions } = usePortfolio();
   const totalValue = cash + totalPositionValue;
   const totalPnl = totalValue - totalDeposited;
   const realizedPnl = tradeHistory.reduce((s, t) => s + t.pnl, 0);
-  const openCount = polyPositions.length + binancePositions.length + stockPositions.length;
+  const openCount = polyPositions.length + binancePositions.length + stockPositions.length + optionPositions.length;
   const wins = tradeHistory.filter(t => t.pnl > 0).length;
   const winRate = tradeHistory.length === 0 ? null : (wins / tradeHistory.length) * 100;
   const totalPnlPct = totalDeposited > 0 ? (totalPnl / totalDeposited) * 100 : 0;
@@ -1100,21 +1102,155 @@ function TradeHistoryPanel() {
   );
 }
 
+/* ─── Options: open-position panel ─── */
+function fmtExpiry(ms: number): string {
+  const now = Date.now();
+  const left = ms - now;
+  if (left <= 0) return "פג תוקף";
+  const days = Math.floor(left / 86_400_000);
+  const hours = Math.floor((left % 86_400_000) / 3_600_000);
+  if (days >= 1) return `${days} ימים ${hours} שעות`;
+  const mins = Math.floor((left % 3_600_000) / 60_000);
+  return `${hours} שעות ${mins} דק'`;
+}
+
+function OptionsTab({ priceFor }: { priceFor: (pos: OptionPosition) => number }) {
+  const { optionPositions, closeOptionPosition } = usePortfolio();
+  const [posFilter, setPosFilter] = useState<PosFilter>("ALL");
+  const autoOptions = optionPositions.filter((p) => p.auto);
+  const visible = optionPositions.filter((p) =>
+    posFilter === "ALL" ? true : posFilter === "BOT" ? p.auto : !p.auto,
+  );
+
+  return (
+    <div className="h-full overflow-y-auto px-4 md:px-6 py-4 space-y-4">
+      <div className="rounded-xl border border-primary/25 bg-primary/[0.03] p-4">
+        <div className="flex items-start gap-3">
+          <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <h2 className="text-sm font-black tracking-tight">סוכן האופציות — פוזיציות פתוחות</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5" dir="rtl">
+              אופציות CALL/PUT לונג בלבד. ההפסד המרבי הוא הפרמיה ששולמה. השווי מסומן לפי מודל בלאק-שולס מפושט ויורד עם התקרבות התפוגה (דעיכת זמן). מדומה ולימודי בלבד — ללא הבטחת תשואה.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs font-semibold">
+          <span>פוזיציות</span>
+          {optionPositions.length > 0 && (
+            <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-mono">{optionPositions.length}</span>
+          )}
+        </div>
+        <PosFilterToggle
+          value={posFilter}
+          onChange={setPosFilter}
+          counts={{ ALL: optionPositions.length, BOT: autoOptions.length, MANUAL: optionPositions.length - autoOptions.length }}
+        />
+      </div>
+
+      {visible.length === 0 ? (
+        <div className="text-center text-sm text-muted-foreground py-12 border border-dashed border-border rounded-xl">
+          {optionPositions.length === 0 ? "אין פוזיציות אופציה פתוחות" : "אין פוזיציות התואמות לסינון"}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {visible.map((pos) => {
+            const mark = priceFor(pos);
+            const value = optionPositionValue({
+              kind: pos.kind, underlying: mark, strike: pos.strike,
+              expiryMs: pos.expiryMs, vol: pos.entryVol, contracts: pos.contracts,
+            });
+            const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+            const pnl = safeValue - pos.premiumPaid;
+            const pnlPct = pos.premiumPaid > 0 ? (pnl / pos.premiumPaid) * 100 : 0;
+            const expired = yearsToExpiry(pos.expiryMs) <= 0;
+            const isCall = pos.kind === "CALL";
+            return (
+              <div key={pos.id} className="rounded-lg border border-border bg-secondary/20 p-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${isCall ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+                      {isCall ? "CALL" : "PUT"}
+                    </span>
+                    <span className="font-bold text-sm truncate">{pos.underlying}</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-secondary/60 text-muted-foreground">
+                      {pos.market === "CRYPTO" ? "קריפטו" : "מניה"}
+                    </span>
+                    {pos.auto ? (
+                      <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-primary/15 text-primary border border-primary/25 flex items-center gap-0.5">
+                        <Bot className="h-2.5 w-2.5" /> Options Agent
+                      </span>
+                    ) : (
+                      <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-secondary/40 text-muted-foreground border border-border/40">Manual</span>
+                    )}
+                  </div>
+                  <div className={`text-right font-mono font-black ${pnlColor(pnl)}`}>
+                    {pnl >= 0 ? "+" : ""}{fmtUsd(pnl)}
+                    <span className="text-[10px] ml-1">({pnlPct >= 0 ? "+" : ""}{fmt(pnlPct)}%)</span>
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-y-1.5 gap-x-3 text-[10px] font-mono">
+                  <div>
+                    <div className="text-muted-foreground uppercase tracking-wider text-[8px]">סטרייק</div>
+                    <div className="text-foreground">${pos.strike.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground uppercase tracking-wider text-[8px]">חוזים</div>
+                    <div className="text-foreground">{pos.contracts.toFixed(4)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground uppercase tracking-wider text-[8px]">פרמיה</div>
+                    <div className="text-foreground">{fmtUsd(pos.premiumPaid)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground uppercase tracking-wider text-[8px]">שווי נוכחי</div>
+                    <div className="text-foreground">{fmtUsd(safeValue)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground uppercase tracking-wider text-[8px]">מחיר נכס בסיס</div>
+                    <div className="text-foreground">${mark.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                  </div>
+                  <div className="col-span-2 sm:col-span-3">
+                    <div className="text-muted-foreground uppercase tracking-wider text-[8px] flex items-center gap-1">
+                      <Clock className="h-2.5 w-2.5" /> זמן לתפוגה
+                    </div>
+                    <div className={expired ? "text-red-400" : "text-foreground"}>{fmtExpiry(pos.expiryMs)}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => closeOptionPosition(pos.id, mark, "MANUAL")}
+                  className="mt-2 w-full text-[11px] font-mono font-bold py-1.5 rounded border border-border bg-secondary/40 hover:bg-secondary/70 transition-colors text-foreground"
+                >
+                  סגור פוזיציה
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <TradeHistoryPanel />
+    </div>
+  );
+}
+
 /* ─── Main Page ─── */
 export default function SimulatorPage() {
   // Deep-link support: ?tab=futures|stocks|prediction and ?asset=BTC (from trade history).
   const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const initialTab = (() => {
     const t = initialParams.get("tab");
-    return t === "stocks" || t === "prediction" || t === "futures" ? t : "futures";
+    return t === "stocks" || t === "prediction" || t === "futures" || t === "options" ? t : "futures";
   })();
   const initialAsset = initialParams.get("asset") ?? undefined;
-  const [tab, setTab] = useState<"futures" | "prediction" | "stocks">(initialTab);
+  const [tab, setTab] = useState<"futures" | "prediction" | "stocks" | "options">(initialTab);
   const [showDeposit, setShowDeposit] = useState(false);
   const [futuresFilter, setFuturesFilter] = useState<PosFilter>("ALL");
   const [stocksFilter, setStocksFilter] = useState<PosFilter>("ALL");
   const [polyFilter, setPolyFilter] = useState<PosFilter>("ALL");
-  const { polyPositions, binancePositions, stockPositions, cash, resetPortfolio, checkSlTp, closeAllBotPositions } = usePortfolio();
+  const { polyPositions, binancePositions, stockPositions, optionPositions, cash, resetPortfolio, checkSlTp, closeAllBotPositions } = usePortfolio();
   const { intervalFor } = useRefresh();
 
   // REST is only the slow baseline / asset list now — the live WS (below) is the
@@ -1189,8 +1325,14 @@ export default function SimulatorPage() {
       const p = stockPrices[pos.symbol] ?? pos.entryPrice;
       return sum + pos.shares * (pos.direction === "SHORT" ? pos.entryPrice - p : p - pos.entryPrice);
     }, 0);
-    return binancePnl + polyPnl + stockPnl;
-  }, [binancePositions, polyPositions, stockPositions, binancePrices, stockPrices, allMarkets]);
+    const optionPnl = optionPositions.reduce((sum, pos) => {
+      const mark = (pos.market === "STOCK" ? stockPrices[pos.underlying] : binancePrices[pos.underlying]) ?? pos.entryUnderlying;
+      const value = optionPositionValue({ kind: pos.kind, underlying: mark, strike: pos.strike, expiryMs: pos.expiryMs, vol: pos.entryVol, contracts: pos.contracts });
+      const safe = Number.isFinite(value) ? Math.max(0, value) : 0;
+      return sum + (safe - pos.premiumPaid);
+    }, 0);
+    return binancePnl + polyPnl + stockPnl + optionPnl;
+  }, [binancePositions, polyPositions, stockPositions, optionPositions, binancePrices, stockPrices, allMarkets]);
 
   const totalPositionValue = useMemo(() => {
     const bMargin = binancePositions.reduce((s, p) => s + p.notional / p.leverage, 0);
@@ -1208,8 +1350,18 @@ export default function SimulatorPage() {
       const price = stockPrices[p.symbol] ?? p.entryPrice;
       return s + Math.max(0, p.cost + p.shares * (p.direction === "SHORT" ? p.entryPrice - price : price - p.entryPrice));
     }, 0);
-    return bMargin + bPnl + polyVal + stockVal;
-  }, [binancePositions, polyPositions, stockPositions, binancePrices, stockPrices, allMarkets]);
+    const optionVal = optionPositions.reduce((s, p) => {
+      const mark = (p.market === "STOCK" ? stockPrices[p.underlying] : binancePrices[p.underlying]) ?? p.entryUnderlying;
+      const value = optionPositionValue({ kind: p.kind, underlying: mark, strike: p.strike, expiryMs: p.expiryMs, vol: p.entryVol, contracts: p.contracts });
+      return s + (Number.isFinite(value) ? Math.max(0, value) : 0);
+    }, 0);
+    return bMargin + bPnl + polyVal + stockVal + optionVal;
+  }, [binancePositions, polyPositions, stockPositions, optionPositions, binancePrices, stockPrices, allMarkets]);
+
+  const optionPriceFor = useCallback(
+    (pos: OptionPosition) => (pos.market === "STOCK" ? stockPrices[pos.underlying] : binancePrices[pos.underlying]) ?? pos.entryUnderlying,
+    [binancePrices, stockPrices],
+  );
 
   const polyPrices = useMemo(() => {
     const map: Record<string, number> = {};
@@ -1223,7 +1375,8 @@ export default function SimulatorPage() {
   const totalBotPositions =
     binancePositions.filter(p => p.auto).length +
     stockPositions.filter(p => p.auto).length +
-    polyPositions.filter(p => p.auto).length;
+    polyPositions.filter(p => p.auto).length +
+    optionPositions.filter(p => p.auto).length;
 
   function handleCloseAllBot() {
     if (!confirm(`Close all ${totalBotPositions} bot-placed position${totalBotPositions !== 1 ? "s" : ""} across all tabs?`)) return;
@@ -1298,6 +1451,10 @@ export default function SimulatorPage() {
           <span className="hidden sm:inline">Prediction Markets</span><span className="sm:hidden">Pred.</span>
           {polyPositions.length > 0 && <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-mono">{polyPositions.length}</span>}
         </button>
+        <button onClick={() => setTab("options")} className={tabCls("options")}>
+          <Sparkles className="h-4 w-4" /> Options
+          {optionPositions.length > 0 && <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-mono">{optionPositions.length}</span>}
+        </button>
       </div>
 
       {/* Tab content */}
@@ -1340,6 +1497,7 @@ export default function SimulatorPage() {
             )}
           </div>
         )}
+        {tab === "options" && <OptionsTab priceFor={optionPriceFor} />}
       </div>
 
       {showDeposit && (
