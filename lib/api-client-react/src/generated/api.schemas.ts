@@ -23,6 +23,13 @@ export interface BinanceData {
   fetchedAt: string;
 }
 
+export interface PolymarketPricePoint {
+  /** Unix timestamp in seconds */
+  t: number;
+  /** Probability price as a decimal string (e.g. "0.72" = 72%) */
+  p: string;
+}
+
 export interface PolymarketMarket {
   conditionId: string;
   question: string;
@@ -633,6 +640,34 @@ export const GetPolymarketMarketsAsset = {
   SOL: 'SOL',
   BNB: 'BNB',
   ALL: 'ALL',
+} as const;
+
+export type GetPolymarketPriceHistoryParams = {
+/**
+ * Polymarket condition ID or YES token ID
+ */
+marketId: string;
+/**
+ * Candlestick interval for the price history
+ */
+interval?: GetPolymarketPriceHistoryInterval;
+/**
+ * Start timestamp (Unix seconds)
+ */
+startTs?: number;
+/**
+ * End timestamp (Unix seconds)
+ */
+endTs?: number;
+};
+
+export type GetPolymarketPriceHistoryInterval = typeof GetPolymarketPriceHistoryInterval[keyof typeof GetPolymarketPriceHistoryInterval];
+
+
+export const GetPolymarketPriceHistoryInterval = {
+  '1h': '1h',
+  '6h': '6h',
+  '1d': '1d',
 } as const;
 
 export type GetScanResultsParams = {

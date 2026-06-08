@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useGetBinanceMulti, getGetBinanceMultiQueryKey,
@@ -7,8 +7,9 @@ import {
 } from "@workspace/api-client-react";
 import {
   X, TrendingUp, TrendingDown, Bot, Hand,
-  Layers, Activity, BarChart3, ArrowRight, Cpu,
+  Layers, Activity, BarChart3, ArrowRight, Cpu, LineChart,
 } from "lucide-react";
+import { PolymarketProbabilityChart } from "@/components/polymarket-probability-chart";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { useLivePrice } from "@/contexts/live-price-context";
 import { CryptoIcon } from "@/components/crypto-icon";
@@ -217,44 +218,69 @@ function PolyCard({
   allMarkets: { conditionId: string; yesPrice: number; noPrice: number }[];
   onClose: () => void;
 }) {
+  const [showChart, setShowChart] = useState(false);
   const live = allMarkets.find((m) => m.conditionId === pos.conditionId);
   const currentPrice = live ? (pos.side === "YES" ? live.yesPrice : live.noPrice) : pos.entryPrice;
   const value = pos.shares * currentPrice;
   const pnl = value - pos.cost;
   const pnlPct = (pnl / pos.cost) * 100;
   const age = Math.round((Date.now() - new Date(pos.openedAt).getTime()) / 60000);
+  const entryTs = Math.floor(new Date(pos.openedAt).getTime() / 1000);
 
   return (
-    <div className={`rounded-lg border p-3 flex items-start justify-between gap-3 ${pnl > 0 ? "border-emerald-500/25 bg-emerald-500/4" : pnl < 0 ? "border-red-500/25 bg-red-500/4" : "border-border/40 bg-card/40"}`}>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <span className={`text-[10px] font-black font-mono ${pos.side === "YES" ? "text-emerald-400" : "text-amber-400"}`}>
-            {pos.side}
-          </span>
-          <span className="text-[9px] text-muted-foreground font-mono">{pos.category}</span>
-          <span className="text-[9px] text-muted-foreground/50 font-mono">
-            {age < 60 ? `${age}m ago` : `${Math.floor(age / 60)}h ago`}
-          </span>
+    <div className={`rounded-lg border overflow-hidden ${pnl > 0 ? "border-emerald-500/25 bg-emerald-500/4" : pnl < 0 ? "border-red-500/25 bg-red-500/4" : "border-border/40 bg-card/40"}`}>
+      <div className="p-3 flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className={`text-[10px] font-black font-mono ${pos.side === "YES" ? "text-emerald-400" : "text-amber-400"}`}>
+              {pos.side}
+            </span>
+            <span className="text-[9px] text-muted-foreground font-mono">{pos.category}</span>
+            <span className="text-[9px] text-muted-foreground/50 font-mono">
+              {age < 60 ? `${age}m ago` : `${Math.floor(age / 60)}h ago`}
+            </span>
+          </div>
+          <p className="text-xs text-foreground/80 line-clamp-2 leading-relaxed font-mono">{pos.question}</p>
+          <div className="text-[10px] text-muted-foreground font-mono mt-1.5">
+            {pos.shares.toFixed(2)} shares · ${pos.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)}
+          </div>
         </div>
-        <p className="text-xs text-foreground/80 line-clamp-2 leading-relaxed font-mono">{pos.question}</p>
-        <div className="text-[10px] text-muted-foreground font-mono mt-1.5">
-          {pos.shares.toFixed(2)} shares · ${pos.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <div className={`text-sm font-black font-mono ${pnlCls(pnl)}`}>
+            {pnl >= 0 ? "+" : ""}{fmtUsd(pnl)}
+          </div>
+          <div className={`text-[10px] font-mono ${pnlCls(pnlPct)}`}>{fmtPct(pnlPct)}</div>
+          <div className="text-[10px] text-muted-foreground font-mono">~{fmtUsd(value)}</div>
+          <div className="flex gap-1 mt-1">
+            <button
+              onClick={() => setShowChart((v) => !v)}
+              className={`p-1.5 rounded border transition-all ${showChart ? "border-primary/40 bg-primary/10 text-primary" : "border-transparent text-muted-foreground hover:text-primary hover:border-primary/30"}`}
+              title={showChart ? "הסתר גרף" : "הצג גרף הסתברות"}
+            >
+              <LineChart className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded border border-transparent hover:border-red-500/30 hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all"
+              title="Close position"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
-      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-        <div className={`text-sm font-black font-mono ${pnlCls(pnl)}`}>
-          {pnl >= 0 ? "+" : ""}{fmtUsd(pnl)}
+      {showChart && (
+        <div className="px-3 pb-3">
+          <div className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">גרף הסתברות</div>
+          <PolymarketProbabilityChart
+            conditionId={pos.conditionId}
+            entryTs={entryTs}
+            entryPrice={pos.entryPrice}
+            openPosition
+            height={160}
+          />
         </div>
-        <div className={`text-[10px] font-mono ${pnlCls(pnlPct)}`}>{fmtPct(pnlPct)}</div>
-        <div className="text-[10px] text-muted-foreground font-mono">~{fmtUsd(value)}</div>
-        <button
-          onClick={onClose}
-          className="mt-1 p-1.5 rounded border border-transparent hover:border-red-500/30 hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all"
-          title="Close position"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      )}
     </div>
   );
 }

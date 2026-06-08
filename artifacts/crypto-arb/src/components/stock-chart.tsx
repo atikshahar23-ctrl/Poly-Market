@@ -3,8 +3,10 @@ import {
   createChart,
   CandlestickSeries,
   ColorType,
+  LineStyle,
   type IChartApi,
   type ISeriesApi,
+  type IPriceLine,
   type CandlestickData,
   type UTCTimestamp,
 } from "lightweight-charts";
@@ -12,6 +14,7 @@ import { useGetStockKlines, getGetStockKlinesQueryKey } from "@workspace/api-cli
 import { applyTAOverlays, type TAHandle, autoAnalyze, type AnalysisResult } from "../lib/ta";
 import { israelTickMarkFormatter, israelTimeFormatter } from "../lib/timezone";
 import { TradingViewAdvancedChart } from "./tradingview-advanced-chart";
+import { usePortfolio, type StockPosition } from "@/contexts/portfolio-context";
 
 const RANGES = [
   { key: "1d", label: "1D" },
@@ -29,23 +32,30 @@ interface Props {
   tvSymbol?: string;
 }
 
+type PriceLineHandles = { entry: IPriceLine; sl?: IPriceLine; tp?: IPriceLine };
+
 export function StockChart({ symbol, tvSymbol }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const taRef = useRef<TAHandle | null>(null);
+  const priceLineMapRef = useRef<Map<string, PriceLineHandles>>(new Map());
+  const lastCloseRef = useRef<number>(0);
+
   const [range, setRange] = useState<RangeKey>("1mo");
   const [ta, setTa] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [mode, setMode] = useState<"live" | "pro">("live");
 
+  const { stockPositions, closeStockPosition } = usePortfolio();
+  const positions: StockPosition[] = stockPositions.filter((p) => p.symbol === symbol);
+
   const { data, isLoading, isError } = useGetStockKlines(
     { symbol, range },
     {
       query: {
         queryKey: getGetStockKlinesQueryKey({ symbol, range }),
-        // Pause polling in pro mode — the TradingView widget streams its own data.
         refetchInterval: mode === "pro" ? false : range === "1d" || range === "5d" ? 20000 : 60000,
         staleTime: 15000,
       },
@@ -104,6 +114,7 @@ export function StockChart({ symbol, tvSymbol }: Props) {
     return () => {
       disposed = true;
       ro.disconnect();
+      priceLineMapRef.current.clear();
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -121,10 +132,12 @@ export function StockChart({ symbol, tvSymbol }: Props) {
     }));
     seriesRef.current.setData(candles);
     chartRef.current?.timeScale().fitContent();
+    if (candles.length > 0) {
+      lastCloseRef.current = candles[candles.length - 1].close;
+    }
   }, [data]);
 
-  // TA overlays (EMA / S-R / signals). Recomputed only on full data load or toggle
-  // — never on a tick — so the live path stays untouched.
+  // TA overlays
   useEffect(() => {
     taRef.current?.remove();
     taRef.current = null;
@@ -143,11 +156,67 @@ export function StockChart({ symbol, tvSymbol }: Props) {
     };
   }, [data, ta]);
 
+  // ── Open-position price lines ────────────────────────────────────────────────
+  useEffect(() => {
+    const series = seriesRef.current;
+
+    for (const h of priceLineMapRef.current.values()) {
+      try { series?.removePriceLine(h.entry); } catch { /* disposed */ }
+      if (h.sl) try { series?.removePriceLine(h.sl); } catch { /* disposed */ }
+      if (h.tp) try { series?.removePriceLine(h.tp); } catch { /* disposed */ }
+    }
+    priceLineMapRef.current.clear();
+
+    if (!series || mode === "pro" || positions.length === 0) return;
+
+    for (const pos of positions) {
+      const dir = pos.direction ?? "LONG";
+      const isLong = dir === "LONG";
+      const entryColor = isLong ? "#10b981" : "#ef4444";
+      const shortLabel = (pos.source ?? (pos.auto ? "Bot" : "Manual")).slice(0, 14);
+
+      const entry = series.createPriceLine({
+        price: pos.entryPrice,
+        color: entryColor,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: `${dir} ${pos.leverage}x · ${shortLabel}`,
+      });
+
+      let sl: IPriceLine | undefined;
+      if (pos.slPrice != null) {
+        sl = series.createPriceLine({
+          price: pos.slPrice,
+          color: "#ef4444",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: "SL",
+        });
+      }
+
+      let tp: IPriceLine | undefined;
+      if (pos.tpPrice != null) {
+        tp = series.createPriceLine({
+          price: pos.tpPrice,
+          color: "#22c55e",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: "TP",
+        });
+      }
+
+      priceLineMapRef.current.set(pos.id, { entry, sl, tp });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, mode, data]);
+
   return (
     <div className="flex flex-col h-full bg-[hsl(0_0%_4%)] rounded-lg border border-border overflow-hidden">
       <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border shrink-0 bg-card/20">
         <span className="text-[10px] font-mono text-muted-foreground mr-2 uppercase tracking-widest">Chart</span>
-        {/* Live (integrated demo) ↔ Pro (TradingView drawing tools) toggle */}
         <div className="flex items-center gap-0.5 mr-2 rounded bg-secondary/30 p-0.5">
           <button
             onClick={() => setMode("live")}
@@ -211,6 +280,80 @@ export function StockChart({ symbol, tvSymbol }: Props) {
       </div>
       <div className="relative flex-1 min-h-0">
         <div ref={containerRef} className="absolute inset-0" />
+
+        {/* ── Open-position overlay cards ────────────────────────────────────── */}
+        {mode === "live" && positions.length > 0 && (
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 max-h-[calc(100%-16px)] overflow-y-auto pointer-events-none">
+            {positions.map((pos) => {
+              const dir = pos.direction ?? "LONG";
+              const isLong = dir === "LONG";
+              const mark = lastCloseRef.current > 0 ? lastCloseRef.current : pos.entryPrice;
+              const pnl = pos.shares * (isLong ? mark - pos.entryPrice : pos.entryPrice - mark);
+              const pnlPct = pos.cost > 0 ? (pnl / pos.cost) * 100 : 0;
+              const accent = isLong ? "#10b981" : "#ef4444";
+              const pnlPositive = pnl >= 0;
+
+              return (
+                <div
+                  key={pos.id}
+                  className="pointer-events-auto rounded border bg-[hsl(0_0%_6%)/92] backdrop-blur-sm shadow-lg text-[10px] font-mono overflow-hidden"
+                  style={{ borderColor: `${accent}50`, minWidth: "148px", maxWidth: "190px" }}
+                >
+                  <div className="flex items-center justify-between px-1.5 py-1 gap-1" style={{ background: `${accent}18` }}>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="font-black" style={{ color: accent }}>{dir}</span>
+                      <span className="text-[9px] font-bold px-1 rounded" style={{ background: `${accent}25`, color: accent }}>
+                        {pos.leverage}x
+                      </span>
+                      <span className="truncate text-[9px] text-muted-foreground">{pos.source ?? (pos.auto ? "Bot" : "Manual")}</span>
+                    </div>
+                    <button
+                      onClick={() => closeStockPosition(pos.id, mark)}
+                      className="flex-shrink-0 rounded p-0.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/15 transition-all"
+                      title="סגור פוזיציה"
+                    >
+                      <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 1l10 10M11 1L1 11" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="px-1.5 py-1 space-y-0.5">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-muted-foreground">Entry</span>
+                      <span>${pos.entryPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-muted-foreground">Now</span>
+                      <span>{mark > 0 ? `$${mark.toFixed(2)}` : "—"}</span>
+                    </div>
+                    {pos.slPrice != null && (
+                      <div className="flex justify-between gap-2 text-red-400/80">
+                        <span>SL</span>
+                        <span>${pos.slPrice.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {pos.tpPrice != null && (
+                      <div className="flex justify-between gap-2 text-emerald-400/80">
+                        <span>TP</span>
+                        <span>${pos.tpPrice.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between gap-2 pt-0.5 border-t border-border/40">
+                      <span className="text-muted-foreground">Cost</span>
+                      <span>${pos.cost.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2 font-black" style={{ color: pnlPositive ? "#10b981" : "#ef4444" }}>
+                      <span>P&L</span>
+                      <span>{pnlPositive ? "+" : ""}{pnl.toFixed(2)} ({pnlPositive ? "+" : ""}{pnlPct.toFixed(1)}%)</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {mode === "pro" && (
           <div className="absolute inset-0 z-20 bg-[hsl(0_0%_4%)]">
             <TradingViewAdvancedChart tvSymbol={tvSymbol ?? symbol} interval="D" />

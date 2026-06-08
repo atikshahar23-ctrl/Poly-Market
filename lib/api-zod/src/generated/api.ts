@@ -87,6 +87,26 @@ export const GetPolymarketMarketsResponse = zod.array(GetPolymarketMarketsRespon
 
 
 /**
+ * Proxies the Polymarket CLOB prices-history endpoint (free, no auth required). Returns time-series probability data for a market token.
+ * @summary Get probability price history for a Polymarket market
+ */
+export const getPolymarketPriceHistoryQueryIntervalDefault = `1d`;
+
+export const GetPolymarketPriceHistoryQueryParams = zod.object({
+  "marketId": zod.coerce.string().describe('Polymarket condition ID or YES token ID'),
+  "interval": zod.enum(['1h', '6h', '1d']).default(getPolymarketPriceHistoryQueryIntervalDefault).describe('Candlestick interval for the price history'),
+  "startTs": zod.coerce.number().optional().describe('Start timestamp (Unix seconds)'),
+  "endTs": zod.coerce.number().optional().describe('End timestamp (Unix seconds)')
+})
+
+export const GetPolymarketPriceHistoryResponseItem = zod.object({
+  "t": zod.number().describe('Unix timestamp in seconds'),
+  "p": zod.string().describe('Probability price as a decimal string (e.g. \"0.72\" = 72%)')
+})
+export const GetPolymarketPriceHistoryResponse = zod.array(GetPolymarketPriceHistoryResponseItem)
+
+
+/**
  * Fetches Binance and Polymarket data, cross-references them, and returns arbitrage signals
  * @summary Run full arbitrage/sentiment scan
  */

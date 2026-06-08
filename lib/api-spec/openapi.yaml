@@ -118,6 +118,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /polymarket/price-history:
+    get:
+      operationId: getPolymarketPriceHistory
+      tags: [crypto]
+      summary: Get probability price history for a Polymarket market
+      description: Proxies the Polymarket CLOB prices-history endpoint (free, no auth required). Returns time-series probability data for a market token.
+      parameters:
+        - name: marketId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Polymarket condition ID or YES token ID
+        - name: interval
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [1h, 6h, 1d]
+            default: 1d
+          description: Candlestick interval for the price history
+        - name: startTs
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Start timestamp (Unix seconds)
+        - name: endTs
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: End timestamp (Unix seconds)
+      responses:
+        "200":
+          description: Probability price history points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PolymarketPricePoint"
+        "400":
+          description: Missing or invalid marketId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Failed to fetch price history from Polymarket CLOB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /crypto/scan:
     get:
       operationId: getScanResults
@@ -660,6 +715,19 @@ components:
           type: number
         fetchedAt:
           type: string
+
+    PolymarketPricePoint:
+      type: object
+      required:
+        - t
+        - p
+      properties:
+        t:
+          type: integer
+          description: Unix timestamp in seconds
+        p:
+          type: string
+          description: Probability price as a decimal string (e.g. "0.72" = 72%)
 
     PolymarketMarket:
       type: object

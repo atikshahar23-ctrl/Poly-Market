@@ -15,6 +15,7 @@ import {
 import { useGetStockKlines, getGetStockKlinesQueryKey } from "@workspace/api-client-react";
 import { israelTickMarkFormatter, israelTimeFormatter } from "../lib/timezone";
 import type { ClosedTrade } from "@/contexts/portfolio-context";
+import { PolymarketProbabilityChart } from "./polymarket-probability-chart";
 
 const SYMBOL_MAP: Record<string, string> = {
   BTC: "BTCUSDT", ETH: "ETHUSDT", SOL: "SOLUSDT", BNB: "BNBUSDT",
@@ -260,22 +261,35 @@ export function TradeDetailChart({ trade }: Props) {
     };
   }, [candles, isPoly, openedMs, closedMs, spanMs, trade.entryPrice, trade.exitPrice, trade.direction, trade.pnl]);
 
-  // Polymarket has no candle feed — render an entry→exit probability strip instead.
+  // Polymarket — render a probability chart from the CLOB price-history API.
   if (isPoly) {
+    const conditionId = trade.conditionId ?? trade.symbol ?? "";
     const entry = trade.entryPrice ?? 0;
     const exit = trade.exitPrice ?? entry;
+    const entryTs = trade.openedAt ? Math.floor(new Date(trade.openedAt).getTime() / 1000) : undefined;
+    const exitTs = Math.floor(new Date(trade.closedAt).getTime() / 1000);
     const won = trade.pnl >= 0;
+
     return (
-      <div className="rounded-lg border bg-card p-4 space-y-3" dir="rtl">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-          הסתברות שוק (אין גרף נרות לשוקי חיזוי)
-        </div>
-        <div className="flex items-end justify-between gap-3">
+      <div className="space-y-3">
+        {conditionId ? (
+          <PolymarketProbabilityChart
+            conditionId={conditionId}
+            entryTs={entryTs}
+            entryPrice={entry}
+            exitTs={exitTs}
+            exitPrice={exit}
+            openPosition={false}
+            height={240}
+          />
+        ) : null}
+        {/* Compact entry/exit summary strip */}
+        <div className="rounded-lg border bg-card p-3 flex items-center justify-between gap-3" dir="rtl">
           <div className="text-center">
             <div className="text-[10px] text-muted-foreground">כניסה</div>
-            <div className="font-mono text-lg font-black text-sky-400">{(entry * 100).toFixed(1)}%</div>
+            <div className="font-mono text-base font-black text-sky-400">{(entry * 100).toFixed(1)}%</div>
           </div>
-          <div className="flex-1 h-2 rounded-full bg-secondary/60 relative overflow-hidden">
+          <div className="flex-1 h-1.5 rounded-full bg-secondary/60 relative overflow-hidden">
             <div
               className="absolute inset-y-0 right-0 rounded-full"
               style={{ width: `${Math.min(100, Math.max(entry, exit) * 100)}%`, background: won ? "#22c55e55" : "#ef444455" }}
@@ -283,7 +297,7 @@ export function TradeDetailChart({ trade }: Props) {
           </div>
           <div className="text-center">
             <div className="text-[10px] text-muted-foreground">יציאה</div>
-            <div className="font-mono text-lg font-black" style={{ color: won ? "#22c55e" : "#ef4444" }}>
+            <div className="font-mono text-base font-black" style={{ color: won ? "#22c55e" : "#ef4444" }}>
               {(exit * 100).toFixed(1)}%
             </div>
           </div>

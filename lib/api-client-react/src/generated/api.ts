@@ -29,6 +29,7 @@ import type {
   GetBinanceDataParams,
   GetFundingHistoryParams,
   GetPolymarketMarketsParams,
+  GetPolymarketPriceHistoryParams,
   GetScanResultsParams,
   GetStockKlinesParams,
   GetStockSearchParams,
@@ -37,6 +38,7 @@ import type {
   MarketMovers,
   MomentumCoin,
   PolymarketMarket,
+  PolymarketPricePoint,
   Recommendation,
   ScalpSignal,
   ScanResult,
@@ -372,6 +374,91 @@ export function useGetPolymarketMarkets<TData = Awaited<ReturnType<typeof getPol
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPolymarketMarketsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetPolymarketPriceHistoryUrl = (params: GetPolymarketPriceHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/polymarket/price-history?${stringifiedParams}` : `/api/polymarket/price-history`
+}
+
+/**
+ * Proxies the Polymarket CLOB prices-history endpoint (free, no auth required). Returns time-series probability data for a market token.
+ * @summary Get probability price history for a Polymarket market
+ */
+export const getPolymarketPriceHistory = async (params: GetPolymarketPriceHistoryParams, options?: RequestInit): Promise<PolymarketPricePoint[]> => {
+
+  return customFetch<PolymarketPricePoint[]>(getGetPolymarketPriceHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPolymarketPriceHistoryQueryKey = (params?: GetPolymarketPriceHistoryParams,) => {
+    return [
+    `/api/polymarket/price-history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPolymarketPriceHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getPolymarketPriceHistory>>, TError = ErrorType<ErrorResponse>>(params: GetPolymarketPriceHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPolymarketPriceHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPolymarketPriceHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPolymarketPriceHistory>>> = ({ signal }) => getPolymarketPriceHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPolymarketPriceHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPolymarketPriceHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getPolymarketPriceHistory>>>
+export type GetPolymarketPriceHistoryQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get probability price history for a Polymarket market
+ */
+
+export function useGetPolymarketPriceHistory<TData = Awaited<ReturnType<typeof getPolymarketPriceHistory>>, TError = ErrorType<ErrorResponse>>(
+ params: GetPolymarketPriceHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPolymarketPriceHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPolymarketPriceHistoryQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

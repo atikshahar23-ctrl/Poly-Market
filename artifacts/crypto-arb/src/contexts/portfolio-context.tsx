@@ -145,6 +145,8 @@ export interface ClosedTrade {
   exit?: "MANUAL" | "SL" | "TP" | "LIQ" | "EXPIRY";
   /** Underlying symbol for deep-linking to the chart: BINANCE asset, STOCK ticker, or Polymarket slug. */
   symbol?: string;
+  /** Polymarket conditionId — used as the chart market key for the probability chart. */
+  conditionId?: string;
   /** ── Structured trade detail (optional; `description` is the legacy fallback) ── */
   /** Trade direction: LONG/SHORT for crypto & stocks, YES/NO for Polymarket bets. */
   direction?: "LONG" | "SHORT" | "YES" | "NO";
@@ -548,6 +550,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         id: crypto.randomUUID(),
         type: "POLYMARKET",
         symbol: pos.slug ?? undefined,
+        conditionId: pos.conditionId,
         description: `${pos.side} @ ${pos.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} | ${pos.question}`,
         cost: pos.cost,
         proceeds,
@@ -1403,6 +1406,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           id: crypto.randomUUID(),
           type: "POLYMARKET",
           symbol: pos.slug ?? undefined,
+          conditionId: pos.conditionId,
           description: `${pos.side} @ ${pos.entryPrice.toFixed(3)} → ${price.toFixed(3)} | ${pos.question}`,
           cost: pos.cost,
           proceeds,
