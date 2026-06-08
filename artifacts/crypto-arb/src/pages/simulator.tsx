@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { BotStatsPopover } from "@/components/bot-stats-popover";
 import { CandlestickChart } from "@/components/candlestick-chart";
+import { StockChart } from "@/components/stock-chart";
 import { OrderBook } from "@/components/order-book";
 import { WalletSwitcher } from "@/components/wallet-switcher";
 import { WalletProgress } from "@/components/wallet-progress";
@@ -812,6 +813,16 @@ function StocksTab({ stocks, stockPrices, posFilter, setPosFilter }: { stocks: S
   const [slInputs, setSlInputs] = useState<Record<string, string>>({});
   const [tpInputs, setTpInputs] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedChartSymbol, setSelectedChartSymbol] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (stockPositions.length > 0 && !selectedChartSymbol) {
+      setSelectedChartSymbol(stockPositions[0].symbol);
+    } else if (stockPositions.length === 0) {
+      setSelectedChartSymbol(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stockPositions.length]);
 
   const CATEGORIES: ("ALL" | StockQuote["category"])[] = ["ALL", "TECH", "ENERGY", "RESOURCES", "LARGE_CAP", "INDEX"];
   const CAT_LABEL: Record<string, string> = { ALL: "All", TECH: "Tech", ENERGY: "Energy", RESOURCES: "Resources", LARGE_CAP: "Large Cap", INDEX: "Index/ETF" };
@@ -893,13 +904,20 @@ function StocksTab({ stocks, stockPrices, posFilter, setPosFilter }: { stocks: S
             const pnl = pos.shares * (pos.direction === "SHORT" ? pos.entryPrice - currentPrice : currentPrice - pos.entryPrice);
             const equity = Math.max(0, pos.cost + pnl);
             const pnlPct = pos.cost > 0 ? (pnl / pos.cost) * 100 : 0;
+            const isChartSelected = selectedChartSymbol === pos.symbol;
             return (
-              <div key={pos.id} className={`rounded-lg border p-4 flex items-center justify-between gap-4 ${pnlBg(pnl)}`}>
+              <div
+                key={pos.id}
+                onClick={() => setSelectedChartSymbol(isChartSelected ? null : pos.symbol)}
+                className={`rounded-lg border p-4 flex items-center justify-between gap-4 cursor-pointer transition-all ${pnlBg(pnl)} ${isChartSelected ? "ring-1 ring-primary/50" : "hover:border-primary/30"}`}
+                title="לחץ לצפייה בגרף"
+              >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`text-xs font-black font-mono ${(pos.direction ?? "LONG") === "SHORT" ? "text-red-400" : "text-emerald-400"}`}>{pos.direction ?? "LONG"}</div>
                   <div className="min-w-0">
-                    <div className="text-sm font-bold font-mono truncate">
+                    <div className="text-sm font-bold font-mono truncate flex items-center gap-1.5">
                       {pos.symbol} {pos.leverage > 1 && <span className="text-primary font-normal">{pos.leverage}x</span>} <span className="text-muted-foreground font-normal">{fmt(pos.shares, 4)} sh</span>
+                      <ChartCandlestick className={`h-3 w-3 flex-shrink-0 ${isChartSelected ? "text-primary" : "text-muted-foreground/50"}`} />
                     </div>
                     <div className="text-[10px] text-muted-foreground font-mono">
                       Entry ${pos.entryPrice.toFixed(2)} → Now ${currentPrice.toFixed(2)} · Margin {fmtUsd(pos.cost)}
@@ -924,8 +942,10 @@ function StocksTab({ stocks, stockPrices, posFilter, setPosFilter }: { stocks: S
                   <div className={`text-sm font-black font-mono ${pnlColor(pnl)}`}>{pnl >= 0 ? "+" : ""}{fmtUsd(pnl)}</div>
                   <div className={`text-[10px] font-mono ${pnlColor(pnl)}`}>{pnlPct >= 0 ? "+" : ""}{fmt(pnlPct)}% · Equity {fmtUsd(equity)}</div>
                 </div>
-                <button onClick={() => closeStockPosition(pos.id, currentPrice)}
-                  className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all flex-shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeStockPosition(pos.id, currentPrice); }}
+                  className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all flex-shrink-0"
+                >
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -934,6 +954,30 @@ function StocksTab({ stocks, stockPrices, posFilter, setPosFilter }: { stocks: S
           })()}
         </div>
       )}
+
+      {selectedChartSymbol && (() => {
+        const tvSym = stocks.find(s => s.symbol === selectedChartSymbol)?.tradingViewSymbol;
+        return (
+          <div className="rounded-xl border border-primary/20 bg-card overflow-hidden" style={{ height: 360 }}>
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-card/60 shrink-0">
+              <ChartCandlestick className="h-3.5 w-3.5 text-primary" />
+              <span className="text-[11px] font-bold tracking-widest uppercase text-primary">גרף — {selectedChartSymbol}</span>
+              <span className="text-[10px] text-muted-foreground font-mono">קווי כניסה · SL · TP מוצגים על הגרף</span>
+              <div className="flex-1" />
+              <button
+                onClick={() => setSelectedChartSymbol(null)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="סגור גרף"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div style={{ height: "calc(100% - 37px)" }}>
+              <StockChart symbol={selectedChartSymbol} tvSymbol={tvSym} />
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
