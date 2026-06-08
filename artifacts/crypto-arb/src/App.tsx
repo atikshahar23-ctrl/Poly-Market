@@ -1,9 +1,9 @@
 import { useEffect, useRef, Suspense, lazy } from "react";
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import NotFound from "@/pages/not-found";
@@ -174,8 +174,12 @@ function Router() {
         <Route path="/research" component={Research} />
         {/* REQUIRED — "/*?" is the only wouter syntax that matches both bare
             and OAuth sub-paths like /sign-in/sso-callback */}
-        <Route path="/sign-in/*?" component={SignInPage} />
-        <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/sign-in/*?">
+          <Redirect to="/" replace />
+        </Route>
+        <Route path="/sign-up/*?">
+          <Redirect to="/" replace />
+        </Route>
         <Route component={NotFound} />
       </Switch>
       </Suspense>
@@ -202,6 +206,61 @@ function ClerkQueryClientCacheInvalidator() {
   }, [addListener]);
 
   return null;
+}
+
+// Signed-out users may only reach the auth screens; everything else funnels to
+// the sign-in page so the app is fully gated behind registration/login.
+function SignedOutRoutes() {
+  return (
+    <Switch>
+      <Route path="/sign-up/*?" component={SignUpPage} />
+      <Route path="/sign-in/*?" component={SignInPage} />
+      <Route>
+        <Redirect to="/sign-in" replace />
+      </Route>
+    </Switch>
+  );
+}
+
+// The full application — providers, headless trading engines, and routed pages.
+// Mounted ONLY when a user is signed in, so wallets/bots never run for guests
+// and the PortfolioProvider can scope storage to the signed-in account.
+function AuthedApp() {
+  return (
+    <RefreshProvider>
+      <LivePriceProvider>
+      <PortfolioProvider>
+      <FavoritesProvider>
+      <AutoTraderProvider>
+      <TooltipProvider>
+        <AutoTraderEngine />
+        <ExtraBotsEngine />
+        <FundingBotEngine />
+        <OptionsBotEngine />
+        <Router />
+        <Toaster />
+      </TooltipProvider>
+      </AutoTraderProvider>
+      </FavoritesProvider>
+      </PortfolioProvider>
+      </LivePriceProvider>
+    </RefreshProvider>
+  );
+}
+
+function AppGate() {
+  const { isLoaded, isSignedIn, user } = useUser();
+  if (!isLoaded) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+      </div>
+    );
+  }
+  // `key={user.id}` forces a fresh mount when the account changes in-session, so
+  // the PortfolioProvider re-initializes from the new account's scoped wallet and
+  // never persists one account's data under another's key.
+  return isSignedIn ? <AuthedApp key={user.id} /> : <SignedOutRoutes />;
 }
 
 function App() {
@@ -237,26 +296,9 @@ function App() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
-        <RefreshProvider>
-          <LivePriceProvider>
-          <PortfolioProvider>
-          <FavoritesProvider>
-          <AutoTraderProvider>
-          <TooltipProvider>
-            <AutoTraderEngine />
-            <ExtraBotsEngine />
-            <FundingBotEngine />
-            <OptionsBotEngine />
-            <WouterRouter base={basePath}>
-              <Router />
-            </WouterRouter>
-            <Toaster />
-          </TooltipProvider>
-          </AutoTraderProvider>
-          </FavoritesProvider>
-          </PortfolioProvider>
-          </LivePriceProvider>
-        </RefreshProvider>
+        <WouterRouter base={basePath}>
+          <AppGate />
+        </WouterRouter>
       </QueryClientProvider>
     </ClerkProvider>
   );

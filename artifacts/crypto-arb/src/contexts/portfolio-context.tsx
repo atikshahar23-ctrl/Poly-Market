@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
+import { useUser } from "@clerk/react";
 import { toast } from "@/hooks/use-toast";
 import { calcCloseFeeForBinance, calcCloseFeeForStock, calcCloseFeeForPoly, FEE_RATES } from "@/lib/fees";
 import { optionPositionValue } from "@/lib/options-model";
@@ -303,46 +304,69 @@ function makeWallet(name: string, state: PortfolioState): Wallet {
   return { id: crypto.randomUUID(), name, createdAt: new Date().toISOString(), ...state };
 }
 
-/**
- * Load the multi-wallet book. Prefers the v2 key; if absent, migrates any legacy
- * single-portfolio (`arb_scan_portfolio`) into a wallet named "ראשי" so existing
- * balances and history carry over seamlessly.
- */
-function loadWallets(): WalletsState {
+// Parse a stored multi-wallet book (v2 shape) defensively; null if absent/empty.
+function parseWalletsRaw(raw: string | null): WalletsState | null {
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(WALLETS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<WalletsState>;
-      const wallets = (parsed.wallets ?? [])
-        .filter((w): w is Wallet => !!w && typeof w.id === "string")
-        .map((w) => ({
-          id: w.id,
-          name: w.name || "ארנק",
-          createdAt: w.createdAt || new Date().toISOString(),
-          ...normalizeState(w),
-        }));
-      if (wallets.length > 0) {
-        const activeWalletId = wallets.some((w) => w.id === parsed.activeWalletId)
-          ? parsed.activeWalletId!
-          : wallets[0].id;
-        return { wallets, activeWalletId };
-      }
-    }
-  } catch {}
+    const parsed = JSON.parse(raw) as Partial<WalletsState>;
+    const wallets = (parsed.wallets ?? [])
+      .filter((w): w is Wallet => !!w && typeof w.id === "string")
+      .map((w) => ({
+        id: w.id,
+        name: w.name || "ארנק",
+        createdAt: w.createdAt || new Date().toISOString(),
+        ...normalizeState(w),
+      }));
+    if (wallets.length === 0) return null;
+    const activeWalletId = wallets.some((w) => w.id === parsed.activeWalletId)
+      ? parsed.activeWalletId!
+      : wallets[0].id;
+    return { wallets, activeWalletId };
+  } catch {
+    return null;
+  }
+}
 
-  // Migration path: wrap a legacy single portfolio (or a fresh book) into "ראשי".
-  let initial = freshState();
+// Wrap a legacy single-portfolio blob into a one-wallet book named "ראשי".
+function migrateLegacySingle(raw: string | null): WalletsState | null {
+  if (!raw) return null;
   try {
-    const legacy = localStorage.getItem(STORAGE_KEY);
-    if (legacy) initial = normalizeState(JSON.parse(legacy) as Partial<PortfolioState>);
-  } catch {}
-  const main = makeWallet("ראשי", initial);
+    const initial = normalizeState(JSON.parse(raw) as Partial<PortfolioState>);
+    const main = makeWallet("ראשי", initial);
+    return { wallets: [main], activeWalletId: main.id };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load the multi-wallet book for the signed-in account. Wallets are scoped to
+ * the Clerk user id via `walletsKey`/`legacyKey`, so each account keeps its own
+ * paper-trading wallet on this device. On first sign-in we adopt any pre-auth
+ * un-scoped data (`WALLETS_KEY`/`STORAGE_KEY`) so an existing local wallet
+ * carries over to the first account; a cleanup effect then clears it so later
+ * new accounts start fresh.
+ */
+function loadWallets(walletsKey: string, legacyKey: string): WalletsState {
+  const scoped = parseWalletsRaw(localStorage.getItem(walletsKey));
+  if (scoped) return scoped;
+
+  const scopedLegacy = migrateLegacySingle(localStorage.getItem(legacyKey));
+  if (scopedLegacy) return scopedLegacy;
+
+  const adoptedV2 = parseWalletsRaw(localStorage.getItem(WALLETS_KEY));
+  if (adoptedV2) return adoptedV2;
+
+  const adoptedSingle = migrateLegacySingle(localStorage.getItem(STORAGE_KEY));
+  if (adoptedSingle) return adoptedSingle;
+
+  const main = makeWallet("ראשי", freshState());
   return { wallets: [main], activeWalletId: main.id };
 }
 
-function saveWallets(state: WalletsState) {
+function saveWallets(walletsKey: string, state: WalletsState) {
   try {
-    localStorage.setItem(WALLETS_KEY, JSON.stringify(state));
+    localStorage.setItem(walletsKey, JSON.stringify(state));
   } catch {}
 }
 
@@ -362,7 +386,15 @@ function portfolioOf(w: Wallet): PortfolioState {
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
-  const [book, setBook] = useState<WalletsState>(loadWallets);
+  // Wallets are scoped to the signed-in Clerk account so each account keeps its
+  // own paper-trading wallet on this device. This provider only mounts inside
+  // the authed app, so `user.id` is present; remounting on account change loads
+  // the right account's book.
+  const { user } = useUser();
+  const userId = user?.id ?? "anon";
+  const walletsKey = `${WALLETS_KEY}::${userId}`;
+  const legacyKey = `${STORAGE_KEY}::${userId}`;
+  const [book, setBook] = useState<WalletsState>(() => loadWallets(walletsKey, legacyKey));
 
   const activeWallet =
     book.wallets.find((w) => w.id === book.activeWalletId) ?? book.wallets[0];
@@ -395,8 +427,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    saveWallets(book);
-  }, [book]);
+    saveWallets(walletsKey, book);
+  }, [walletsKey, book]);
+
+  // One-time cleanup: once this account's wallet is persisted under its scoped
+  // key, drop any pre-auth un-scoped data so future new accounts on this device
+  // start with a fresh wallet instead of inheriting this one.
+  useEffect(() => {
+    try {
+      localStorage.removeItem(WALLETS_KEY);
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+  }, []);
 
   const switchWallet = useCallback((id: string) => {
     setBook((prev) =>
