@@ -8,11 +8,15 @@ import { describe, it, expect, vi, beforeAll } from "vitest";
  * strings. The critical correctness requirement is around Israel's twice-yearly
  * DST transitions:
  *   - Spring forward: last Friday before 2 April  (02:00 → 03:00, UTC+2 → UTC+3)
- *   - Fall back:      last Sunday before 3 November (02:00 → 01:00, UTC+3 → UTC+2)
+ *   - Fall back:      last Sunday of October      (02:00 → 01:00, UTC+3 → UTC+2)
  *
- * 2024 transitions used here:
- *   - Spring forward: 2024-03-29 00:00 UTC (local clock jumps 02:00 → 03:00)
- *   - Fall back:      2024-10-26 23:00 UTC (local clock falls 02:00 → 01:00)
+ * Transition instants by year (Israel DST dates shift each year):
+ *   2024 spring-forward: 2024-03-29T00:00Z  (local: 29 Mar 03:00, Fri before 2 Apr)
+ *   2024 fall-back:      2024-10-26T23:00Z  (local: 27 Oct 01:00, last Sun of Oct)
+ *   2025 spring-forward: 2025-03-28T00:00Z  (local: 28 Mar 03:00, Fri before 2 Apr)
+ *   2025 fall-back:      2025-10-25T23:00Z  (local: 26 Oct 01:00, last Sun of Oct)
+ *   2026 spring-forward: 2026-03-27T00:00Z  (local: 27 Mar 03:00, Fri before 2 Apr)
+ *   2026 fall-back:      2026-10-24T23:00Z  (local: 25 Oct 01:00, last Sun of Oct)
  */
 
 beforeAll(() => {
@@ -127,6 +131,62 @@ describe("israelTickMarkFormatter", () => {
       expect(israelTickMarkFormatter(sec("2024-10-26T23:01:00Z"), TIME)).toBe("01:01");
     });
   });
+
+  describe("spring-forward boundary — 2025-03-28 (clocks jump 02:xx → 03:xx)", () => {
+    it("just before: 2025-03-27T23:59:00Z → Israel 01:59 (still UTC+2)", () => {
+      expect(israelTickMarkFormatter(sec("2025-03-27T23:59:00Z"), TIME)).toBe("01:59");
+    });
+
+    it("at transition: 2025-03-28T00:00:00Z → Israel 03:00 (UTC+3, 02:xx hour skipped)", () => {
+      expect(israelTickMarkFormatter(sec("2025-03-28T00:00:00Z"), TIME)).toBe("03:00");
+    });
+
+    it("after transition: 2025-03-28T00:01:00Z → Israel 03:01 (UTC+3)", () => {
+      expect(israelTickMarkFormatter(sec("2025-03-28T00:01:00Z"), TIME)).toBe("03:01");
+    });
+  });
+
+  describe("fall-back boundary — 2025-10-26 (clocks roll back 02:00 → 01:00)", () => {
+    it("just before fall-back: 2025-10-25T22:59:00Z → Israel 01:59 (UTC+3, still DST)", () => {
+      expect(israelTickMarkFormatter(sec("2025-10-25T22:59:00Z"), TIME)).toBe("01:59");
+    });
+
+    it("at fall-back: 2025-10-25T23:00:00Z → Israel 01:00 (UTC+2, clock set back)", () => {
+      expect(israelTickMarkFormatter(sec("2025-10-25T23:00:00Z"), TIME)).toBe("01:00");
+    });
+
+    it("after fall-back: 2025-10-25T23:01:00Z → Israel 01:01 (UTC+2)", () => {
+      expect(israelTickMarkFormatter(sec("2025-10-25T23:01:00Z"), TIME)).toBe("01:01");
+    });
+  });
+
+  describe("spring-forward boundary — 2026-03-27 (clocks jump 02:xx → 03:xx)", () => {
+    it("just before: 2026-03-26T23:59:00Z → Israel 01:59 (still UTC+2)", () => {
+      expect(israelTickMarkFormatter(sec("2026-03-26T23:59:00Z"), TIME)).toBe("01:59");
+    });
+
+    it("at transition: 2026-03-27T00:00:00Z → Israel 03:00 (UTC+3, 02:xx hour skipped)", () => {
+      expect(israelTickMarkFormatter(sec("2026-03-27T00:00:00Z"), TIME)).toBe("03:00");
+    });
+
+    it("after transition: 2026-03-27T00:01:00Z → Israel 03:01 (UTC+3)", () => {
+      expect(israelTickMarkFormatter(sec("2026-03-27T00:01:00Z"), TIME)).toBe("03:01");
+    });
+  });
+
+  describe("fall-back boundary — 2026-10-25 (clocks roll back 02:00 → 01:00)", () => {
+    it("just before fall-back: 2026-10-24T22:59:00Z → Israel 01:59 (UTC+3, still DST)", () => {
+      expect(israelTickMarkFormatter(sec("2026-10-24T22:59:00Z"), TIME)).toBe("01:59");
+    });
+
+    it("at fall-back: 2026-10-24T23:00:00Z → Israel 01:00 (UTC+2, clock set back)", () => {
+      expect(israelTickMarkFormatter(sec("2026-10-24T23:00:00Z"), TIME)).toBe("01:00");
+    });
+
+    it("after fall-back: 2026-10-24T23:01:00Z → Israel 01:01 (UTC+2)", () => {
+      expect(israelTickMarkFormatter(sec("2026-10-24T23:01:00Z"), TIME)).toBe("01:01");
+    });
+  });
 });
 
 describe("israelTimeFormatter (crosshair label)", () => {
@@ -148,5 +208,29 @@ describe("israelTimeFormatter (crosshair label)", () => {
 
   it("fall-back (one hour after): 2024-10-27T00:00:00Z → '27 Oct, 02:00' (UTC+2)", () => {
     expect(israelTimeFormatter(sec("2024-10-27T00:00:00Z"))).toBe("27 Oct, 02:00");
+  });
+
+  it("2025 spring-forward: 2025-03-28T00:00:00Z → '28 Mar, 03:00' (no 02:xx label possible)", () => {
+    expect(israelTimeFormatter(sec("2025-03-28T00:00:00Z"))).toBe("28 Mar, 03:00");
+  });
+
+  it("2025 fall-back (at transition): 2025-10-25T23:00:00Z → '26 Oct, 01:00' (UTC+2 after rollback)", () => {
+    expect(israelTimeFormatter(sec("2025-10-25T23:00:00Z"))).toBe("26 Oct, 01:00");
+  });
+
+  it("2025 fall-back (one hour after): 2025-10-26T00:00:00Z → '26 Oct, 02:00' (UTC+2)", () => {
+    expect(israelTimeFormatter(sec("2025-10-26T00:00:00Z"))).toBe("26 Oct, 02:00");
+  });
+
+  it("2026 spring-forward: 2026-03-27T00:00:00Z → '27 Mar, 03:00' (no 02:xx label possible)", () => {
+    expect(israelTimeFormatter(sec("2026-03-27T00:00:00Z"))).toBe("27 Mar, 03:00");
+  });
+
+  it("2026 fall-back (at transition): 2026-10-24T23:00:00Z → '25 Oct, 01:00' (UTC+2 after rollback)", () => {
+    expect(israelTimeFormatter(sec("2026-10-24T23:00:00Z"))).toBe("25 Oct, 01:00");
+  });
+
+  it("2026 fall-back (one hour after): 2026-10-25T00:00:00Z → '25 Oct, 02:00' (UTC+2)", () => {
+    expect(israelTimeFormatter(sec("2026-10-25T00:00:00Z"))).toBe("25 Oct, 02:00");
   });
 });
