@@ -30,7 +30,9 @@ const MasterAdvisor = lazy(() => import("@/pages/master-advisor"));
 const Research = lazy(() => import("@/pages/research"));
 const Briefing = lazy(() => import("@/pages/briefing"));
 const Tools = lazy(() => import("@/pages/tools"));
+const CalendarPage = lazy(() => import("@/pages/calendar"));
 import Layout from "@/components/layout";
+import { CalendarAlerter } from "@/components/calendar-alerter";
 import { PortfolioProvider } from "@/contexts/portfolio-context";
 import { FavoritesProvider } from "@/contexts/favorites-context";
 import { AutoTraderProvider } from "@/contexts/autotrader-context";
@@ -213,6 +215,7 @@ function Router() {
         <Route path="/briefing" component={Briefing} />
         <Route path="/tools" component={Tools} />
         <Route path="/research" component={Research} />
+        <Route path="/calendar" component={CalendarPage} />
         {/* REQUIRED — "/*?" is the only wouter syntax that matches both bare
             and OAuth sub-paths like /sign-in/sso-callback */}
         <Route path="/sign-in/*?">
@@ -278,6 +281,7 @@ function AuthedApp() {
         <ExtraBotsEngine />
         <FundingBotEngine />
         <OptionsBotEngine />
+        <CalendarAlerter />
         <Router />
         <Toaster />
       </TooltipProvider>

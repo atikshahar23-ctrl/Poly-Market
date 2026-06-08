@@ -6,7 +6,7 @@ import { Show, useClerk, useUser } from "@clerk/react";
 import {
   LayoutDashboard, LineChart, CandlestickChart, Zap, Globe, Trophy,
   TrendingUp, Menu, X, Activity, Gauge, Timer, History, Rocket, Megaphone, Bot, Search, Newspaper, Calculator, Compass, Coins,
-  LogIn, LogOut, User, BarChart3, Crown,
+  LogIn, LogOut, User, BarChart3, Crown, CalendarDays,
 } from "lucide-react";
 import { Jarvis } from "@/components/jarvis";
 import { MarketClock } from "@/components/market-clock";
@@ -157,6 +157,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       title: "מחקר וכלים",
       links: [
         { href: "/briefing", label: "תדריך שוק", icon: Newspaper },
+        { href: "/calendar", label: "יומן אירועים", icon: CalendarDays },
         { href: "/research", label: "חדר מחקר", icon: Search },
         { href: "/insights", label: "ניתוח ותובנות", icon: BarChart3 },
         { href: "/tools", label: "כלי סחר", icon: Calculator },
