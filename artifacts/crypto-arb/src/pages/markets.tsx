@@ -17,8 +17,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { useState, useCallback } from "react";
-import { Search, X, ExternalLink, TrendingUp, TrendingDown, ChevronRight, FlaskConical, Trophy, AlertCircle, CheckCircle2, Bot } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import { Search, X, ExternalLink, TrendingUp, TrendingDown, ChevronRight, ChevronUp, ChevronDown, FlaskConical, Trophy, AlertCircle, CheckCircle2, Bot } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -437,6 +437,16 @@ export default function Markets() {
   const [search, setSearch]           = useState("");
   const [assetFilter, setAssetFilter] = useState<GetPolymarketMarketsAsset>("ALL");
   const [selected, setSelected]       = useState<PolymarketMarket | null>(null);
+  const [sort, setSort]               = useState<"question" | "probability" | "yesPrice" | "volume">("probability");
+  const [sortDir, setSortDir]         = useState<"asc" | "desc">("desc");
+
+  const toggleSort = useCallback(
+    (field: typeof sort) => {
+      if (sort === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      else { setSort(field); setSortDir("desc"); }
+    },
+    [sort],
+  );
 
   const { data: markets, isLoading } = useGetPolymarketMarkets(
     { asset: assetFilter, search },
@@ -447,6 +457,28 @@ export default function Markets() {
       },
     },
   );
+
+  const sortedMarkets = useMemo(() => {
+    const list = [...(markets ?? [])];
+    list.sort((a, b) => {
+      let va: number | string = 0;
+      let vb: number | string = 0;
+      if (sort === "question") { va = a.question; vb = b.question; }
+      else if (sort === "probability") { va = a.yesProbabilityPercent; vb = b.yesProbabilityPercent; }
+      else if (sort === "yesPrice") { va = a.yesPrice; vb = b.yesPrice; }
+      else if (sort === "volume") { va = a.volume ?? 0; vb = b.volume ?? 0; }
+      if (typeof va === "string") return sortDir === "asc" ? va.localeCompare(vb as string) : (vb as string).localeCompare(va);
+      return sortDir === "asc" ? (va as number) - (vb as number) : (vb as number) - (va as number);
+    });
+    return list;
+  }, [markets, sort, sortDir]);
+
+  function SortIcon({ field }: { field: typeof sort }) {
+    if (sort !== field) return <ChevronUp className="h-3 w-3 opacity-20" />;
+    return sortDir === "asc"
+      ? <ChevronUp className="h-3 w-3 text-primary" />
+      : <ChevronDown className="h-3 w-3 text-primary" />;
+  }
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -495,10 +527,30 @@ export default function Markets() {
                   <TableHeader className="bg-secondary/50">
                     <TableRow>
                       <TableHead className="font-mono text-[10px] w-16 pl-4">ASSET</TableHead>
-                      <TableHead className="font-mono text-[10px]">QUESTION</TableHead>
-                      <TableHead className="text-right font-mono text-[10px]">PROB</TableHead>
-                      <TableHead className="text-right font-mono text-[10px] hidden sm:table-cell">YES</TableHead>
-                      <TableHead className="text-right font-mono text-[10px] hidden sm:table-cell pr-4">VOL</TableHead>
+                      <TableHead
+                        className="font-mono text-[10px] cursor-pointer select-none hover:text-foreground"
+                        onClick={() => toggleSort("question")}
+                      >
+                        <div className="flex items-center gap-1">QUESTION <SortIcon field="question" /></div>
+                      </TableHead>
+                      <TableHead
+                        className="text-right font-mono text-[10px] cursor-pointer select-none hover:text-foreground"
+                        onClick={() => toggleSort("probability")}
+                      >
+                        <div className="flex items-center justify-end gap-1">PROB <SortIcon field="probability" /></div>
+                      </TableHead>
+                      <TableHead
+                        className="text-right font-mono text-[10px] hidden sm:table-cell cursor-pointer select-none hover:text-foreground"
+                        onClick={() => toggleSort("yesPrice")}
+                      >
+                        <div className="flex items-center justify-end gap-1">YES <SortIcon field="yesPrice" /></div>
+                      </TableHead>
+                      <TableHead
+                        className="text-right font-mono text-[10px] hidden sm:table-cell pr-4 cursor-pointer select-none hover:text-foreground"
+                        onClick={() => toggleSort("volume")}
+                      >
+                        <div className="flex items-center justify-end gap-1">VOL <SortIcon field="volume" /></div>
+                      </TableHead>
                       <TableHead className="w-6 pr-4"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -522,7 +574,7 @@ export default function Markets() {
                             </TableCell>
                           </TableRow>
                         )
-                      : markets.map((m, i) => {
+                      : sortedMarkets.map((m, i) => {
                           const isSelected = selected?.conditionId === m.conditionId;
                           return (
                             <TableRow
