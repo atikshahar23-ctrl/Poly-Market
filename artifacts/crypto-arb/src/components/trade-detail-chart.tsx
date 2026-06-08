@@ -275,6 +275,7 @@ export function TradeDetailChart({ trade }: Props) {
         {conditionId ? (
           <PolymarketProbabilityChart
             conditionId={conditionId}
+            tokenId={trade.tokenId}
             entryTs={entryTs}
             entryPrice={entry}
             exitTs={exitTs}

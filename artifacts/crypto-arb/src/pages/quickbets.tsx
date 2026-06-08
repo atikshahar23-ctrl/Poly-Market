@@ -57,6 +57,7 @@ function QuickBetCard({ m, now }: { m: PolymarketMarket; now: number }) {
     const err = openPolyPosition(
       {
         conditionId: m.conditionId,
+        tokenId:     m.tokenId ?? undefined,
         question: m.question,
         category: m.assetTag ?? "crypto",
         slug: m.eventSlug ?? null,

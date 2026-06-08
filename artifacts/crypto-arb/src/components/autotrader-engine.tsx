@@ -933,6 +933,7 @@ export function AutoTraderEngine() {
       const err = openPolyPosition(
         {
           conditionId: m.conditionId,
+          tokenId:     m.tokenId ?? undefined,
           question: m.question,
           category: m.category,
           slug: m.slug ?? null,

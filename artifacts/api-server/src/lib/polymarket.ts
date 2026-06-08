@@ -19,6 +19,8 @@ export interface PolymarketMarket {
   liquidity: number | null;
   spread: number | null;
   competitive: number | null;
+  /** CLOB YES-token ID required by the Polymarket price-history API. */
+  tokenId: string | null;
 }
 
 // Gamma API — what Polymarket's own frontend uses; returns only open/active markets
@@ -217,6 +219,21 @@ export async function fetchPolymarketMarkets(opts: FetchPolymarketOptions = {}):
       eventSlug = (ev["slug"] as string) ?? null;
     }
 
+    // Extract the YES-token ID from the tokens array.
+    // The Polymarket CLOB price-history API requires this token ID, not the conditionId.
+    let tokenId: string | null = null;
+    const tokens = market["tokens"];
+    if (Array.isArray(tokens)) {
+      for (const tok of tokens) {
+        const t = tok as Record<string, unknown>;
+        const outcome = String(t["outcome"] ?? "").toLowerCase();
+        if (outcome === "yes") {
+          tokenId = (t["token_id"] as string) ?? null;
+          break;
+        }
+      }
+    }
+
     const rawVol = market["volumeNum"] ?? market["volume"];
     const rawVol24h = market["volume24hr"];
     const rawChange = market["oneDayPriceChange"];
@@ -246,6 +263,7 @@ export async function fetchPolymarketMarkets(opts: FetchPolymarketOptions = {}):
       liquidity: num(rawLiquidity),
       spread: num(rawSpread),
       competitive: num(rawCompetitive),
+      tokenId,
     });
   }
 

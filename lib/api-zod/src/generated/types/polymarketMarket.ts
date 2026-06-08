@@ -58,4 +58,9 @@ export interface PolymarketMarket {
      * @nullable
      */
   competitive?: number | null;
+  /**
+     * CLOB YES-token ID required by the Polymarket price-history API for probability charts
+     * @nullable
+     */
+  tokenId?: string | null;
 }

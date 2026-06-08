@@ -78,6 +78,7 @@ export default function BrowsePage() {
     const err = openPolyPosition(
       {
         conditionId: m.conditionId,
+        tokenId:     m.tokenId ?? undefined,
         question: m.question,
         category: m.assetTag || m.category || "OTHER",
         slug: m.eventSlug ?? m.slug ?? null,

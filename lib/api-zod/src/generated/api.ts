@@ -81,7 +81,8 @@ export const GetPolymarketMarketsResponseItem = zod.object({
   "oneDayPriceChange": zod.number().nullish().describe('24-hour change in YES probability (price points, e.g. 0.05 = +5pt)'),
   "liquidity": zod.number().nullish().describe('Market liquidity in USD'),
   "spread": zod.number().nullish().describe('Bid-ask spread (lower = tighter, more liquid)'),
-  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)')
+  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)'),
+  "tokenId": zod.string().nullish().describe('CLOB YES-token ID required by the Polymarket price-history API for probability charts')
 })
 export const GetPolymarketMarketsResponse = zod.array(GetPolymarketMarketsResponseItem)
 
@@ -145,7 +146,8 @@ export const GetScanResultsResponse = zod.object({
   "oneDayPriceChange": zod.number().nullish().describe('24-hour change in YES probability (price points, e.g. 0.05 = +5pt)'),
   "liquidity": zod.number().nullish().describe('Market liquidity in USD'),
   "spread": zod.number().nullish().describe('Bid-ask spread (lower = tighter, more liquid)'),
-  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)')
+  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)'),
+  "tokenId": zod.string().nullish().describe('CLOB YES-token ID required by the Polymarket price-history API for probability charts')
 }),
   "distanceToTargetPercent": zod.number(),
   "signal": zod.object({
@@ -195,7 +197,8 @@ export const GetAllMarketsResponseItem = zod.object({
   "oneDayPriceChange": zod.number().nullish().describe('24-hour change in YES probability (price points, e.g. 0.05 = +5pt)'),
   "liquidity": zod.number().nullish().describe('Market liquidity in USD'),
   "spread": zod.number().nullish().describe('Bid-ask spread (lower = tighter, more liquid)'),
-  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)')
+  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)'),
+  "tokenId": zod.string().nullish().describe('CLOB YES-token ID required by the Polymarket price-history API for probability charts')
 })
 export const GetAllMarketsResponse = zod.array(GetAllMarketsResponseItem)
 
@@ -333,7 +336,8 @@ export const GetRecommendationsResponseItem = zod.object({
   "oneDayPriceChange": zod.number().nullish().describe('24-hour change in YES probability (price points, e.g. 0.05 = +5pt)'),
   "liquidity": zod.number().nullish().describe('Market liquidity in USD'),
   "spread": zod.number().nullish().describe('Bid-ask spread (lower = tighter, more liquid)'),
-  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)')
+  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)'),
+  "tokenId": zod.string().nullish().describe('CLOB YES-token ID required by the Polymarket price-history API for probability charts')
 }),
   "signal": zod.object({
   "type": zod.enum(['overbought_sentiment', 'underpriced_probability', 'neutral']),
@@ -476,7 +480,8 @@ export const GetShortTermMarketsResponseItem = zod.object({
   "oneDayPriceChange": zod.number().nullish().describe('24-hour change in YES probability (price points, e.g. 0.05 = +5pt)'),
   "liquidity": zod.number().nullish().describe('Market liquidity in USD'),
   "spread": zod.number().nullish().describe('Bid-ask spread (lower = tighter, more liquid)'),
-  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)')
+  "competitive": zod.number().nullish().describe('Polymarket competitiveness score 0-1 (higher = more two-sided action)'),
+  "tokenId": zod.string().nullish().describe('CLOB YES-token ID required by the Polymarket price-history API for probability charts')
 })
 export const GetShortTermMarketsResponse = zod.array(GetShortTermMarketsResponseItem)
 

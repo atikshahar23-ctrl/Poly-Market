@@ -20,6 +20,8 @@ import { israelTickMarkFormatter, israelTimeFormatter } from "../lib/timezone";
 
 interface Props {
   conditionId: string;
+  /** CLOB YES-token ID — preferred over conditionId for the price-history API. */
+  tokenId?: string | null;
   entryTs?: number;
   entryPrice?: number;
   exitTs?: number;
@@ -47,6 +49,7 @@ function snapTime(
 
 export function PolymarketProbabilityChart({
   conditionId,
+  tokenId,
   entryTs,
   entryPrice,
   exitTs,
@@ -60,12 +63,15 @@ export function PolymarketProbabilityChart({
   const seriesRef = useRef<ISeriesApi<"Line"> | null>(null);
 
   const interval = openPosition ? "1h" : "1d";
+  // The Polymarket CLOB price-history API requires the YES-token ID, not the conditionId.
+  // Fall back to conditionId for legacy positions that were opened before tokenId was stored.
+  const marketId = (tokenId ?? conditionId) || conditionId;
 
   const { data, isLoading, isError } = useGetPolymarketPriceHistory(
-    { marketId: conditionId, interval },
+    { marketId, interval },
     {
       query: {
-        queryKey: getGetPolymarketPriceHistoryQueryKey({ marketId: conditionId, interval }),
+        queryKey: getGetPolymarketPriceHistoryQueryKey({ marketId, interval }),
         staleTime: 5 * 60 * 1000,
         refetchInterval: openPosition ? 5 * 60 * 1000 : false,
       },

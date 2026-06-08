@@ -274,6 +274,7 @@ function PolyCard({
           <div className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">גרף הסתברות</div>
           <PolymarketProbabilityChart
             conditionId={pos.conditionId}
+            tokenId={pos.tokenId}
             entryTs={entryTs}
             entryPrice={pos.entryPrice}
             openPosition

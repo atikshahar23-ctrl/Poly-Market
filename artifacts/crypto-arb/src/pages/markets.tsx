@@ -75,6 +75,7 @@ function DemoTradePanel({ market, onClose }: DemoPanelProps) {
     const err = openPolyPosition(
       {
         conditionId: market.conditionId,
+        tokenId:     market.tokenId ?? undefined,
         question:    market.question,
         category:    market.category,
         slug:        market.eventSlug ?? null,

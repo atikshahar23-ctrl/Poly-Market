@@ -9,6 +9,8 @@ export const STARTING_BALANCE = 10_000;
 export interface PolyPosition {
   id: string;
   conditionId: string;
+  /** CLOB YES-token ID — required by the Polymarket price-history API for probability charts. */
+  tokenId?: string;
   question: string;
   category: string;
   slug: string | null;
@@ -147,6 +149,8 @@ export interface ClosedTrade {
   symbol?: string;
   /** Polymarket conditionId — used as the chart market key for the probability chart. */
   conditionId?: string;
+  /** Polymarket CLOB YES-token ID — preferred over conditionId for price-history API calls. */
+  tokenId?: string;
   /** ── Structured trade detail (optional; `description` is the legacy fallback) ── */
   /** Trade direction: LONG/SHORT for crypto & stocks, YES/NO for Polymarket bets. */
   direction?: "LONG" | "SHORT" | "YES" | "NO";
@@ -551,6 +555,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         type: "POLYMARKET",
         symbol: pos.slug ?? undefined,
         conditionId: pos.conditionId,
+        tokenId: pos.tokenId,
         description: `${pos.side} @ ${pos.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} | ${pos.question}`,
         cost: pos.cost,
         proceeds,

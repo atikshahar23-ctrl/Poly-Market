@@ -787,6 +787,9 @@ components:
         competitive:
           type: ["number", "null"]
           description: Polymarket competitiveness score 0-1 (higher = more two-sided action)
+        tokenId:
+          type: ["string", "null"]
+          description: CLOB YES-token ID required by the Polymarket price-history API for probability charts
 
     ArbitrageSignal:
       type: object
