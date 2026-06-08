@@ -427,3 +427,19 @@ textarea:focus-visible,
     scroll-behavior: auto !important;
   }
 }
+
+/* ── VIP auth entrance (Rolls-Royce-grade) ───────────────────────────── */
+@keyframes auth-twinkle {
+  0%, 100% { opacity: 0.12; transform: scale(0.8); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+.auth-star {
+  animation: auth-twinkle ease-in-out infinite;
+  box-shadow: 0 0 4px rgba(246, 232, 194, 0.7);
+}
+@keyframes auth-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.auth-rise      { animation: auth-rise 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.auth-rise-late { animation: auth-rise 1s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both; }

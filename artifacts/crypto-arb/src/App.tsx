@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { AuthShell } from "@/components/auth-shell";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 const Markets = lazy(() => import("@/pages/markets"));
@@ -64,76 +65,116 @@ if (!clerkPubKey) {
   throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env file");
 }
 
+// Champagne-gold VIP appearance — obsidian glass card, hairline gold borders,
+// serif headings and a brushed-gold primary action.
 const clerkAppearance = {
   theme: shadcn,
   cssLayerName: "clerk",
   options: {
-    logoPlacement: "inside" as const,
-    logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    logoPlacement: "none" as const,
   },
   variables: {
-    colorPrimary: "hsl(32 84% 55%)",
-    colorForeground: "hsl(210 22% 92%)",
-    colorMutedForeground: "hsl(213 14% 62%)",
-    colorDanger: "hsl(0 62% 42%)",
-    colorBackground: "hsl(220 16% 8%)",
-    colorInput: "hsl(215 15% 15%)",
-    colorInputForeground: "hsl(210 22% 92%)",
-    colorNeutral: "hsl(215 15% 19%)",
+    colorPrimary: "hsl(40 52% 60%)",
+    colorForeground: "hsl(40 30% 92%)",
+    colorMutedForeground: "hsl(40 12% 64%)",
+    colorDanger: "hsl(0 62% 52%)",
+    colorBackground: "transparent",
+    colorInput: "hsl(0 0% 100% / 0.04)",
+    colorInputForeground: "hsl(40 30% 92%)",
+    colorNeutral: "hsl(40 30% 80%)",
     fontFamily: "'Inter', sans-serif",
-    borderRadius: "0.5rem",
+    borderRadius: "0.25rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-[hsl(220,15%,11%)] rounded-2xl w-[440px] max-w-full overflow-hidden",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    cardBox:
+      "bg-white/[0.025] backdrop-blur-xl border border-[#cdab68]/25 rounded-[3px] w-full max-w-full overflow-hidden shadow-[0_40px_120px_-30px_rgba(0,0,0,0.95)]",
+    card: "!shadow-none !border-0 !bg-transparent !rounded-none px-7 py-8",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "text-[hsl(210,22%,92%)] font-semibold text-lg",
-    headerSubtitle: "text-[hsl(213,14%,62%)] text-sm",
-    socialButtonsBlockButtonText: "text-[hsl(210,22%,92%)]",
-    formFieldLabel: "text-[hsl(210,22%,92%)] text-xs font-medium",
-    footerActionLink: "text-[hsl(32,84%,55%)] hover:text-[hsl(32,84%,65%)]",
-    footerActionText: "text-[hsl(213,14%,62%)]",
-    dividerText: "text-[hsl(213,14%,62%)]",
-    identityPreviewEditButton: "text-[hsl(32,84%,55%)]",
-    formFieldSuccessText: "text-[hsl(152,58%,46%)]",
-    alertText: "text-[hsl(210,22%,92%)]",
-    logoBox: "flex justify-center",
-    logoImage: "h-10 w-auto",
-    socialButtonsBlockButton: "border-[hsl(215,15%,19%)] hover:bg-[hsl(215,15%,19%)]",
-    formButtonPrimary: "bg-[hsl(32,84%,55%)] text-[hsl(220,25%,8%)] hover:bg-[hsl(32,84%,65%)]",
-    formFieldInput: "bg-[hsl(215,15%,15%)] text-[hsl(210,22%,92%)] border-[hsl(215,15%,19%)]",
-    footerAction: "border-t border-[hsl(215,15%,19%)]",
-    dividerLine: "bg-[hsl(215,15%,19%)]",
-    alert: "bg-[hsl(0,62%,42%)]/10 border-[hsl(0,62%,42%)]/20",
-    otpCodeFieldInput: "bg-[hsl(215,15%,15%)] text-[hsl(210,22%,92%)]",
+    header: "gap-1",
+    headerTitle:
+      "text-[#f0e3c8] text-2xl tracking-[0.06em] [font-family:'Playfair_Display',serif]",
+    headerSubtitle: "text-[#c9b894]/70 text-xs tracking-[0.18em] uppercase font-mono",
+    socialButtonsBlockButtonText: "text-[#f0e3c8] tracking-wide",
+    formFieldLabel: "text-[#d9c9a6] text-[0.7rem] font-medium tracking-[0.12em] uppercase",
+    footerActionLink: "text-[#d9b977] hover:text-[#f0d79a] font-medium",
+    footerActionText: "text-[#c9b894]/60",
+    dividerText: "text-[#c9b894]/50 text-[0.65rem] tracking-[0.3em] uppercase",
+    identityPreviewEditButton: "text-[#d9b977]",
+    formFieldSuccessText: "text-[hsl(152,58%,52%)]",
+    alertText: "text-[#f0e3c8]",
+    socialButtonsBlockButton:
+      "border-[#cdab68]/25 bg-white/[0.02] hover:bg-[#cdab68]/10 hover:border-[#cdab68]/45 transition-colors h-11",
+    formButtonPrimary:
+      "h-11 bg-gradient-to-r from-[#e6cd8d] via-[#cdab68] to-[#b08e48] text-[#1a1303] font-semibold tracking-[0.12em] uppercase text-xs hover:brightness-110 transition-[filter] shadow-[0_8px_24px_-8px_rgba(205,171,104,0.5)]",
+    formFieldInput:
+      "bg-white/[0.03] text-[#f0e3c8] border-[#cdab68]/20 focus:border-[#cdab68]/60 h-11",
+    footerAction: "border-t border-[#cdab68]/15",
+    dividerLine: "bg-[#cdab68]/20",
+    alert: "bg-[hsl(0,62%,42%)]/10 border-[hsl(0,62%,42%)]/25",
+    otpCodeFieldInput: "bg-white/[0.03] text-[#f0e3c8] border-[#cdab68]/25",
     formFieldRow: "gap-3",
     main: "gap-5",
   },
 };
 
+// Hebrew strings for the most prominent form copy (no extra dependency needed —
+// Clerk merges this partial localization over its English defaults).
+const clerkLocalization = {
+  socialButtonsBlockButton: "המשך עם {{provider|titleize}}",
+  dividerText: "או",
+  formFieldLabel__emailAddress: "כתובת דוא״ל",
+  formFieldLabel__password: "סיסמה",
+  formFieldInputPlaceholder__emailAddress: "הזינו את כתובת הדוא״ל",
+  formFieldInputPlaceholder__password: "בחרו סיסמה",
+  formButtonPrimary: "כניסה",
+  signIn: {
+    start: {
+      title: "כניסת חברים",
+      subtitle: "מועדון פרטי · בהזמנה בלבד",
+      actionText: "אין לכם עדיין חשבון?",
+      actionLink: "בקשת חברות",
+    },
+  },
+  signUp: {
+    start: {
+      title: "בקשת חברות",
+      subtitle: "הצטרפו למעגל הנבחרים",
+      actionText: "כבר חברים?",
+      actionLink: "כניסה",
+    },
+  },
+};
+
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+    <AuthShell
+      kicker="Private Members Club"
+      title="הכניסה שמורה למעטים נבחרים."
+      subtitle="מי שמקבל גישה אינו ככל האדם — חוויית מסחר ברמה אחרת, מעוצבת לפרטיות וליוקרה."
+    >
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
       />
-    </div>
+    </AuthShell>
   );
 }
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+    <AuthShell
+      kicker="By Invitation Only"
+      title="הצטרפו אל מעגל הנבחרים."
+      subtitle="חברות פרטית בעולם המסחר. מקום אחד שמור עבורכם — נותר רק לפתוח את הדלת."
+    >
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
       />
-    </div>
+    </AuthShell>
   );
 }
 
@@ -277,20 +318,7 @@ function App() {
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
-      localization={{
-        signIn: {
-          start: {
-            title: "Sign In",
-            subtitle: "Welcome back to Heavy Guard",
-          },
-        },
-        signUp: {
-          start: {
-            title: "Create Account",
-            subtitle: "Join Heavy Guard",
-          },
-        },
-      }}
+      localization={clerkLocalization}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >

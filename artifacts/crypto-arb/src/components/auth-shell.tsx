@@ -1,0 +1,204 @@
+import { useMemo, type ReactNode } from "react";
+
+type Star = {
+  top: number;
+  left: number;
+  size: number;
+  delay: number;
+  duration: number;
+  opacity: number;
+};
+
+function useStarfield(count: number): Star[] {
+  return useMemo(() => {
+    // Deterministic-ish pseudo-random so the starlight headliner doesn't
+    // re-shuffle on every render but still feels organic.
+    let seed = 20260608;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    return Array.from({ length: count }, () => ({
+      top: rand() * 100,
+      left: rand() * 100,
+      size: rand() * 1.6 + 0.6,
+      delay: rand() * 6,
+      duration: rand() * 4 + 3,
+      opacity: rand() * 0.5 + 0.25,
+    }));
+  }, [count]);
+}
+
+function Emblem() {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className="h-20 w-20 md:h-24 md:w-24"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="goldStroke" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#f4e2b0" />
+          <stop offset="45%" stopColor="#cdab68" />
+          <stop offset="100%" stopColor="#8a6a32" />
+        </linearGradient>
+      </defs>
+      {/* Outer hairline ring */}
+      <circle
+        cx="100"
+        cy="100"
+        r="84"
+        fill="none"
+        stroke="url(#goldStroke)"
+        strokeWidth="1.2"
+        opacity="0.7"
+      />
+      <circle
+        cx="100"
+        cy="100"
+        r="74"
+        fill="none"
+        stroke="url(#goldStroke)"
+        strokeWidth="0.6"
+        opacity="0.35"
+      />
+      {/* Wings — original abstract motif, evokes flight not any trademark figurine */}
+      <path
+        d="M100 58 C72 40 44 44 22 60 C50 56 76 62 100 78 Z"
+        fill="url(#goldStroke)"
+        opacity="0.85"
+      />
+      <path
+        d="M100 58 C128 40 156 44 178 60 C150 56 124 62 100 78 Z"
+        fill="url(#goldStroke)"
+        opacity="0.85"
+      />
+      {/* Crown star */}
+      <circle cx="100" cy="50" r="3.4" fill="#f4e2b0" />
+      {/* Monogram */}
+      <text
+        x="100"
+        y="138"
+        textAnchor="middle"
+        fontFamily="'Playfair Display', serif"
+        fontWeight={700}
+        fontSize="62"
+        letterSpacing="2"
+        fill="url(#goldStroke)"
+      >
+        HG
+      </text>
+    </svg>
+  );
+}
+
+function Grille() {
+  // Faint Pantheon-style vertical fluting watermark behind the brand lockup.
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute left-1/2 top-1/2 h-[clamp(220px,40vh,420px)] w-[clamp(140px,18vw,220px)] -translate-x-1/2 -translate-y-[58%] opacity-[0.07]"
+      style={{
+        background:
+          "repeating-linear-gradient(90deg, #cdab68 0px, #cdab68 1px, transparent 1px, transparent 11px)",
+        maskImage:
+          "radial-gradient(ellipse at center, black 35%, transparent 78%)",
+        WebkitMaskImage:
+          "radial-gradient(ellipse at center, black 35%, transparent 78%)",
+      }}
+    />
+  );
+}
+
+export function AuthShell({
+  children,
+  kicker,
+  title,
+  subtitle,
+}: {
+  children: ReactNode;
+  kicker: string;
+  title: string;
+  subtitle: string;
+}) {
+  const stars = useStarfield(70);
+
+  return (
+    <div
+      dir="rtl"
+      className="auth-shell relative flex min-h-[100dvh] w-full flex-col overflow-hidden bg-[#050505] text-white lg:flex-row"
+    >
+      {/* Cinematic backdrop spanning the whole viewport */}
+      <div className="pointer-events-none absolute inset-0">
+        {/* Deep base wash */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,#1a1408_0%,#0a0a0a_38%,#040404_100%)]" />
+        {/* Champagne aura */}
+        <div className="absolute left-1/2 top-[-18%] h-[60vh] w-[60vh] -translate-x-1/2 rounded-full bg-[#caa867] opacity-[0.06] blur-[120px]" />
+        {/* Starlight headliner */}
+        {stars.map((s, i) => (
+          <span
+            key={i}
+            className="auth-star absolute rounded-full bg-[#f6e8c2]"
+            style={{
+              top: `${s.top}%`,
+              left: `${s.left}%`,
+              width: `${s.size}px`,
+              height: `${s.size}px`,
+              opacity: s.opacity,
+              animationDelay: `${s.delay}s`,
+              animationDuration: `${s.duration}s`,
+            }}
+          />
+        ))}
+        {/* Cinematic vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.85)_100%)]" />
+      </div>
+
+      {/* Brand panel */}
+      <section className="auth-rise relative flex flex-1 flex-col items-center justify-center px-6 pb-4 pt-12 text-center lg:px-12 lg:pb-12 lg:pt-12">
+        <Grille />
+        <div className="relative flex flex-col items-center">
+          <Emblem />
+
+          <div className="mt-6 flex items-center gap-3">
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[#cdab68]/70" />
+            <span className="font-mono text-[0.6rem] uppercase tracking-[0.45em] text-[#cdab68]/80">
+              {kicker}
+            </span>
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[#cdab68]/70" />
+          </div>
+
+          <h1
+            className="mt-5 bg-gradient-to-b from-[#f7ead0] via-[#d9bd82] to-[#9c7c40] bg-clip-text font-serif text-4xl font-bold tracking-[0.18em] text-transparent md:text-6xl"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            HEAVY&nbsp;GUARD
+          </h1>
+
+          <p className="mt-5 max-w-md font-serif text-lg leading-relaxed text-[#e8dcc4] md:text-xl" style={{ fontFamily: "'Playfair Display', serif" }}>
+            {title}
+          </p>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/55">
+            {subtitle}
+          </p>
+
+          <div className="mt-8 flex items-center gap-3 font-mono text-[0.58rem] uppercase tracking-[0.4em] text-white/35">
+            <span>Members Only</span>
+            <span className="text-[#cdab68]/60">·</span>
+            <span>By Invitation</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Vertical divider on desktop */}
+      <div className="relative hidden lg:flex lg:items-center">
+        <span className="h-[58%] w-px bg-gradient-to-b from-transparent via-[#cdab68]/30 to-transparent" />
+      </div>
+
+      {/* Form panel */}
+      <section className="auth-rise-late relative flex flex-1 items-center justify-center px-5 pb-14 pt-2 lg:px-12 lg:py-12">
+        <div className="w-full max-w-[420px]">{children}</div>
+      </section>
+    </div>
+  );
+}
