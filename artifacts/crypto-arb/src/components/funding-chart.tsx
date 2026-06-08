@@ -10,6 +10,7 @@ import {
   type MouseEventParams,
 } from "lightweight-charts";
 import type { FundingRatePoint } from "@workspace/api-client-react";
+import { israelTickMarkFormatter, israelTimeFormatter } from "../lib/timezone";
 
 interface Props {
   /** Oldest→newest funding points. `metric` selects which field is plotted. */
@@ -51,10 +52,12 @@ export function FundingChart({ series, metric = "annualized", avgValue = null, u
         horzLines: { color: "hsl(0 0% 9%)" },
       },
       rightPriceScale: { borderColor: "hsl(0 0% 13%)" },
+      localization: { timeFormatter: israelTimeFormatter },
       timeScale: {
         borderColor: "hsl(0 0% 13%)",
         timeVisible: true,
         secondsVisible: false,
+        tickMarkFormatter: israelTickMarkFormatter,
       },
       crosshair: {
         mode: 1,
@@ -165,6 +168,7 @@ export function FundingChart({ series, metric = "annualized", avgValue = null, u
           </div>
           <div className="text-muted-foreground">
             {new Date(tip.time * 1000).toLocaleString(undefined, {
+              timeZone: "Asia/Jerusalem",
               month: "short",
               day: "numeric",
               hour: "2-digit",

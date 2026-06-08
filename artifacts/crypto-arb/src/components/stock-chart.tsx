@@ -10,6 +10,7 @@ import {
 } from "lightweight-charts";
 import { useGetStockKlines, getGetStockKlinesQueryKey } from "@workspace/api-client-react";
 import { applyTAOverlays, type TAHandle, autoAnalyze, type AnalysisResult } from "../lib/ta";
+import { israelTickMarkFormatter, israelTimeFormatter } from "../lib/timezone";
 import { TradingViewAdvancedChart } from "./tradingview-advanced-chart";
 
 const RANGES = [
@@ -66,10 +67,12 @@ export function StockChart({ symbol, tvSymbol }: Props) {
         horzLines: { color: "hsl(0 0% 9%)" },
       },
       rightPriceScale: { borderColor: "hsl(0 0% 13%)" },
+      localization: { timeFormatter: israelTimeFormatter },
       timeScale: {
         borderColor: "hsl(0 0% 13%)",
         timeVisible: range === "1d" || range === "5d",
         secondsVisible: false,
+        tickMarkFormatter: israelTickMarkFormatter,
       },
       crosshair: { mode: 1 },
       width: el.clientWidth,

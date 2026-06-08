@@ -11,6 +11,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { applyTAOverlays, type TAHandle, autoAnalyze, type AnalysisResult } from "../lib/ta";
+import { israelTickMarkFormatter, israelTimeFormatter } from "../lib/timezone";
 import { TradingViewAdvancedChart } from "./tradingview-advanced-chart";
 import type { BinancePosition } from "@/contexts/portfolio-context";
 
@@ -92,10 +93,12 @@ export function CandlestickChart({ symbol, positions, currentPrice, onClosePosit
         horzLines: { color: "hsl(0 0% 9%)" },
       },
       rightPriceScale: { borderColor: "hsl(0 0% 13%)" },
+      localization: { timeFormatter: israelTimeFormatter },
       timeScale: {
         borderColor: "hsl(0 0% 13%)",
         timeVisible: true,
         secondsVisible: false,
+        tickMarkFormatter: israelTickMarkFormatter,
       },
       crosshair: { mode: 1 },
       width: el.clientWidth,

@@ -13,6 +13,7 @@ import {
   type SeriesMarker,
 } from "lightweight-charts";
 import { useGetStockKlines, getGetStockKlinesQueryKey } from "@workspace/api-client-react";
+import { israelTickMarkFormatter, israelTimeFormatter } from "../lib/timezone";
 import type { ClosedTrade } from "@/contexts/portfolio-context";
 
 const SYMBOL_MAP: Record<string, string> = {
@@ -166,10 +167,12 @@ export function TradeDetailChart({ trade }: Props) {
         horzLines: { color: "hsl(0 0% 9%)" },
       },
       rightPriceScale: { borderColor: "hsl(0 0% 13%)" },
+      localization: { timeFormatter: israelTimeFormatter },
       timeScale: {
         borderColor: "hsl(0 0% 13%)",
         timeVisible: spanMs < 5 * 86_400_000,
         secondsVisible: false,
+        tickMarkFormatter: israelTickMarkFormatter,
       },
       crosshair: { mode: 1 },
       width: el.clientWidth,

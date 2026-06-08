@@ -9,6 +9,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { usePortfolio } from "@/contexts/portfolio-context";
+import { israelTickMarkFormatter, israelTimeFormatter } from "../lib/timezone";
 import { TrendingUp, TrendingDown, LineChart as LineChartIcon } from "lucide-react";
 
 function fmtUsd(n: number) {
@@ -80,7 +81,8 @@ export function WalletProgress() {
         horzLines: { color: "rgba(255,255,255,0.04)" },
       },
       rightPriceScale: { borderColor: "rgba(255,255,255,0.06)" },
-      timeScale: { borderColor: "rgba(255,255,255,0.06)", timeVisible: true, secondsVisible: false },
+      localization: { timeFormatter: israelTimeFormatter },
+      timeScale: { borderColor: "rgba(255,255,255,0.06)", timeVisible: true, secondsVisible: false, tickMarkFormatter: israelTickMarkFormatter },
       handleScroll: false,
       handleScale: false,
       crosshair: { horzLine: { visible: false }, vertLine: { labelVisible: false } },
