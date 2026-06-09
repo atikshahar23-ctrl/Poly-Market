@@ -272,6 +272,84 @@ export const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "sim.chartLabel": { he: "גרף — ", en: "Chart — " },
   "sim.chartHint": { he: "קווי כניסה · SL · TP מוצגים על הגרף", en: "Entry lines · SL · TP shown on the chart" },
   "sim.closeChart": { he: "סגור גרף", en: "Close chart" },
+
+  // --- Wallet Switcher ---
+  "wallet.myWallets": { he: "הארנקים שלי", en: "My Wallets" },
+  "wallet.positions": { he: "פוזיציות", en: "positions" },
+  "wallet.changeGear": { he: "שינוי עוצמה", en: "Change Gear" },
+  "wallet.rename": { he: "שינוי שם", en: "Rename" },
+  "wallet.delete": { he: "מחיקה", en: "Delete" },
+  "wallet.deleteConfirm": { he: "למחוק את הארנק", en: "Delete wallet" },
+  "wallet.deleteWarning": { he: "כל הפוזיציות וההיסטוריה שלו יימחקו.", en: "All positions and history will be deleted." },
+  "wallet.pickGear": { he: "בחר הילוך עוצמה", en: "Pick Gear Level" },
+  "wallet.newName": { he: "שם הארנק החדש", en: "New wallet name" },
+  "wallet.newWallet": { he: "ארנק חדש", en: "New Wallet" },
+  "wallet.compare": { he: "השוואת ארנקים", en: "Compare Wallets" },
+  "wallet.switch": { he: "החלפת ארנק", en: "Switch Wallet" },
+  "wallet.save": { he: "שמירה", en: "Save" },
+  "wallet.cancel": { he: "ביטול", en: "Cancel" },
+  "wallet.create": { he: "יצירה", en: "Create" },
+
+  // --- Trade Analytics ---
+  "ta.title": { he: "ניתוח עסקאות ולמידת הסוכן", en: "Trade Analytics & Agent Learning" },
+  "ta.reset": { he: "הוזל אחורה לבסיס הארנק", en: "Reset to Wallet Base" },
+  "ta.equityCurve": { he: "עקומת הון (רווח/הפסד מצטבר)", en: "Equity Curve (Cumulative P&L)" },
+  "ta.noClosed": { he: "אין עדיין עסקאות סגורות להצגת עקומה.", en: "No closed trades yet to show a curve." },
+  "ta.avgWin": { he: "רווח ממוצע", en: "Avg Win" },
+  "ta.avgLoss": { he: "הפסד ממוצע", en: "Avg Loss" },
+  "ta.tp": { he: "יעד רווח (TP)", en: "Take Profit (TP)" },
+  "ta.sl": { he: "עצירת הפסד (SL)", en: "Stop Loss (SL)" },
+  "ta.liq": { he: "חיסול (LIQ)", en: "Liquidation (LIQ)" },
+  "ta.manual": { he: "סגירה ידנית", en: "Manual Close" },
+  "ta.noData": { he: "עדיין אין מספיק נתונים — הפעל את הבוטים כדי שהסוכן יתחיל ללמוד מהעסקאות.", en: "Not enough data yet — activate the bots so the agent can start learning from trades." },
+  "ta.bestProfitable": { he: "האפיק הרווחי ביותר", en: "Most profitable channel" },
+  "ta.tpSlRatio": { he: "יחס יעד-רווח מול עצירת-הפסד", en: "TP / SL ratio" },
+  "ta.lowWinRate": { he: "אחוז ההצלחה נמוך — הסוכן מעלה את ספי הכניסה ומקטין חשיפה עד שהביצועים משתפרים.", en: "Win rate is low — the agent is raising entry thresholds and reducing exposure until performance improves." },
+  "ta.maxLossStreak": { he: "רצף הפסדים הארוך ביותר", en: "Longest loss streak" },
+  "ta.lossStreakNote": { he: "עסקאות רצופ — הסוכן מחזיר יותר זהירות.", en: "consecutive losses — the agent is becoming more cautious." },
+  "ta.trades": { he: "עסקאות", en: "trades" },
+  "ta.wins": { he: "ניצחונות", en: "wins" },
+  "ta.losses": { he: "הפסדים", en: "losses" },
+  "ta.winRate": { he: "אחוז ניצחון", en: "Win Rate" },
+  "ta.cumulative": { he: "רווח כולל", en: "Cumulative P&L" },
+  "ta.resetConfirm": { he: "לאפס את תיק המסחר? הפעולה תמחק את כל ההיסטוריה, הפוזיציות הפתוחות, נתוני הלמידה והיתרה — ותוחזר אותו למצב פתיחה", en: "Reset trading portfolio? This will delete all history, open positions, learning data and balance — and restore it to the starting state" },
+  "ta.resetSuffix": { he: "פעולה בלת חזור.", en: "Irreversible action." },
+
+  // --- Bot Stats ---
+  "bs.winRate": { he: "אחוז ניצחון", en: "Win Rate" },
+  "bs.trades": { he: "עסקאות", en: "Trades" },
+  "bs.cumulativePnl": { he: "רווח כולל", en: "Cumulative P&L" },
+  "bs.wins": { he: "W", en: "W" },
+  "bs.losses": { he: "L", en: "L" },
+
+  // --- AutoTrader Engine ---
+  "ate.closedProfit": { he: "סגר", en: "closed" },
+  "ate.closedLoss": { he: "בהפסד", en: "at a loss" },
+  "ate.profit": { he: "ברווח", en: "in profit" },
+  "ate.freed": { he: "הון פנוי שוחרר מ", en: "Free capital released from" },
+  "ate.nextSetup": { he: "מגויס מחדש לסטאפ הבא", en: "redeployed to next setup" },
+  "ate.smartClose": { he: "סגירה חכמה", en: "Smart Close" },
+  "ate.profitRun": { he: "ריצת רווח", en: "Profit Run" },
+  "ate.quickScalp": { he: "סקאלפ מהיר", en: "Quick Scalp" },
+  "ate.lossCut": { he: "קציצת הפסד", en: "Loss Cut" },
+
+  // --- Market Clock ---
+  "mc.noEvents": { he: "אין אירועים מיוחדים ביום זה — מסחר רגיל.", en: "No special events today — regular trading." },
+
+  // --- Stock Chart ---
+  "sc.closePosition": { he: "סגור פוזיציה", en: "Close Position" },
+
+  // --- Social Banners ---
+  "sb.addedFunds": { he: "נוספו", en: "Added" },
+  "sb.toWallet": { he: "לארנק הפעיל (דמו לימודי).", en: "to the active wallet (demo/educational)." },
+  "sb.dailyReward": { he: "תגמול כניסה יומי", en: "Daily Login Reward" },
+  "sb.rewardPending": { he: "התגמול ממתין לך — לחיצה אחת והוא בארנק.", en: "Reward is waiting — one tap and it is in your wallet." },
+  "sb.pts": { he: "נקודות", en: "pts" },
+
+  // --- Onboarding ---
+  "ob.virtualMoney": { he: "כסף וירטואלי לתרגול בלבד. כל הפעילות היא הדמיה חינוכית — אין כסף אמיתי, אין הבטחות לרווח ואין ייעוץ פיננסי.", en: "Virtual money for practice only. All activity is educational simulation — no real money, no profit guarantees, and no financial advice." },
+  "ob.dashboardReady": { he: "לוח המחוונים, הסימולטור והבוטים ממתינים לכם. בואו נתחיל לתרגל.", en: "The dashboard, simulator, and bots are ready. Let's start practicing." },
+  "ob.login": { he: "כניסה למערכת", en: "Enter System" },
 };
 
 export function t(key: string, lang: Lang): string {

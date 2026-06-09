@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { useAutoTrader, intensityProfile } from "@/contexts/autotrader-context";
+import { useLanguage } from "@/contexts/language-context";
+import { t } from "@/lib/i18n";
 import {
   Wallet as WalletIcon, ChevronDown, Plus, Check, Pencil, Trash2, X, Gauge,
 } from "lucide-react";
@@ -23,6 +25,7 @@ function fmtUsd(n: number) {
  * `compact` renders a smaller trigger for the mobile header.
  */
 export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
+  const { lang } = useLanguage();
   const {
     wallets, activeWalletId, activeWalletName,
     createWallet, renameWallet, deleteWallet, switchWallet,
@@ -74,7 +77,7 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
   }
 
   function doDelete(id: string, name: string) {
-    if (!confirm(`למחוק את הארנק "${name}"? כל הפוזיציות וההיסטוריה שלו יימחקו.`)) return;
+    if (!confirm(`${t("wallet.deleteConfirm", lang)} "${name}"? ${t("wallet.deleteWarning", lang)}`)) return;
     const e = deleteWallet(id);
     if (e) setErr(e);
   }
@@ -86,7 +89,7 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
         className={`flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/15 transition-colors ${
           compact ? "px-2 py-1" : "px-3 py-1.5"
         }`}
-        title="החלפת ארנק"
+        title={t("wallet.switch", lang)}
       >
         <WalletIcon className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className={`font-mono font-bold text-primary truncate ${compact ? "text-[11px] max-w-[90px]" : "text-xs max-w-[140px]"}`}>
@@ -101,7 +104,7 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
           style={{ boxShadow: "0 0 40px hsl(207 30% 70% / 0.15)" }}
         >
           <div className="px-2 py-1 text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
-            הארנקים שלי ({wallets.length})
+            {t("wallet.myWallets", lang)} ({wallets.length})
           </div>
 
           <div className="max-h-64 overflow-y-auto space-y-1">
@@ -117,10 +120,10 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
                       onKeyDown={(e) => { if (e.key === "Enter") doRename(w.id); if (e.key === "Escape") setEditingId(null); }}
                       className="flex-1 h-8 rounded-md bg-secondary/40 border border-border px-2 text-xs font-mono text-foreground focus:outline-none focus:border-primary/50"
                     />
-                    <button onClick={() => doRename(w.id)} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-500/10" title="שמירה">
+                    <button onClick={() => doRename(w.id)} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-500/10" title={t("wallet.save", lang)}>
                       <Check className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={() => setEditingId(null)} className="p-1.5 rounded text-muted-foreground hover:bg-secondary/40" title="ביטול">
+                    <button onClick={() => setEditingId(null)} className="p-1.5 rounded text-muted-foreground hover:bg-secondary/40" title={t("wallet.cancel", lang)}>
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -148,14 +151,14 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
                           {w.name}
                         </span>
                         <span className="block text-[10px] font-mono text-muted-foreground">
-                          {fmtUsd(w.cash)} · {w.openPositions} פוזיציות
+                          {fmtUsd(w.cash)} · {w.openPositions} {t("wallet.positions", lang)}
                         </span>
                       </span>
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setPickingGearFor(isPicking ? null : w.id); setEditingId(null); }}
                       className={`shrink-0 inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[9px] font-mono font-bold leading-none transition-all hover:brightness-125 ${gearColor} ${isPicking ? "ring-1 ring-current/60" : ""}`}
-                      title="שינוי עוצמה"
+                      title={t("wallet.changeGear", lang)}
                     >
                       <Gauge className="h-2.5 w-2.5" />
                       {gear.level} {gear.label}
@@ -163,7 +166,7 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
                     <button
                       onClick={() => { setEditingId(w.id); setEditName(w.name); setErr(null); setPickingGearFor(null); }}
                       className="p-1 rounded text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="שינוי שם"
+                      title={t("wallet.rename", lang)}
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
@@ -171,7 +174,7 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
                       <button
                         onClick={() => doDelete(w.id, w.name)}
                         className="p-1 rounded text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="מחיקה"
+                        title={t("wallet.delete", lang)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -179,7 +182,7 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
                   </div>
                   {isPicking && (
                     <div className="mx-1 px-2 py-2 rounded-lg border border-primary/20 bg-background/60 space-y-1.5">
-                      <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground text-right">בחר הילוך עוצמה</p>
+                      <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground text-right">{t("wallet.pickGear", lang)}</p>
                       <div className="grid grid-cols-5 gap-1.5">
                         {[1, 2, 3, 4, 5].map((lvl) => {
                           const p = intensityProfile(lvl);
@@ -214,16 +217,16 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
             <div className="flex items-center gap-1 px-1">
               <input
                 autoFocus
-                placeholder="שם הארנק החדש"
+                placeholder={t("wallet.newName", lang)}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") doCreate(); if (e.key === "Escape") { setCreating(false); setErr(null); } }}
                 className="flex-1 h-8 rounded-md bg-secondary/40 border border-border px-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
               />
-              <button onClick={doCreate} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-500/10" title="יצירה">
+              <button onClick={doCreate} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-500/10" title={t("wallet.create", lang)}>
                 <Check className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => { setCreating(false); setErr(null); }} className="p-1.5 rounded text-muted-foreground hover:bg-secondary/40" title="ביטול">
+              <button onClick={() => { setCreating(false); setErr(null); }} className="p-1.5 rounded text-muted-foreground hover:bg-secondary/40" title={t("wallet.cancel", lang)}>
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -232,7 +235,7 @@ export function WalletSwitcher({ compact = false }: { compact?: boolean }) {
               onClick={() => { setCreating(true); setNewName(""); setErr(null); }}
               className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-primary/30 text-primary hover:bg-primary/10 transition-colors text-xs font-mono font-bold"
             >
-              <Plus className="h-3.5 w-3.5" /> ארנק חדש
+              <Plus className="h-3.5 w-3.5" /> {t("wallet.newWallet", lang)}
             </button>
           )}
 
