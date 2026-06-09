@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetRecommendations, getGetRecommendationsQueryKey } from "@workspace/api-client-react";
 import { useRefresh } from "@/contexts/refresh-context";
@@ -6,6 +6,8 @@ import { RefreshCw, Zap, Bell, BellOff } from "lucide-react";
 
 const NOTIF_ENABLED_KEY = "arb_scan_notifications_enabled";
 const RETURN_THRESHOLD = 5;
+
+const globalNotifiedKeys = new Set<string>();
 
 type Perm = "default" | "granted" | "denied" | "unsupported";
 
@@ -26,15 +28,12 @@ export function TopControls() {
 
   const notifActive = notifEnabled && perm === "granted";
 
-  // Poll recommendations to feed the notification watcher (always on, fast-ish).
   const { data: recs } = useGetRecommendations({
     query: {
       queryKey: getGetRecommendationsQueryKey(),
       refetchInterval: intervalFor(30000, 30000),
     },
   });
-
-  const notifiedRef = useRef<Set<string>>(new Set());
 
   function manualRefresh() {
     setSpinning(true);
@@ -46,7 +45,6 @@ export function TopControls() {
     if (!("Notification" in window)) return;
     if (notifEnabled) {
       setNotifEnabled(false);
-      notifiedRef.current.clear();
       try { localStorage.setItem(NOTIF_ENABLED_KEY, "0"); } catch {}
       return;
     }
@@ -64,15 +62,14 @@ export function TopControls() {
     }
   }, [notifEnabled]);
 
-  // Watch for high-potential signals and fire device notifications.
   useEffect(() => {
     if (!notifActive || !recs) return;
     const hot = recs.filter((r) => r.potentialReturn >= RETURN_THRESHOLD);
     const currentKeys = new Set(hot.map((r) => `${r.binanceSymbol}|${r.action}`));
     for (const r of hot) {
       const key = `${r.binanceSymbol}|${r.action}`;
-      if (notifiedRef.current.has(key)) continue;
-      notifiedRef.current.add(key);
+      if (globalNotifiedKeys.has(key)) continue;
+      globalNotifiedKeys.add(key);
       try {
         new Notification(`HEAVY GUARD · ${r.binanceSymbol}`, {
           body: `${r.action.replace(/_/g, " ")} — ${r.potentialReturn >= 100 ? "100x+" : `${r.potentialReturn.toFixed(1)}x`} potential return (${r.confidence})`,
@@ -80,42 +77,34 @@ export function TopControls() {
         });
       } catch {}
     }
-    // Allow re-notifying once a signal drops below threshold and returns.
-    for (const k of Array.from(notifiedRef.current)) {
-      if (!currentKeys.has(k)) notifiedRef.current.delete(k);
+    for (const k of Array.from(globalNotifiedKeys)) {
+      if (!currentKeys.has(k)) globalNotifiedKeys.delete(k);
     }
   }, [recs, notifActive]);
 
   const isFast = speed === "fast";
 
   return (
-    <div className="fixed top-4 right-4 z-40 flex items-center gap-1.5 rounded-full border border-border bg-card/90 backdrop-blur px-1.5 py-1 shadow-lg" style={{ boxShadow: "0 4px 20px hsl(0 0% 0% / 0.4)" }}>
-      {/* Refresh speed toggle */}
+    <div className="flex items-center gap-0.5">
       <button
         onClick={toggleSpeed}
         title={isFast ? "Fast refresh ON — click for normal" : "Normal refresh — click for fast"}
-        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] font-mono font-bold tracking-wider uppercase transition-all ${
-          isFast ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+        className={`flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-mono font-bold tracking-wider uppercase transition-all ${
+          isFast ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        <Zap className={`h-3 w-3 ${isFast ? "" : "opacity-70"}`} />
-        {isFast ? "Fast" : "Normal"}
+        <Zap className={`h-3 w-3 ${isFast ? "text-primary" : "opacity-70"}`} />
+        <span className="hidden sm:inline">{isFast ? "Fast" : "Normal"}</span>
       </button>
 
-      <div className="h-4 w-px bg-border" />
-
-      {/* Manual refresh */}
       <button
         onClick={manualRefresh}
         title="Refresh data now"
-        className="flex items-center justify-center rounded-full h-7 w-7 text-muted-foreground hover:text-primary transition-colors"
+        className="flex items-center justify-center rounded h-6 w-6 text-muted-foreground hover:text-primary transition-colors"
       >
-        <RefreshCw className={`h-3.5 w-3.5 ${spinning ? "animate-spin" : ""}`} />
+        <RefreshCw className={`h-3 w-3 ${spinning ? "animate-spin" : ""}`} />
       </button>
 
-      <div className="h-4 w-px bg-border" />
-
-      {/* Notifications */}
       <button
         onClick={toggleNotifications}
         title={
@@ -128,11 +117,11 @@ export function TopControls() {
                 : "Enable device notifications for high-potential signals"
         }
         disabled={perm === "unsupported"}
-        className={`flex items-center justify-center rounded-full h-7 w-7 transition-colors ${
+        className={`flex items-center justify-center rounded h-6 w-6 transition-colors ${
           notifActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
         } ${perm === "unsupported" ? "opacity-40 cursor-not-allowed" : ""}`}
       >
-        {notifActive ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+        {notifActive ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
       </button>
     </div>
   );

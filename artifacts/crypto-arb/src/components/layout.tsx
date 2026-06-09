@@ -328,7 +328,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Menu className="h-4 w-4" />
           </button>
           <span className="text-[11px] font-black font-mono text-primary tracking-widest uppercase">HEAVY GUARD</span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <TopControls />
             <WalletSwitcher compact />
           </div>
         </div>
@@ -340,9 +341,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="opacity-30">|</span>
             <span className="font-mono opacity-60">{t("nav.encryptedConnection", lang)}</span>
           </div>
-          <div className="flex items-center gap-2 border border-[#cdbfa4]/25 px-2.5 py-0.5 rounded bg-[#cdbfa4]/5">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#cdbfa4] jewel-dot" />
-            <span className="text-[#cdbfa4] font-semibold">{t("nav.obsidianTier", lang)}</span>
+          <div className="flex items-center gap-3">
+            <TopControls />
+            <div className="flex items-center gap-2 border border-[#cdbfa4]/25 px-2.5 py-0.5 rounded bg-[#cdbfa4]/5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#cdbfa4] jewel-dot" />
+              <span className="text-[#cdbfa4] font-semibold">{t("nav.obsidianTier", lang)}</span>
+            </div>
           </div>
         </div>
         {/* Live global price tape */}
@@ -357,7 +361,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      <TopControls />
       <Jarvis />
     </div>
   );
