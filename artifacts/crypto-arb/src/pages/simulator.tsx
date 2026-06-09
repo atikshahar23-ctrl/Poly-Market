@@ -15,6 +15,8 @@ import { optionPositionValue, yearsToExpiry } from "@/lib/options-model";
 import { useRefresh } from "@/contexts/refresh-context";
 import { useLivePrices } from "@/contexts/live-price-context";
 import { useAutoTrader } from "@/contexts/autotrader-context";
+import { useLanguage } from "@/contexts/language-context";
+import { t } from "@/lib/i18n";
 import { recommendLevels } from "@/lib/recommend-levels";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -810,6 +812,7 @@ function StockRecommendationsStrip({ recs, onPick }: { recs: StockRecommendation
 /* ─── Stocks Tab ─── */
 function StocksTab({ stocks, stockPrices, posFilter, setPosFilter }: { stocks: StockQuote[]; stockPrices: Record<string, number>; posFilter: PosFilter; setPosFilter: (v: PosFilter) => void }) {
   const { stockPositions, cash, openStockPosition, closeStockPosition } = usePortfolio();
+  const { lang } = useLanguage();
   const autoStockPositions = stockPositions.filter(p => p.auto);
 
   function closeAllBotStocks() {
@@ -1080,11 +1083,11 @@ function StocksTab({ stocks, stockPrices, posFilter, setPosFilter }: { stocks: S
               <div className="grid grid-cols-2 gap-1.5">
                 <button onClick={() => buy(stock, "LONG")}
                   className="flex items-center justify-center gap-1 py-2 rounded text-[11px] font-bold font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 transition-all">
-                  <TrendingUp className="h-3 w-3" /> קנייה
+                  <TrendingUp className="h-3 w-3" /> {t("sim.buy", lang)}
                 </button>
                 <button onClick={() => buy(stock, "SHORT")}
                   className="flex items-center justify-center gap-1 py-2 rounded text-[11px] font-bold font-mono bg-red-500/15 text-red-400 border border-red-500/25 hover:bg-red-500/25 transition-all">
-                  <TrendingDown className="h-3 w-3" /> שורט / מכירה
+                  <TrendingDown className="h-3 w-3" /> {t("sim.shortSell", lang)}
                 </button>
               </div>
             </div>

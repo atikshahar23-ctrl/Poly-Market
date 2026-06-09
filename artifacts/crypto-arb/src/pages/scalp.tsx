@@ -16,6 +16,8 @@ import { useFavorites } from "@/contexts/favorites-context";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { useAutoTrader, type ScalpConfidence, type TradeStrategy } from "@/contexts/autotrader-context";
 import { toast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/language-context";
+import { t, type Lang } from "@/lib/i18n";
 
 function fmtPrice(p: number): string {
   if (p >= 1000) return p.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -33,24 +35,41 @@ function dirMeta(direction: ScalpSignal["direction"]) {
 }
 
 /** Rule-based JARVIS explanation — pure, no AI, no network. */
-function explainScalpSignal(s: ScalpSignal): string[] {
+function explainScalpSignal(s: ScalpSignal, lang: Lang): string[] {
   const lines: string[] = [];
-  if (s.direction === "LONG") lines.push("📈 סיגנל קנייה — JARVIS מזהה תנאים לעלייה בטווח הקצר.");
-  else if (s.direction === "SHORT") lines.push("📉 סיגנל מכירה — JARVIS מזהה לחץ מכירה בטווח הקצר.");
-  else lines.push("⏸ אין כיוון ברור כרגע — JARVIS ממליץ להמתין.");
+  if (lang === "en") {
+    if (s.direction === "LONG") lines.push("📈 Buy signal — JARVIS detects short-term bullish conditions.");
+    else if (s.direction === "SHORT") lines.push("📉 Sell signal — JARVIS detects short-term selling pressure.");
+    else lines.push("⏸ No clear direction — JARVIS recommends waiting.");
 
-  if (s.rsi <= 30) lines.push(`RSI ${s.rsi} — Oversold: המטבע נמכר יתר על המידה, לחץ קנייה צפוי.`);
-  else if (s.rsi >= 70) lines.push(`RSI ${s.rsi} — Overbought: המטבע קנה יתר, לחץ מכירה מוגבר.`);
-  else if (s.direction === "SHORT" && s.rsi >= 58) lines.push(`RSI ${s.rsi} — מגיע לרמה שבה עליות נתקלות בהתנגדות.`);
-  else lines.push(`RSI ${s.rsi} — אזור ניטרלי, תנועה יכולה ללכת לשני הכיוונים.`);
+    if (s.rsi <= 30) lines.push(`RSI ${s.rsi} — Oversold: selling may be exhausted, buying pressure expected.`);
+    else if (s.rsi >= 70) lines.push(`RSI ${s.rsi} — Overbought: buying may be exhausted, selling pressure elevated.`);
+    else if (s.direction === "SHORT" && s.rsi >= 58) lines.push(`RSI ${s.rsi} — Approaching resistance level where rallies stall.`);
+    else lines.push(`RSI ${s.rsi} — Neutral zone, move can go either way.`);
 
-  if (s.riskReward >= 2) lines.push(`יחס סיכון/סיכוי ${s.riskReward.toFixed(2)} — מצוין! הרווח הפוטנציאלי גדול פי ${s.riskReward.toFixed(1)} מהסיכון.`);
-  else if (s.riskReward >= 1.5) lines.push(`יחס סיכון/סיכוי ${s.riskReward.toFixed(2)} — טוב. מקצועי.`);
-  else if (s.riskReward > 0) lines.push(`יחס סיכון/סיכוי ${s.riskReward.toFixed(2)} — נמוך יחסית. שים לב.`);
+    if (s.riskReward >= 2) lines.push(`R/R ${s.riskReward.toFixed(2)} — Excellent! Potential gain is ${s.riskReward.toFixed(1)}× the risk.`);
+    else if (s.riskReward >= 1.5) lines.push(`R/R ${s.riskReward.toFixed(2)} — Good. Professional-grade.`);
+    else if (s.riskReward > 0) lines.push(`R/R ${s.riskReward.toFixed(2)} — Relatively low. Take note.`);
 
-  const confHe = s.confidence === "HIGH" ? "גבוה" : s.confidence === "MEDIUM" ? "בינוני" : "נמוך";
-  lines.push(`ביטחון ${confHe} (ציון ${s.score}) — ${s.confidence === "HIGH" ? "רוב האינדיקטורים מסכימים." : s.confidence === "MEDIUM" ? "חלקם מסכימים, זהירות." : "תמיכה חלקית — עסקה מסוכנת יותר."}`);
+    const confEn = s.confidence === "HIGH" ? "High" : s.confidence === "MEDIUM" ? "Medium" : "Low";
+    lines.push(`Confidence ${confEn} (score ${s.score}) — ${s.confidence === "HIGH" ? "Most indicators agree." : s.confidence === "MEDIUM" ? "Some agree, be cautious." : "Partial support — riskier trade."}`);
+  } else {
+    if (s.direction === "LONG") lines.push("📈 סיגנל קנייה — JARVIS מזהה תנאים לעלייה בטווח הקצר.");
+    else if (s.direction === "SHORT") lines.push("📉 סיגנל מכירה — JARVIS מזהה לחץ מכירה בטווח הקצר.");
+    else lines.push("⏸ אין כיוון ברור כרגע — JARVIS ממליץ להמתין.");
 
+    if (s.rsi <= 30) lines.push(`RSI ${s.rsi} — Oversold: המטבע נמכר יתר על המידה, לחץ קנייה צפוי.`);
+    else if (s.rsi >= 70) lines.push(`RSI ${s.rsi} — Overbought: המטבע קנה יתר, לחץ מכירה מוגבר.`);
+    else if (s.direction === "SHORT" && s.rsi >= 58) lines.push(`RSI ${s.rsi} — מגיע לרמה שבה עליות נתקלות בהתנגדות.`);
+    else lines.push(`RSI ${s.rsi} — אזור ניטרלי, תנועה יכולה ללכת לשני הכיוונים.`);
+
+    if (s.riskReward >= 2) lines.push(`יחס סיכון/סיכוי ${s.riskReward.toFixed(2)} — מצוין! הרווח הפוטנציאלי גדול פי ${s.riskReward.toFixed(1)} מהסיכון.`);
+    else if (s.riskReward >= 1.5) lines.push(`יחס סיכון/סיכוי ${s.riskReward.toFixed(2)} — טוב. מקצועי.`);
+    else if (s.riskReward > 0) lines.push(`יחס סיכון/סיכוי ${s.riskReward.toFixed(2)} — נמוך יחסית. שים לב.`);
+
+    const confHe = s.confidence === "HIGH" ? "גבוה" : s.confidence === "MEDIUM" ? "בינוני" : "נמוך";
+    lines.push(`ביטחון ${confHe} (ציון ${s.score}) — ${s.confidence === "HIGH" ? "רוב האינדיקטורים מסכימים." : s.confidence === "MEDIUM" ? "חלקם מסכימים, זהירות." : "תמיכה חלקית — עסקה מסוכנת יותר."}`);
+  }
   for (const r of s.reasons) lines.push(`• ${r}`);
   return lines;
 }
@@ -161,10 +180,11 @@ function QuickInvest({ s }: { s: ScalpSignal }) {
 function SignalCard({ s }: { s: ScalpSignal }) {
   const { Icon, color, label } = dirMeta(s.direction);
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { lang } = useLanguage();
   const favId = `coin:${s.asset}`;
   const fav = isFavorite(favId);
   const [whyOpen, setWhyOpen] = useState(false);
-  const explanation = whyOpen ? explainScalpSignal(s) : [];
+  const explanation = whyOpen ? explainScalpSignal(s, lang) : [];
 
   return (
     <div

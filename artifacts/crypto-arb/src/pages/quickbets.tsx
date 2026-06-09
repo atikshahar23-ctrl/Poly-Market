@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useFavorites } from "@/contexts/favorites-context";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { CryptoIcon } from "@/components/crypto-icon";
+import { useLanguage } from "@/contexts/language-context";
+import { t } from "@/lib/i18n";
 
 function useNow(intervalMs = 1000) {
   const [now, setNow] = useState(() => Date.now());
@@ -27,18 +29,20 @@ function countdown(endDate: string | null | undefined, now: number): { text: str
   return { text: `${m}m ${s}s`, urgent: true };
 }
 
-function smartPick(m: PolymarketMarket): { side: "YES" | "NO"; confidence: number; reason: string } {
+type SmartPick = { side: "YES" | "NO"; confidence: number; reasonKey: string };
+function smartPick(m: PolymarketMarket): SmartPick {
   const yes = m.yesProbabilityPercent;
-  if (yes <= 25) return { side: "YES", confidence: 0.85, reason: "YES זול — ערך מוסרי" };
-  if (yes >= 75) return { side: "NO", confidence: 0.85, reason: "NO זול — ערך מוסרי" };
-  if (yes < 45) return { side: "YES", confidence: 0.55, reason: "YES קל יותר" };
-  if (yes > 55) return { side: "NO", confidence: 0.55, reason: "NO קל יותר" };
-  return { side: "YES", confidence: 0.5, reason: "50/50 — קל יותר" };
+  if (yes <= 25) return { side: "YES", confidence: 0.85, reasonKey: "quickbets.reason.yesValue" };
+  if (yes >= 75) return { side: "NO", confidence: 0.85, reasonKey: "quickbets.reason.noValue" };
+  if (yes < 45) return { side: "YES", confidence: 0.55, reasonKey: "quickbets.reason.yesEasier" };
+  if (yes > 55) return { side: "NO", confidence: 0.55, reasonKey: "quickbets.reason.noEasier" };
+  return { side: "YES", confidence: 0.5, reasonKey: "quickbets.reason.fiftyfifty" };
 }
 
 function QuickBetCard({ m, now }: { m: PolymarketMarket; now: number }) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { cash, openPolyPosition } = usePortfolio();
+  const { lang } = useLanguage();
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const favId = `market:${m.conditionId}`;
@@ -53,7 +57,7 @@ function QuickBetCard({ m, now }: { m: PolymarketMarket; now: number }) {
   const fairYes = smart.side === "YES" ? yes : 100 - yes;
 
   function doBet() {
-    if (!canAfford) { setStatus({ ok: false, msg: "אין מספיק מזומן" }); return; }
+    if (!canAfford) { setStatus({ ok: false, msg: t("quickbets.noCash", lang) }); return; }
     const err = openPolyPosition(
       {
         conditionId: m.conditionId,
@@ -99,9 +103,9 @@ function QuickBetCard({ m, now }: { m: PolymarketMarket; now: number }) {
           smart.side === "YES" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
         }`}>
           {smart.side === "YES" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-          בוט: {smart.side} — {smart.reason}
+          {t("quickbets.botPrefix", lang)}: {smart.side} — {t(smart.reasonKey, lang)}
         </span>
-        <span className="text-[9px] font-mono text-muted-foreground">{Math.round(smart.confidence * 100)}% בטחון</span>
+        <span className="text-[9px] font-mono text-muted-foreground">{Math.round(smart.confidence * 100)}{t("quickbets.confidence", lang)}</span>
       </div>
 
       {/* Probability bar */}
@@ -154,6 +158,7 @@ function QuickBetCard({ m, now }: { m: PolymarketMarket; now: number }) {
 export default function QuickBetsPage() {
   const now = useNow(1000);
   const { isFavorite } = useFavorites();
+  const { lang } = useLanguage();
   const [showFavOnly, setShowFavOnly] = useState(false);
 
   const { data, isLoading, isFetching } = useGetShortTermMarkets({
@@ -172,18 +177,18 @@ export default function QuickBetsPage() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-2 flex-wrap">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Timer className="h-5 w-5 text-primary" />
+            <Timer className="h-5 w-5 text-primary shrink-0" />
             <h1 className="text-xl font-black tracking-tight">Quick Bets</h1>
             {isFetching && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            שווקי חיזוי קצרי-טווח עם פתרון תוך 48 שעות — בוט חכם ממליץ צד לכל שוק.
+            {t("quickbets.subtitle", lang)}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => setShowFavOnly((v) => !v)}
             className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-mono font-bold transition-colors ${
@@ -191,7 +196,7 @@ export default function QuickBetsPage() {
             }`}
           >
             <Star className="h-3 w-3" style={{ fill: showFavOnly ? "hsl(207 30% 70%)" : "transparent" }} />
-            {showFavOnly ? "מועדפים" : "הכל"}
+            {showFavOnly ? t("quickbets.favOnly", lang) : t("quickbets.all", lang)}
           </button>
           <span className="text-[10px] font-mono text-muted-foreground hidden sm:block">{filtered.length} markets</span>
         </div>
@@ -207,7 +212,7 @@ export default function QuickBetsPage() {
         <div className="rounded-lg border border-dashed border-border py-16 text-center">
           <Zap className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
-            {showFavOnly ? "אין שווקים מועדפים — סמן כוכב כדי לעקוב" : "אין שווקי חיזוי זמינים כרגע."}
+            {showFavOnly ? t("quickbets.noFavs", lang) : t("quickbets.noMarkets", lang)}
           </p>
         </div>
       ) : (

@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { usePortfolio } from "@/contexts/portfolio-context";
+import { useLanguage } from "@/contexts/language-context";
+import { t } from "@/lib/i18n";
 import { toast } from "@/hooks/use-toast";
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -61,17 +63,18 @@ export default function BrowsePage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const { cash, openPolyPosition } = usePortfolio();
+  const { lang } = useLanguage();
 
   const placeDemoBet = useCallback((m: PolymarketMarket) => {
     if (cash < 50) {
-      toast({ title: "אין מספיק מזומן", description: "צריך לפחות $50 פנויים להימור דמו.", variant: "destructive" });
+      toast({ title: t("browse.noCash.title", lang), description: t("browse.noCash.desc", lang), variant: "destructive" });
       return;
     }
     const yes = m.yesProbabilityPercent;
     const side: "YES" | "NO" = yes <= 50 ? "YES" : "NO";
     const entryPrice = side === "YES" ? m.yesPrice : m.noPrice;
     if (!Number.isFinite(entryPrice) || entryPrice <= 0 || entryPrice >= 1) {
-      toast({ title: "השוק לא סחיר", description: "המחיר קרוב מדי לסגירה — בחר שוק אחר להימור דמו.", variant: "destructive" });
+      toast({ title: t("browse.notTradeable.title", lang), description: t("browse.notTradeable.desc", lang), variant: "destructive" });
       return;
     }
     const stake = Math.min(200, Math.max(50, Math.floor(cash * 0.05)));
@@ -88,11 +91,11 @@ export default function BrowsePage() {
       stake,
     );
     if (err) {
-      toast({ title: "ההימור נכשל", description: err, variant: "destructive" });
+      toast({ title: t("browse.betFailed.title", lang), description: err, variant: "destructive" });
       return;
     }
-    toast({ title: `הימור דמו נפתח: ${side} · $${stake}`, description: m.question });
-  }, [cash, openPolyPosition]);
+    toast({ title: `${t("browse.betOpened.title", lang)}: ${side} · $${stake}`, description: m.question });
+  }, [cash, openPolyPosition, lang]);
 
   const { data: markets, isLoading, isFetching } = useGetAllMarkets(
     { category, search: debouncedSearch || undefined },
@@ -161,7 +164,8 @@ export default function BrowsePage() {
               className={`inline-flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded border transition-all ${showPanel ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40'}`}
             >
               <Globe className="h-3.5 w-3.5" />
-              {showPanel ? 'Hide Polymarket' : 'Open Polymarket Panel'}
+              <span className="hidden sm:inline">{showPanel ? 'Hide Polymarket' : 'Open Polymarket Panel'}</span>
+              <span className="sm:hidden">{showPanel ? 'Hide' : 'Polymarket'}</span>
             </button>
           </div>
 
@@ -222,7 +226,7 @@ export default function BrowsePage() {
                   >
                     <div className="flex items-center justify-end gap-1">VOLUME <SortIcon field="volume" /></div>
                   </th>
-                  <th className="px-3 py-2 w-28 text-right font-mono text-[10px] tracking-wider text-muted-foreground">הימור דמו</th>
+                  <th className="px-3 py-2 w-28 text-right font-mono text-[10px] tracking-wider text-muted-foreground">{t("browse.demoBet", lang)}</th>
                 </tr>
               </thead>
               <tbody>
@@ -282,9 +286,9 @@ export default function BrowsePage() {
                           <button
                             onClick={(e) => { e.stopPropagation(); placeDemoBet(m); }}
                             className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-                            title="פתח הימור דמו (כסף משחק)"
+                            title={t("browse.betTitle", lang)}
                           >
-                            <Zap className="h-3 w-3" /> הימור
+                            <Zap className="h-3 w-3" /> {t("browse.betBtn", lang)}
                           </button>
                           <a
                             href={m.eventSlug ? `https://polymarket.com/event/${m.eventSlug}` : "https://polymarket.com"}

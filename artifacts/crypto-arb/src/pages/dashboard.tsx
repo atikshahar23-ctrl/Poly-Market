@@ -20,6 +20,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { useAutoTrader } from "@/contexts/autotrader-context";
+import { useLanguage } from "@/contexts/language-context";
+import { t } from "@/lib/i18n";
 
 /* ─────────────────────────── Matrix Rain Canvas ─────────────────────────── */
 const MATRIX_CHARS =
@@ -250,6 +252,7 @@ export default function Dashboard() {
   const { cash, totalDeposited, binancePositions, stockPositions, polyPositions, tradeHistory } =
     usePortfolio();
   const { settings } = useAutoTrader();
+  const { lang } = useLanguage();
 
   const isFetching = scanFetching;
 
@@ -316,8 +319,8 @@ export default function Dashboard() {
           <h1 className="text-3xl font-black tracking-tight" style={{ textShadow: "0 0 30px hsl(207 30% 70% / 0.4)" }}>
             Market Scanner
           </h1>
-          <p className="text-xs text-muted-foreground mt-1 font-mono" dir="rtl">
-            סקאן בזמן אמת · פיוצ׳רס Binance × סנטימנט Polymarket · בוטים × ניהול סיכונים
+          <p className="text-xs text-muted-foreground mt-1 font-mono">
+            {t("dashboard.subtitle", lang)}
           </p>
         </div>
 
@@ -370,7 +373,7 @@ export default function Dashboard() {
           icon={Activity}
           label="Win Rate"
           value={winRate !== null ? `${winRate}%` : "—"}
-          sub={`${tradeHistory.length} סגורות`}
+          sub={`${tradeHistory.length} ${t("dashboard.closed", lang)}`}
           href="/simulator"
           accent={winRate !== null && winRate >= 50 ? "green" : "red"}
         />

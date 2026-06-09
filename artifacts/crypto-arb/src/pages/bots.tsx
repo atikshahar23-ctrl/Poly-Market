@@ -25,15 +25,19 @@ import {
   type PolymarketMarket,
 } from "@workspace/api-client-react";
 import { AlphaBotEmblem } from "@/components/alpha-bot-emblem";
+import { useLanguage } from "@/contexts/language-context";
+import { t, type Lang } from "@/lib/i18n";
 
 /** Preset boost durations in minutes (5 min → 5 h, the BOOST_MAX_MS ceiling). */
 const BOOST_PRESETS = [5, 15, 30, 60, 120, 180, 300] as const;
 
-/** Hebrew label for a boost duration given in minutes. */
-function boostDurationLabel(min: number): string {
-  if (min < 60) return `${min} דק'`;
+/** Label for a boost duration given in minutes. */
+function boostDurationLabel(min: number, lang: Lang): string {
+  const minLabel = lang === "en" ? "min" : "דק'";
+  const hrLabel  = lang === "en" ? "hr"  : "שע'";
+  if (min < 60) return `${min} ${minLabel}`;
   const h = min / 60;
-  return Number.isInteger(h) ? `${h} שע'` : `${h.toFixed(1)} שע'`;
+  return Number.isInteger(h) ? `${h} ${hrLabel}` : `${h.toFixed(1)} ${hrLabel}`;
 }
 
 function StatChip({ label, value, tone }: { label: string; value: string; tone?: "good" | "bad" }) {
@@ -86,6 +90,7 @@ function BotCard({
   active: boolean; onToggle: (v: boolean) => void;
   open: number; children?: React.ReactNode; accent?: string;
 }) {
+  const { lang } = useLanguage();
   return (
     <div
       id={id}
@@ -111,9 +116,9 @@ function BotCard({
       <div className="mt-3 flex items-center justify-between">
         <span className="text-[10px] font-mono text-muted-foreground">
           {open > 0 ? (
-            <span className="text-primary">{open} פוזיציות פתוחות</span>
+            <span className="text-primary">{open} {t("bots.openPositions", lang)}</span>
           ) : (
-            <span>אין פוזיציות פתוחות</span>
+            <span>{t("bots.noPositions", lang)}</span>
           )}
         </span>
         <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${active ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/40 text-muted-foreground"}`}>
@@ -178,6 +183,7 @@ export default function Bots() {
   const { settings, update, startBoost, stopBoost, getBotStat, resetBotStats, getAssetCaution, resetAssetStats, getRiskGuard, resetRiskGuard, alpha } = useAutoTrader();
   const { binancePositions, stockPositions, polyPositions, fundingPositions, optionPositions, cash, totalDeposited, tradeHistory, closeAllBotPositions } = usePortfolio();
   const { get: getLivePrice } = useLivePrices();
+  const { lang } = useLanguage();
 
   // Cached market data shared with the trading engines (same query keys), used to
   // close positions at a real mark price during an emergency stop. Crypto also
@@ -368,10 +374,10 @@ export default function Bots() {
     armAll(false);
     stopBoost();
     toast({
-      title: "עצירת חירום — מסחר בוטל במהירות האור",
+      title: t("bots.toast.emergencyTitle", lang),
       description: closed > 0
-        ? `כל הבוטים כובו ו-${closed} פוזיציות נסגרו מיידית.`
-        : "כל הבוטים כובו. לא היו פוזיציות בוט פתוחות לסגירה.",
+        ? t("bots.toast.emergencyClosed", lang).replace("{n}", String(closed))
+        : t("bots.toast.emergencyNone", lang),
       variant: "destructive",
     });
   };
@@ -384,15 +390,15 @@ export default function Bots() {
   const cancelLightSpeed = () => {
     if (!boostActive) {
       toast({
-        title: "מהירות האור כבר כבויה",
-        description: "הבוטים סוחרים בקצב רגיל ושקול.",
+        title: t("bots.toast.lightspeedOffTitle", lang),
+        description: t("bots.toast.lightspeedOffDesc", lang),
       });
       return;
     }
     stopBoost();
     toast({
-      title: "מהירות האור בוטלה",
-      description: "הבוטים ממשיכים לסחור בקצב רגיל — עסקה אחת הגיונית לכל הזדמנות, בלי הצפה.",
+      title: t("bots.toast.lightspeedCancelTitle", lang),
+      description: t("bots.toast.lightspeedCancelDesc", lang),
     });
   };
 
@@ -407,8 +413,8 @@ export default function Bots() {
     if (autoPilotOn) {
       update({ autoPilotEnabled: false });
       toast({
-        title: "מצב אוטומטי כבוי",
-        description: "ההגדרות שנבחרו נשארות — אפשר לכוונן כל פרמטר ידנית.",
+        title: t("bots.toast.autoPilotOffTitle", lang),
+        description: t("bots.toast.autoPilotOffDesc", lang),
       });
       return;
     }
@@ -425,8 +431,8 @@ export default function Bots() {
     });
     armAll(true);
     toast({
-      title: "מצב אוטומטי מופעל",
-      description: "המערכת מנהלת הכל לבד — מינוף, גודל עסקה, SL/TP וכל הפרמטרים נקבעים פר עסקה.",
+      title: t("bots.toast.autoPilotOnTitle", lang),
+      description: t("bots.toast.autoPilotOnDesc", lang),
     });
   };
 
@@ -441,16 +447,16 @@ export default function Bots() {
     if (maxPerfOn) {
       update({ maxPerfEnabled: false });
       toast({
-        title: "מצב מקסימום כבוי",
-        description: "ההגדרות חוזרות לערכים שבחרת — עוצמה, מינוף ותקרות פוזיציות.",
+        title: t("bots.toast.maxPerfOffTitle", lang),
+        description: t("bots.toast.maxPerfOffDesc", lang),
       });
       return;
     }
     update({ maxPerfEnabled: true });
     armAll(true);
     toast({
-      title: "מצב מקסימום מופעל",
-      description: "כל הבוטים חמושים בעוצמה מקסימלית — מינוף, קצב ותקרות במקס. רשתות הביטחון ($3,000 ומגני ההפסד) נשארות פעילות.",
+      title: t("bots.toast.maxPerfOnTitle", lang),
+      description: t("bots.toast.maxPerfOnDesc", lang),
     });
   };
 
@@ -479,53 +485,51 @@ export default function Bots() {
             className="gap-2 font-mono font-bold"
             variant={autoPilotOn ? "default" : "outline"}
             aria-pressed={autoPilotOn}
-            title="מצב אוטומטי מלא: המערכת קובעת מינוף, גודל עסקה, SL/TP וכל הפרמטרים — פר עסקה"
+            title={t("bots.autoPilot", lang)}
             style={autoPilotOn ? { boxShadow: "0 0 18px hsl(207 30% 70% / 0.5)" } : undefined}
           >
             <Sparkles className="h-4 w-4" />
-            {autoPilotOn ? "אוטומטי פעיל" : "אוטומטי"}
+            {t(autoPilotOn ? "bots.autoPilotOn" : "bots.autoPilot", lang)}
           </Button>
           <Button
             onClick={toggleMaxPerf}
             className="gap-2 font-mono font-bold"
             variant={maxPerfOn ? "default" : "outline"}
             aria-pressed={maxPerfOn}
-            title="מצב מקסימום: עוצמה, מינוף, קצב ותקרות פוזיציות במקסימום — מכבד בחירת סכום קבוע/דינמי ושומר על רצפת ה-$3,000 ומגני ההפסד"
+            title={t("bots.maxPerf", lang)}
             style={maxPerfOn ? { boxShadow: "0 0 18px hsl(207 30% 70% / 0.5)" } : undefined}
           >
             <Rocket className="h-4 w-4" />
-            {maxPerfOn ? "מקסימום פעיל" : "מצב מקסימום"}
+            {t(maxPerfOn ? "bots.maxPerfOn" : "bots.maxPerf", lang)}
           </Button>
           <Button
             onClick={() => {
               const next = !settings.fleetPaused;
               update({ fleetPaused: next });
               toast({
-                title: next ? "הצי מושהה" : "הצי חזר לפעולה",
-                description: next
-                  ? "הבוטים לא יפתחו עסקאות חדשות. פוזיציות פתוחות וניהול SL/TP ממשיכים לפעול."
-                  : "הבוטים חוזרים לפתוח עסקאות חדשות בהתאם לאיתותים.",
+                title: t(next ? "bots.toast.pauseOnTitle" : "bots.toast.pauseOffTitle", lang),
+                description: t(next ? "bots.toast.pauseOnDesc" : "bots.toast.pauseOffDesc", lang),
               });
             }}
             className="gap-2 font-mono font-bold"
             variant={settings.fleetPaused ? "default" : "outline"}
             aria-pressed={settings.fleetPaused}
-            title={settings.fleetPaused ? "בטל השהיה — הבוטים יחזרו לפתוח עסקאות" : "השהה את כל הבוטים — לא תיפתחנה עסקאות חדשות; פוזיציות קיימות ממשיכות"}
+            title={t(settings.fleetPaused ? "bots.unpause" : "bots.pause", lang)}
             style={settings.fleetPaused ? { boxShadow: "0 0 14px hsl(38 95% 60% / 0.45)" } : undefined}
           >
             {settings.fleetPaused ? <PlayCircle className="h-4 w-4" /> : <PauseCircle className="h-4 w-4" />}
-            {settings.fleetPaused ? "בטל השהיה" : "השהה בוטים"}
+            {t(settings.fleetPaused ? "bots.unpause" : "bots.pause", lang)}
           </Button>
           <Button
             onClick={() => boostActive ? stopBoost() : startBoost(settings.boostDurationMin * 60_000)}
             className="gap-2 font-mono font-bold"
             variant={boostActive ? "default" : "outline"}
             aria-pressed={boostActive}
-            title={boostActive ? "מכבה את מהירות האור" : "מפעיל את כל הבוטים במצב מסחר מהיר"}
+            title={t(boostActive ? "bots.lightspeedOn" : "bots.lightspeed", lang)}
             style={boostActive ? { boxShadow: "0 0 18px hsl(207 30% 70% / 0.5)" } : undefined}
           >
             <Zap className="h-4 w-4" />
-            {boostActive ? "מהירות האור פעילה" : "מהירות האור"}
+            {t(boostActive ? "bots.lightspeedOn" : "bots.lightspeed", lang)}
           </Button>
           {boostActive ? (
             <span className="font-mono text-base font-bold text-primary tabular-nums">{boostClock}</span>
@@ -535,10 +539,9 @@ export default function Bots() {
               onChange={(e) => update({ boostDurationMin: Number(e.target.value) })}
               className="h-9 rounded-md border border-primary/40 bg-background/60 px-2 text-xs font-mono text-primary focus:outline-none focus:ring-1 focus:ring-primary/50"
               aria-label="Boost duration"
-              title="משך הבוסט"
             >
               {BOOST_PRESETS.map((m) => (
-                <option key={m} value={m}>{boostDurationLabel(m)}</option>
+                <option key={m} value={m}>{boostDurationLabel(m, lang)}</option>
               ))}
             </select>
           )}
@@ -549,7 +552,7 @@ export default function Bots() {
             aria-pressed={anyOn}
           >
             <Power className="h-4 w-4" />
-            {anyOn ? "כבה הכול" : "הפעל הכול"}
+            {t(anyOn ? "bots.disarmAll" : "bots.armAll", lang)}
           </Button>
           <Button
             onClick={emergencyStop}
@@ -761,7 +764,7 @@ export default function Bots() {
                     type="button"
                     onClick={() => update({ intensity: lvl })}
                     aria-pressed={sel}
-                    className={`rounded-md border p-2.5 text-center transition-all ${
+                    className={`rounded-md border p-1.5 sm:p-2.5 text-center transition-all ${
                       sel ? "border-primary bg-primary/10 shadow-[0_0_0_1px_hsl(43_74%_52%/0.4)]" : "border-border/60 bg-background/40 hover:bg-secondary/40"
                     }`}
                   >

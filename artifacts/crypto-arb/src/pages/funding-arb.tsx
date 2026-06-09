@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   useGetFundingOpportunities,
   getGetFundingOpportunitiesQueryKey,
@@ -20,10 +20,12 @@ import type {
 } from "@workspace/api-client-react";
 import {
   Coins, RefreshCw, Search, TrendingUp, TrendingDown, Wallet,
-  ArrowDownUp, Activity, ShieldCheck, AlertTriangle, Languages, Scale,
+  ArrowDownUp, Activity, ShieldCheck, AlertTriangle, Scale,
   Building2,
 } from "lucide-react";
 import { useLivePrice } from "@/contexts/live-price-context";
+import { useLanguage } from "@/contexts/language-context";
+import type { Lang } from "@/lib/i18n";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,14 +36,7 @@ import { FundingChart } from "@/components/funding-chart";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { toast } from "@/hooks/use-toast";
 
-type Lang = "he" | "en";
 type Suggestion = { kind: "crypto" | "stock"; symbol: string; sub: string };
-const LANG_STORAGE = "jarvis-lang";
-
-function loadLang(): Lang {
-  if (typeof window === "undefined") return "he";
-  return window.localStorage.getItem(LANG_STORAGE) === "en" ? "en" : "he";
-}
 
 function fmtPrice(p: number): string {
   if (p >= 1000) return p.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -499,18 +494,11 @@ function StockLegPanel({ stock, lang }: { stock: StockQuote; lang: Lang }) {
 }
 
 export default function FundingArbPage() {
-  const [lang, setLang] = useState<Lang>(loadLang);
-  const langRef = useRef(lang);
-  langRef.current = lang;
-
+  const { lang } = useLanguage();
   const [query, setQuery] = useState("");
   const [checkAsset, setCheckAsset] = useState<string | null>(null);
   const [checkStock, setCheckStock] = useState<StockQuote | null>(null);
   const [showSuggest, setShowSuggest] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") window.localStorage.setItem(LANG_STORAGE, lang);
-  }, [lang]);
 
   const { data, isLoading, isFetching } = useGetFundingOpportunities({
     query: {
@@ -604,13 +592,6 @@ export default function FundingArbPage() {
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">{T.subtitle[lang]}</p>
         </div>
-        <button
-          onClick={() => setLang((l) => (l === "he" ? "en" : "he"))}
-          className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-mono font-bold text-muted-foreground hover:text-foreground bg-secondary/40 hover:bg-secondary transition-colors flex-shrink-0"
-        >
-          <Languages className="h-3.5 w-3.5" />
-          {lang === "he" ? "EN" : "עב"}
-        </button>
       </div>
 
       <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
