@@ -7,6 +7,8 @@ import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { AuthShell } from "@/components/auth-shell";
+import { useLanguage } from "@/contexts/language-context";
+import { t, type Lang } from "@/lib/i18n";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 const Markets = lazy(() => import("@/pages/markets"));
@@ -143,38 +145,41 @@ const clerkAppearance = {
 
 // Hebrew strings for the most prominent form copy (no extra dependency needed —
 // Clerk merges this partial localization over its English defaults).
-const clerkLocalization = {
-  socialButtonsBlockButton: "המשך עם {{provider|titleize}}",
-  dividerText: "או",
-  formFieldLabel__emailAddress: "כתובת דוא״ל",
-  formFieldLabel__password: "סיסמה",
-  formFieldInputPlaceholder__emailAddress: "הזינו את כתובת הדוא״ל",
-  formFieldInputPlaceholder__password: "בחרו סיסמה",
-  formButtonPrimary: "כניסה",
-  signIn: {
-    start: {
-      title: "כניסת חברים",
-      subtitle: "מועדון פרטי · בהזמנה בלבד",
-      actionText: "אין לכם עדיין חשבון?",
-      actionLink: "בקשת חברות",
+function buildClerkLocalization(lang: Lang) {
+  return {
+    socialButtonsBlockButton: t("misc.clerkContinueWith", lang),
+    dividerText: t("misc.clerkOr", lang),
+    formFieldLabel__emailAddress: t("misc.clerkEmailLabel", lang),
+    formFieldLabel__password: t("misc.clerkPasswordLabel", lang),
+    formFieldInputPlaceholder__emailAddress: t("misc.clerkEmailPlaceholder", lang),
+    formFieldInputPlaceholder__password: t("misc.clerkPasswordPlaceholder", lang),
+    formButtonPrimary: t("misc.clerkSignInButton", lang),
+    signIn: {
+      start: {
+        title: t("misc.clerkSignInTitle", lang),
+        subtitle: t("misc.clerkSignInSubtitle", lang),
+        actionText: t("misc.clerkSignInActionText", lang),
+        actionLink: t("misc.clerkSignInActionLink", lang),
+      },
     },
-  },
-  signUp: {
-    start: {
-      title: "בקשת חברות",
-      subtitle: "הצטרפו למעגל הנבחרים",
-      actionText: "כבר חברים?",
-      actionLink: "כניסה",
+    signUp: {
+      start: {
+        title: t("misc.clerkSignUpTitle", lang),
+        subtitle: t("misc.clerkSignUpSubtitle", lang),
+        actionText: t("misc.clerkSignUpActionText", lang),
+        actionLink: t("misc.clerkSignUpActionLink", lang),
+      },
     },
-  },
-};
+  };
+}
 
 function SignInPage() {
+  const { lang } = useLanguage();
   return (
     <AuthShell
       kicker="Private Members Club"
-      title="הכניסה שמורה למעטים נבחרים."
-      subtitle="מי שמקבל גישה אינו ככל האדם — חוויית מסחר ברמה אחרת, מעוצבת לפרטיות וליוקרה."
+      title={t("misc.signInPageTitle", lang)}
+      subtitle={t("misc.signInPageSubtitle", lang)}
     >
       <SignIn
         routing="path"
@@ -186,11 +191,12 @@ function SignInPage() {
 }
 
 function SignUpPage() {
+  const { lang } = useLanguage();
   return (
     <AuthShell
       kicker="By Invitation Only"
-      title="הצטרפו אל מעגל הנבחרים."
-      subtitle="חברות פרטית בעולם המסחר. מקום אחד שמור עבורכם — נותר רק לפתוח את הדלת."
+      title={t("misc.signUpPageTitle", lang)}
+      subtitle={t("misc.signUpPageSubtitle", lang)}
     >
       <SignUp
         routing="path"
@@ -354,6 +360,7 @@ function App() {
   }
 
   const [, setLocation] = useLocation();
+  const { lang } = useLanguage();
 
   return (
     <ClerkProvider
@@ -362,7 +369,7 @@ function App() {
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
-      localization={clerkLocalization}
+      localization={buildClerkLocalization(lang)}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >

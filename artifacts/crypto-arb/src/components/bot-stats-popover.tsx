@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { TrendingUp, TrendingDown, ExternalLink, Trophy, Activity, DollarSign } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { usePortfolio } from "@/contexts/portfolio-context";
+import { useLanguage } from "@/contexts/language-context";
+import { t } from "@/lib/i18n";
 
 function fmtUsd(n: number, dp = 2): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
@@ -31,6 +33,7 @@ interface BotStatsPopoverProps {
 
 export function BotStatsPopover({ source, type, label, className, onClick }: BotStatsPopoverProps) {
   const [, navigate] = useLocation();
+  const { lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const { tradeHistory, binancePositions, stockPositions, polyPositions, fundingPositions } = usePortfolio();
 
@@ -89,7 +92,7 @@ export function BotStatsPopover({ source, type, label, className, onClick }: Bot
             if (rel?.closest?.("[data-bot-stats-popover]")) return;
             setOpen(false);
           }}
-          title={source ? `בוט: ${source}` : label}
+          title={source ? `${t("bots.pop.bot", lang)}: ${source}` : label}
         >
           {label}
         </button>
@@ -106,7 +109,7 @@ export function BotStatsPopover({ source, type, label, className, onClick }: Bot
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold font-mono text-foreground truncate max-w-[120px]">{label}</span>
             <span className="text-[9px] font-mono text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded">
-              {stats.openCount > 0 ? `${stats.openCount} פתוח` : "אין פתוח"}
+              {stats.openCount > 0 ? `${stats.openCount} ${t("bots.pop.open", lang)}` : t("bots.pop.noOpen", lang)}
             </span>
           </div>
 
@@ -114,7 +117,7 @@ export function BotStatsPopover({ source, type, label, className, onClick }: Bot
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <Trophy className="h-3 w-3 text-amber-400" />
-                אחוז ניצחון
+                {t("bots.pop.winRate", lang)}
               </span>
               <span className="font-bold text-foreground">
                 {stats.winRate !== null ? `${stats.winRate.toFixed(0)}%` : "—"}
@@ -124,7 +127,7 @@ export function BotStatsPopover({ source, type, label, className, onClick }: Bot
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <Activity className="h-3 w-3" />
-                עסקאות
+                {t("bots.pop.trades", lang)}
               </span>
               <span className="font-bold text-foreground">
                 {stats.total}
@@ -139,7 +142,7 @@ export function BotStatsPopover({ source, type, label, className, onClick }: Bot
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <DollarSign className="h-3 w-3" />
-                רווח כולל
+                {t("bots.pop.totalPnl", lang)}
               </span>
               <span className={`font-bold flex items-center gap-0.5 ${stats.cumulativePnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                 {stats.cumulativePnl >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -152,7 +155,7 @@ export function BotStatsPopover({ source, type, label, className, onClick }: Bot
             onClick={handleGoToBot}
             className="mt-1 w-full flex items-center justify-center gap-1 text-[10px] font-mono font-bold text-primary hover:text-primary/80 border border-primary/30 hover:border-primary/60 rounded py-1 transition-colors"
           >
-            עבור לבוט
+            {t("bots.pop.goToBot", lang)}
             <ExternalLink className="h-2.5 w-2.5" />
           </button>
         </div>

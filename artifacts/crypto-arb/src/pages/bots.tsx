@@ -16,7 +16,7 @@ import {
   type AutoTraderSettings, type NewBotId, type RiskGuard, type TradeMode,
 } from "@/contexts/autotrader-context";
 import { useLivePrices } from "@/contexts/live-price-context";
-import { useSquadComms, clearSquadMessages, type SquadMessage } from "@/lib/squad-comms";
+import { useSquadComms, clearSquadMessages, squadIso, type SquadMessage } from "@/lib/squad-comms";
 import { toast } from "@/hooks/use-toast";
 import {
   useGetMarketOverview, getGetMarketOverviewQueryKey,
@@ -155,6 +155,18 @@ const NEW_BOT_META: {
   },
 ];
 
+/** i18n key per new-bot id for its hint line and threshold field label. */
+const NEW_BOT_HINT_KEY: Record<string, string> = {
+  dipbuyer: "bots.newbot.dipHint",
+  breakout: "bots.newbot.breakoutHint",
+  dca: "bots.newbot.dcaHint",
+};
+const NEW_BOT_THR_KEY: Record<string, string> = {
+  dipbuyer: "bots.newbot.dipThr",
+  breakout: "bots.newbot.breakoutThr",
+  dca: "bots.newbot.dcaThr",
+};
+
 /** Lucide icon per squad member id. */
 const SQUAD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   vanguard: Crosshair,
@@ -177,6 +189,32 @@ function commsClock(at: number): string {
   const d = new Date(at);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/** Localized label for an intensity gear level (1–5). */
+function intensityLabel(level: number, lang: Lang): string {
+  return t(`bots.intensity.${level}`, lang);
+}
+
+/**
+ * Render a structured squad comms message: pull the localized line template,
+ * localize each raw token, and interpolate. Volatile tokens (ticker, direction,
+ * $amount, %) stay LTR-isolated so they don't reorder inside an RTL Hebrew line.
+ */
+function renderComms(m: SquadMessage, lang: Lang): string {
+  const tok = m.tokens ?? {};
+  const repl: Record<string, string> = {};
+  repl.name = m.memberId && m.memberId !== "squad"
+    ? squadIso(t(`bots.squad.${m.memberId}.name`, lang))
+    : t("bots.comms.team", lang);
+  if (tok.dir) repl.dir = squadIso(t(tok.dir === "LONG" ? "bots.comms.long" : "bots.comms.short", lang));
+  if (tok.result) repl.result = t(tok.result === "profit" ? "bots.comms.atProfit" : "bots.comms.atLoss", lang);
+  if (tok.sym) repl.sym = squadIso(tok.sym);
+  if (tok.usd) repl.usd = squadIso(tok.usd);
+  if (tok.pct) repl.pct = squadIso(tok.pct);
+  let s = t(m.textKey, lang);
+  for (const [k, v] of Object.entries(repl)) s = s.replaceAll(`{${k}}`, v);
+  return s;
 }
 
 export default function Bots() {
@@ -283,15 +321,15 @@ export default function Bots() {
       key: keyof typeof counts; title: string; icon: React.ComponentType<{ className?: string }>;
       market: string; armed: boolean; match: (t: ClosedTrade) => boolean;
     }[] = [
-      { key: "scalp", title: "Scalp Bot", icon: Gauge, market: "קריפטו", armed: scalpOn, match: (t) => (t.source ?? "").includes("Scalp") },
-      { key: "momentum", title: "Momentum Bot", icon: Rocket, market: "קריפטו", armed: momOn, match: (t) => (t.source ?? "").includes("Momentum") },
-      { key: "smart", title: "Smart-Money", icon: Megaphone, market: "מניות", armed: settings.stocksEnabled, match: (t) => (t.source ?? "").includes("Smart-Money") },
-      { key: "poly", title: "Polymarket BTC", icon: Timer, market: "תחזיות", armed: settings.polyEnabled, match: (t) => t.type === "POLYMARKET" && t.source === "Polymarket BTC" },
-      { key: "dipbuyer", title: "Dip Buyer", icon: TrendingDown, market: "קריפטו", armed: settings.dipEnabled, match: (t) => t.source === "Dip Buyer" },
-      { key: "breakout", title: "Breakout Hunter", icon: TrendingUp, market: "קריפטו", armed: settings.breakoutEnabled, match: (t) => t.source === "Breakout Hunter" },
-      { key: "dca", title: "Blue-Chip DCA", icon: Layers, market: "מניות", armed: settings.dcaEnabled, match: (t) => t.source === "Blue-Chip DCA" },
-      { key: "funding", title: "Funding Arb Agent", icon: Coins, market: "קריפטו", armed: settings.fundingEnabled, match: (t) => t.type === "FUNDING" && t.source === "Funding Arb Agent" },
-      { key: "options", title: "Options Agent", icon: Sparkles, market: "אופציות", armed: settings.optionsEnabled, match: (t) => t.type === "OPTION" && t.source === "Options Agent" },
+      { key: "scalp", title: "Scalp Bot", icon: Gauge, market: "crypto", armed: scalpOn, match: (t) => (t.source ?? "").includes("Scalp") },
+      { key: "momentum", title: "Momentum Bot", icon: Rocket, market: "crypto", armed: momOn, match: (t) => (t.source ?? "").includes("Momentum") },
+      { key: "smart", title: "Smart-Money", icon: Megaphone, market: "stocks", armed: settings.stocksEnabled, match: (t) => (t.source ?? "").includes("Smart-Money") },
+      { key: "poly", title: "Polymarket BTC", icon: Timer, market: "predictions", armed: settings.polyEnabled, match: (t) => t.type === "POLYMARKET" && t.source === "Polymarket BTC" },
+      { key: "dipbuyer", title: "Dip Buyer", icon: TrendingDown, market: "crypto", armed: settings.dipEnabled, match: (t) => t.source === "Dip Buyer" },
+      { key: "breakout", title: "Breakout Hunter", icon: TrendingUp, market: "crypto", armed: settings.breakoutEnabled, match: (t) => t.source === "Breakout Hunter" },
+      { key: "dca", title: "Blue-Chip DCA", icon: Layers, market: "stocks", armed: settings.dcaEnabled, match: (t) => t.source === "Blue-Chip DCA" },
+      { key: "funding", title: "Funding Arb Agent", icon: Coins, market: "crypto", armed: settings.fundingEnabled, match: (t) => t.type === "FUNDING" && t.source === "Funding Arb Agent" },
+      { key: "options", title: "Options Agent", icon: Sparkles, market: "options", armed: settings.optionsEnabled, match: (t) => t.type === "OPTION" && t.source === "Options Agent" },
     ];
     const rows = defs.map((d) => {
       const ts = tradeHistory.filter((t) => d.match(t));
@@ -475,7 +513,7 @@ export default function Bots() {
               <Bot className="h-6 w-6 text-primary" /> Bot Command Center
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5" dir="rtl">
-              מרכז שליטה אחד לכל הבוטים — סימולציית מסחר בלבד (כסף וירטואלי).
+              {t("bots.headerSubtitle", lang)}
             </p>
           </div>
         </div>
@@ -559,10 +597,10 @@ export default function Bots() {
             variant="ghost"
             size="sm"
             className="gap-1.5 font-mono text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            title="עצירת חירום: מכבה את כל הבוטים וסוגר מיד את כל פוזיציות הבוט"
+            title={t("bots.emergencyStopTitle", lang)}
           >
             <Siren className="h-4 w-4" />
-            עצירת חירום
+            {t("bots.emergencyStop", lang)}
           </Button>
         </div>
       </header>
@@ -576,7 +614,7 @@ export default function Bots() {
           <div className="flex items-center gap-3 min-w-0">
             <PauseCircle className="h-4 w-4 text-amber-400 shrink-0" />
             <p className="text-[11px] text-muted-foreground">
-              <span className="text-amber-400 font-semibold">הצי מושהה</span> — הבוטים לא יפתחו עסקאות חדשות. פוזיציות פתוחות ממשיכות להיות מנוהלות (SL/TP פעיל). לחץ &quot;בטל השהיה&quot; כדי לחדש את המסחר.
+              <span className="text-amber-400 font-semibold">{t("bots.pausedBadge", lang)}</span>{t("bots.pausedBannerRest", lang)}
             </p>
           </div>
           <Button
@@ -585,11 +623,11 @@ export default function Bots() {
             className="shrink-0 gap-1.5 text-amber-400 border-amber-400/40 hover:bg-amber-400/10 font-mono text-xs"
             onClick={() => {
               update({ fleetPaused: false });
-              toast({ title: "הצי חזר לפעולה", description: "הבוטים חוזרים לפתוח עסקאות חדשות בהתאם לאיתותים." });
+              toast({ title: t("bots.toast.pauseOffTitle", lang), description: t("bots.toast.pauseOffDesc", lang) });
             }}
           >
             <PlayCircle className="h-3.5 w-3.5" />
-            בטל השהיה
+            {t("bots.unpause", lang)}
           </Button>
         </div>
       )}
@@ -602,7 +640,7 @@ export default function Bots() {
         >
           <Zap className="h-4 w-4 text-primary shrink-0" />
           <p className="text-[11px] text-muted-foreground">
-            <span className="text-primary font-semibold">מצב בוסט פעיל</span> — כל הבוטים סוחרים בקצב המהיר ביותר (קירור מינימלי, מימוש רווחים זריז) כדי לבצע הרבה עסקאות קטנות. הקצב חוזר לרגיל בעוד <span className="font-mono text-primary">{boostClock}</span>.
+            <span className="text-primary font-semibold">{t("bots.boostBadge", lang)}</span>{t("bots.boostBannerMid", lang)}<span className="font-mono text-primary">{boostClock}</span>.
           </p>
         </div>
       )}
@@ -618,7 +656,7 @@ export default function Bots() {
         const totVotes = Math.max(1, alpha.longVotes + alpha.shortVotes);
         const longPct = Math.round((alpha.longVotes / totVotes) * 100);
         const accent = isLong ? "152 60% 45%" : isShort ? "0 72% 51%" : "207 30% 70%";
-        const dirLabel = isLong ? "עלייה (LONG)" : isShort ? "ירידה (SHORT)" : on ? "ממתין לקונצנזוס" : "כבוי";
+        const dirLabel = isLong ? t("bots.alpha.dirLong", lang) : isShort ? t("bots.alpha.dirShort", lang) : on ? t("bots.alpha.dirWaiting", lang) : t("bots.alpha.dirOff", lang);
         const DirIcon = isLong ? ArrowUpRight : isShort ? ArrowDownRight : Minus;
         return (
           <section
@@ -637,13 +675,13 @@ export default function Bots() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-base font-bold tracking-wide flex items-center gap-1.5">
-                    סוכן אלפא — מתאם-העל
+                    {t("bots.alpha.title", lang)}
                     <Network className="h-4 w-4 text-primary" />
                   </h2>
-                  <Switch checked={on} onCheckedChange={(v) => update({ alphaCoordinatorEnabled: v })} aria-label="הפעלת סוכן אלפא" />
+                  <Switch checked={on} onCheckedChange={(v) => update({ alphaCoordinatorEnabled: v })} aria-label={t("bots.alpha.toggleAria", lang)} />
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                  המוח המתאם של כל הצי: קורא את מידת ההסכמה בין כל מקורות האיתות — סקאלפ, מומנטום והסוכן החכם של המניות — ומגבש <span className="text-foreground font-medium">כיוון אחד לכל הבוטים</span>. כשהבוטים מאוחדים בכיוון הם נעים יחד כמערך אחד: עסקאות שמסכימות עם הקונצנזוס עוברות סף קל יותר ומקבלות יותר מקום, ועסקאות שנוגדות אותו חייבות סטאפ חזק בהרבה. סימולציה חינוכית בלבד — הוא מתאם את הבוטים, לא מזיז שום שוק אמיתי.
+                  {t("bots.alpha.descA", lang)}<span className="text-foreground font-medium">{t("bots.alpha.descSpan", lang)}</span>{t("bots.alpha.descB", lang)}
                 </p>
               </div>
             </div>
@@ -656,14 +694,14 @@ export default function Bots() {
               >
                 <DirIcon className="h-5 w-5" style={{ color: `hsl(${accent})` }} />
                 <div className="text-center leading-tight">
-                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono">כיוון הצי</div>
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono">{t("bots.alpha.fleetDir", lang)}</div>
                   <div className="text-sm font-bold" style={{ color: `hsl(${accent})` }}>{dirLabel}</div>
                 </div>
               </div>
 
               <div className="min-w-0">
                 <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mb-1">
-                  <span>עוצמת קונצנזוס</span>
+                  <span>{t("bots.alpha.confluence", lang)}</span>
                   <span className="tabular-nums" style={{ color: committed ? `hsl(${accent})` : undefined }}>
                     {on ? `${alpha.confluence}%` : "—"}
                   </span>
@@ -681,17 +719,17 @@ export default function Bots() {
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[9px] font-mono text-muted-foreground">
                   <span className="text-emerald-400">▲ {on ? alpha.longVotes : 0}</span>
-                  <span>{on ? `${alpha.sources} מקורות פעילים` : "מכובה"}</span>
+                  <span>{on ? `${alpha.sources} ${t("bots.alpha.sourcesActive", lang)}` : t("bots.alpha.off", lang)}</span>
                   <span className="text-red-400">{on ? alpha.shortVotes : 0} ▼</span>
                 </div>
               </div>
             </div>
 
             <div className="relative mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatChip label="מצב" value={!on ? "כבוי" : committed ? "במערך" : "מסנכרן"} tone={committed ? "good" : undefined} />
-              <StatChip label="סף כניסה (תואם)" value={committed ? "מרוכך" : "רגיל"} tone={committed ? "good" : undefined} />
-              <StatChip label="סף כניסה (נוגד)" value={committed ? "מחמיר" : "רגיל"} tone={committed ? "bad" : undefined} />
-              <StatChip label="תוספת מקומות" value={strong ? "+2 כשהצי חזק" : "—"} tone={strong ? "good" : undefined} />
+              <StatChip label={t("bots.alpha.status", lang)} value={!on ? t("bots.alpha.stOff", lang) : committed ? t("bots.alpha.stArrayed", lang) : t("bots.alpha.stSyncing", lang)} tone={committed ? "good" : undefined} />
+              <StatChip label={t("bots.alpha.thrAligned", lang)} value={committed ? t("bots.alpha.softened", lang) : t("bots.alpha.normal", lang)} tone={committed ? "good" : undefined} />
+              <StatChip label={t("bots.alpha.thrOpposed", lang)} value={committed ? t("bots.alpha.stricter", lang) : t("bots.alpha.normal", lang)} tone={committed ? "bad" : undefined} />
+              <StatChip label={t("bots.alpha.extraSlots", lang)} value={strong ? t("bots.alpha.extraSlotsVal", lang) : "—"} tone={strong ? "good" : undefined} />
             </div>
 
             {/* Earned control level — the master's track record turns into conviction */}
@@ -699,7 +737,7 @@ export default function Bots() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <Trophy className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs font-bold">רמת שליטה של המאסטר</span>
+                  <span className="text-xs font-bold">{t("bots.alpha.masterControl", lang)}</span>
                 </div>
                 <span className="text-sm font-black tabular-nums text-primary">{alpha.masteryScore}%</span>
               </div>
@@ -708,21 +746,21 @@ export default function Bots() {
               </div>
               <p className="mt-1.5 text-[10px] text-muted-foreground leading-relaxed">
                 {alpha.recentSample > 0
-                  ? `נמדד מ-${alpha.recentSample} העסקאות האוטומטיות האחרונות (אחוז הצלחה ${alpha.recentWinRate}%). ככל שהמאסטר מצליח לאורך זמן הוא מקבל מעט יותר ביטחון בעסקאות התואמות לכיוון הצי — בגבול מבוקר, אף פעם לא בעסקאות נוגדות.`
-                  : "עדיין אין מספיק עסקאות אוטומטיות שנסגרו כדי לדרג את המאסטר. רמת השליטה תיבנה מאחוז ההצלחה האמיתי שלו לאורך זמן."}
+                  ? t("bots.alpha.masteryHas", lang).replace("{sample}", String(alpha.recentSample)).replace("{wr}", String(alpha.recentWinRate))
+                  : t("bots.alpha.masteryNone", lang)}
               </p>
             </div>
 
             {on && committed && (
               <p className="relative mt-2 text-[10px]" style={{ color: `hsl(${accent})` }}>
                 {strong
-                  ? `הצי מאוחד בעוצמה (${alpha.confluence}%) לכיוון ${isLong ? "עלייה" : "ירידה"} — הבוטים נכנסים יחד למערך ולוחצים על היתרון.`
-                  : `הצי מתכנס לכיוון ${isLong ? "עלייה" : "ירידה"} (${alpha.confluence}%) — הבוטים מתחילים לנוע באותו כיוון.`}
+                  ? t("bots.alpha.unitedStrong", lang).replace("{pct}", String(alpha.confluence)).replace("{dir}", isLong ? t("bots.alpha.up", lang) : t("bots.alpha.down", lang))
+                  : t("bots.alpha.converging", lang).replace("{dir}", isLong ? t("bots.alpha.up", lang) : t("bots.alpha.down", lang)).replace("{pct}", String(alpha.confluence))}
               </p>
             )}
             {on && !committed && (
               <p className="relative mt-2 text-[10px] text-muted-foreground">
-                אין עדיין רוב ברור ({ALPHA_COMMIT_PCT}%+ נדרש כדי לגבש כיוון) — כל בוט פועל לפי הסטאפ שלו עד שמופיע קונצנזוס.
+                {t("bots.alpha.noMajority", lang).replace("{pct}", String(ALPHA_COMMIT_PCT))}
               </p>
             )}
           </section>
@@ -747,9 +785,9 @@ export default function Bots() {
                 <Gauge className="h-4 w-4 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold tracking-wide">עוצמת מסחר — בורר הילוכים</h2>
+                <h2 className="text-sm font-semibold tracking-wide">{t("bots.gear.title", lang)}</h2>
                 <p className="text-[11px] text-muted-foreground">
-                  בורר אחד שמשפיע על <span className="text-foreground font-medium">כל הבוטים</span> יחד. כל הילוך מעלה מגדיל את כמות העסקאות בכ-50% ומרכך את הסלקטיביות. הילוך <span className="text-foreground font-medium">1 (רגוע)</span> פותח מעט עסקאות אך מחפש סטאפים חזקים ומכוון לרווח גדול; הילוך <span className="text-foreground font-medium">5 (טורבו קיצוני)</span> סוחר בקצב מקסימלי. כמו מצב חסכוני מול ספורט.
+                  {t("bots.gear.descA", lang)}<span className="text-foreground font-medium">{t("bots.gear.spanAll", lang)}</span>{t("bots.gear.descB", lang)}<span className="text-foreground font-medium">{t("bots.gear.span1", lang)}</span>{t("bots.gear.descC", lang)}<span className="text-foreground font-medium">{t("bots.gear.span5", lang)}</span>{t("bots.gear.descD", lang)}
                 </p>
               </div>
             </div>
@@ -769,7 +807,7 @@ export default function Bots() {
                     }`}
                   >
                     <div className={`text-lg font-mono font-bold leading-none ${sel ? "text-primary" : "text-muted-foreground"}`}>{lvl}</div>
-                    <div className={`text-[10px] font-medium leading-tight mt-1 ${sel ? "text-foreground" : "text-muted-foreground"}`}>{p.label}</div>
+                    <div className={`text-[10px] font-medium leading-tight mt-1 ${sel ? "text-foreground" : "text-muted-foreground"}`}>{intensityLabel(lvl, lang)}</div>
                     <div className="text-[9px] font-mono text-muted-foreground/80 mt-0.5">{p.tradeRate.toFixed(2)}×</div>
                   </button>
                 );
@@ -780,14 +818,14 @@ export default function Bots() {
             <div className="mt-3 h-1.5 rounded-full" style={{ background: "linear-gradient(to left, hsl(152 60% 45% / 0.5), hsl(207 30% 70% / 0.6), hsl(0 72% 51% / 0.7))" }} />
 
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatChip label="הילוך נוכחי" value={`${prof.level} · ${prof.label}`} tone="good" />
-              <StatChip label="קצב עסקאות" value={`${prof.tradeRate.toFixed(2)}× מהילוך 1`} />
-              <StatChip label="קירור בין עסקאות" value={`${Math.round(prof.cooldownMult * 100)}%`} tone={prof.cooldownMult < 1 ? "good" : undefined} />
-              <StatChip label="סלקטיביות" value={prof.selectivityMult > 1 ? "מחמירה" : prof.selectivityMult < 1 ? "מרוככת" : "רגילה"} />
+              <StatChip label={t("bots.gear.current", lang)} value={`${prof.level} · ${intensityLabel(prof.level, lang)}`} tone="good" />
+              <StatChip label={t("bots.gear.tradeRate", lang)} value={`${prof.tradeRate.toFixed(2)}${t("bots.gear.fromGear1", lang)}`} />
+              <StatChip label={t("bots.gear.cooldown", lang)} value={`${Math.round(prof.cooldownMult * 100)}%`} tone={prof.cooldownMult < 1 ? "good" : undefined} />
+              <StatChip label={t("bots.gear.selectivity", lang)} value={prof.selectivityMult > 1 ? t("bots.gear.selStrict", lang) : prof.selectivityMult < 1 ? t("bots.gear.selSoft", lang) : t("bots.gear.selNormal", lang)} />
             </div>
             {boostActive && (
               <p className="mt-2 text-[10px] text-primary/90" dir="rtl">
-                בזמן בוסט הקצב נדרס לקצב המהיר ביותר ללא קשר להילוך; ההילוך חוזר לפעול כשהבוסט מסתיים.
+                {t("bots.gear.boostNote", lang)}
               </p>
             )}
           </section>
@@ -836,17 +874,17 @@ export default function Bots() {
                 <HeaderIcon className="h-4 w-4" style={{ color: `hsl(${accent})` }} />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold tracking-wide">סגנון מסחר — בורר לכל הבוטים</h2>
+                <h2 className="text-sm font-semibold tracking-wide">{t("bots.mode.title", lang)}</h2>
                 <p className="text-[11px] text-muted-foreground">
-                  בורר נוסף שמשפיע על <span className="text-foreground font-medium">כל הבוטים</span> יחד, בנוסף להילוך העוצמה. <span className="text-foreground font-medium">רגיל</span> — ההתנהגות הרגילה. <span className="text-foreground font-medium">מחושב אקסטרא</span> — מצב סבלני לטווח ארוך: בררני יותר, פחות עסקאות, נותן לרווחים לרוץ. <span style={{ color: "hsl(152 60% 50%)" }} className="font-medium">מצב שלומי</span> — הסוחר הנבון: הסבלנות הגבוהה ביותר, עסקאות לטווח ארוך, ניהול סיכונים ברמת-על, מינוף נמוך (עד {`x${2}`}) ומקסימום איכות לכל עסקה.
+                  {t("bots.mode.descA", lang)}<span className="text-foreground font-medium">{t("bots.mode.spanAll", lang)}</span>{t("bots.mode.descB", lang)}<span className="text-foreground font-medium">{t("bots.mode.spanNormal", lang)}</span>{t("bots.mode.descC", lang)}<span className="text-foreground font-medium">{t("bots.mode.spanCalc", lang)}</span>{t("bots.mode.descD", lang)}<span style={{ color: "hsl(152 60% 50%)" }} className="font-medium">{t("bots.mode.spanShlomi", lang)}</span>{t("bots.mode.descE", lang).replace("{lev}", String(2))}
                 </p>
               </div>
             </div>
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {modeBtn("NORMAL", mode === "NORMAL", Rabbit, "text-primary", "border-primary bg-primary/10 shadow-[0_0_0_1px_hsl(43_74%_52%/0.4)]", "רגיל", "קצב ובררנות לפי ההילוך")}
-              {modeBtn("CALCULATED", calc, Turtle, "text-sky-400", "border-sky-400 bg-sky-400/10 shadow-[0_0_0_1px_hsl(199_89%_55%/0.45)]", "מחושב אקסטרא", "בררני וסבלני · טווח ארוך")}
-              {modeBtn("SHLOMI", shlomi, Sparkles, "text-emerald-400", "border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_1px_hsl(152_60%_50%/0.45)]", "מצב שלומי", "סוחר נבון · מינוף נמוך · איכות מקס")}
+              {modeBtn("NORMAL", mode === "NORMAL", Rabbit, "text-primary", "border-primary bg-primary/10 shadow-[0_0_0_1px_hsl(43_74%_52%/0.4)]", t("bots.mode.normal", lang), t("bots.mode.normalSub", lang))}
+              {modeBtn("CALCULATED", calc, Turtle, "text-sky-400", "border-sky-400 bg-sky-400/10 shadow-[0_0_0_1px_hsl(199_89%_55%/0.45)]", t("bots.mode.calc", lang), t("bots.mode.calcSub", lang))}
+              {modeBtn("SHLOMI", shlomi, Sparkles, "text-emerald-400", "border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_1px_hsl(152_60%_50%/0.45)]", t("bots.mode.shlomi", lang), t("bots.mode.shlomiSub", lang))}
             </div>
 
             <div className="mt-4 px-1">
@@ -856,25 +894,25 @@ export default function Bots() {
                 max={2}
                 step={1}
                 onValueChange={(v) => setMode(idxToMode(v[0]))}
-                aria-label="בורר סגנון מסחר"
+                aria-label={t("bots.mode.sliderAria", lang)}
                 dir="rtl"
               />
               <div className="mt-1.5 flex items-center justify-between text-[9px] font-mono text-muted-foreground">
-                <span className={mode === "NORMAL" ? "text-primary" : ""}>רגיל</span>
-                <span className={calc ? "text-sky-400" : ""}>מחושב</span>
-                <span className={shlomi ? "text-emerald-400" : ""}>שלומי</span>
+                <span className={mode === "NORMAL" ? "text-primary" : ""}>{t("bots.mode.normal", lang)}</span>
+                <span className={calc ? "text-sky-400" : ""}>{t("bots.mode.calcShort", lang)}</span>
+                <span className={shlomi ? "text-emerald-400" : ""}>{t("bots.mode.shlomiShort", lang)}</span>
               </div>
             </div>
 
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatChip label="מצב נוכחי" value={shlomi ? "מצב שלומי" : calc ? "מחושב אקסטרא" : "רגיל"} tone={longTerm ? "good" : undefined} />
-              <StatChip label="בררנות" value={shlomi ? "קיצונית" : calc ? "מחמירה מאוד" : "לפי ההילוך"} tone={longTerm ? "good" : undefined} />
-              <StatChip label="תדירות עסקאות" value={shlomi ? "מינימלית" : calc ? "נמוכה בהרבה" : "רגילה"} />
-              <StatChip label="מינוף" value={shlomi ? "נמוך (עד x2)" : "לפי ההגדרות"} tone={shlomi ? "good" : undefined} />
+              <StatChip label={t("bots.mode.current", lang)} value={shlomi ? t("bots.mode.shlomi", lang) : calc ? t("bots.mode.calc", lang) : t("bots.mode.normal", lang)} tone={longTerm ? "good" : undefined} />
+              <StatChip label={t("bots.mode.selLabel", lang)} value={shlomi ? t("bots.mode.selExtreme", lang) : calc ? t("bots.mode.selVeryStrict", lang) : t("bots.mode.selByGear", lang)} tone={longTerm ? "good" : undefined} />
+              <StatChip label={t("bots.mode.freqLabel", lang)} value={shlomi ? t("bots.mode.freqMin", lang) : calc ? t("bots.mode.freqMuchLower", lang) : t("bots.mode.freqNormal", lang)} />
+              <StatChip label={t("bots.mode.levLabel", lang)} value={shlomi ? t("bots.mode.levLow", lang) : t("bots.mode.levBySettings", lang)} tone={shlomi ? "good" : undefined} />
             </div>
             {longTerm && boostActive && (
               <p className="mt-2 text-[10px] text-amber-400/90" dir="rtl">
-                שים לב: בוסט פעיל דורס את הקצב למהיר ביותר וסותר את מצב טווח ארוך. כדאי לעצור את הבוסט כדי לתת למצב {shlomi ? "שלומי" : "המחושב"} לעבוד.
+                {t("bots.mode.boostConflict", lang).replace("{mode}", shlomi ? t("bots.mode.shlomiName", lang) : t("bots.mode.calcName", lang))}
               </p>
             )}
           </section>
@@ -888,34 +926,34 @@ export default function Bots() {
             <Cpu className="h-4 w-4" style={{ color: "hsl(265 70% 68%)" }} />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold tracking-wide">סוכן-על מתאם — Mega-Agent</h2>
+            <h2 className="text-sm font-semibold tracking-wide">{t("bots.mega.title", lang)}</h2>
             <p className="text-[11px] text-muted-foreground">
-              מבט-על אחד על כל 7 הבוטים יחד, בכל הזירות (קריפטו, מניות ותחזיות): ביצועים מצטברים מההיסטוריה, פוזיציות פתוחות, מצב הפעלה ונעילות סיכון. זהו סיכום בלבד — הוא לא פותח עסקאות בעצמו.
+              {t("bots.mega.desc", lang)}
             </p>
           </div>
         </div>
 
         {/* Fleet summary */}
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 rounded-md border border-border/40 bg-background/40 p-3">
-          <StatChip label="בוטים פעילים" value={`${fleet.activeCount} / 7`} tone={fleet.activeCount > 0 ? "good" : undefined} />
-          <StatChip label="פוזיציות פתוחות" value={String(fleet.totOpen)} tone={fleet.totOpen > 0 ? "good" : undefined} />
-          <StatChip label="עסקאות סגורות" value={String(fleet.totTrades)} />
-          <StatChip label="אחוז ניצחון" value={fleet.totTrades > 0 ? `${fleet.wr.toFixed(0)}%` : "—"} tone={fleet.totTrades >= 4 ? (fleet.wr >= 50 ? "good" : "bad") : undefined} />
-          <StatChip label="רווח/הפסד כולל" value={`${fleet.totNet >= 0 ? "+" : ""}$${fleet.totNet.toFixed(0)}`} tone={fleet.totNet > 0 ? "good" : fleet.totNet < 0 ? "bad" : undefined} />
-          <StatChip label="מושהים" value={String(fleet.pausedCount)} tone={fleet.pausedCount > 0 ? "bad" : undefined} />
+          <StatChip label={t("bots.mega.activeBots", lang)} value={`${fleet.activeCount} / 7`} tone={fleet.activeCount > 0 ? "good" : undefined} />
+          <StatChip label={t("bots.mega.openPos", lang)} value={String(fleet.totOpen)} tone={fleet.totOpen > 0 ? "good" : undefined} />
+          <StatChip label={t("bots.mega.closedTrades", lang)} value={String(fleet.totTrades)} />
+          <StatChip label={t("bots.mega.winRate", lang)} value={fleet.totTrades > 0 ? `${fleet.wr.toFixed(0)}%` : "—"} tone={fleet.totTrades >= 4 ? (fleet.wr >= 50 ? "good" : "bad") : undefined} />
+          <StatChip label={t("bots.mega.totalPnl", lang)} value={`${fleet.totNet >= 0 ? "+" : ""}$${fleet.totNet.toFixed(0)}`} tone={fleet.totNet > 0 ? "good" : fleet.totNet < 0 ? "bad" : undefined} />
+          <StatChip label={t("bots.mega.paused", lang)} value={String(fleet.pausedCount)} tone={fleet.pausedCount > 0 ? "bad" : undefined} />
         </div>
 
         {(fleet.best || fleet.worst) && (
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {fleet.best && (
               <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5 flex items-center justify-between">
-                <span className="text-[11px] text-muted-foreground">הבוט המוביל</span>
+                <span className="text-[11px] text-muted-foreground">{t("bots.mega.topBot", lang)}</span>
                 <span className="text-xs font-semibold">{fleet.best.title} <span className="font-mono text-emerald-400">{fleet.best.net >= 0 ? "+" : ""}${fleet.best.net.toFixed(0)}</span></span>
               </div>
             )}
             {fleet.worst && fleet.worst.key !== fleet.best?.key && (
               <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5 flex items-center justify-between">
-                <span className="text-[11px] text-muted-foreground">זקוק לתשומת לב</span>
+                <span className="text-[11px] text-muted-foreground">{t("bots.mega.needsAttention", lang)}</span>
                 <span className="text-xs font-semibold">{fleet.worst.title} <span className="font-mono text-red-400">{fleet.worst.net >= 0 ? "+" : ""}${fleet.worst.net.toFixed(0)}</span></span>
               </div>
             )}
@@ -929,7 +967,7 @@ export default function Bots() {
               key={r.key}
               role="button"
               tabIndex={0}
-              title="לחץ להגדרות הבוט"
+              title={t("bots.mega.cardTitle", lang)}
               onClick={() => {
                 const el = document.getElementById(`bot-${r.key}`);
                 if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -949,19 +987,19 @@ export default function Bots() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className={`text-[8px] font-mono px-1.5 py-0.5 rounded-full ${r.paused ? "bg-red-500/20 text-red-400" : r.armed ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/40 text-muted-foreground"}`}>
-                    {r.paused ? "הושהת" : r.armed ? "פעיל" : "כבוי"}
+                    {r.paused ? t("bots.mega.stPaused", lang) : r.armed ? t("bots.mega.stActive", lang) : t("bots.mega.stOff", lang)}
                   </span>
-                  <span className="text-[8px] font-mono text-muted-foreground/40">↓ הגדרות</span>
+                  <span className="text-[8px] font-mono text-muted-foreground/40">{t("bots.mega.settingsHint", lang)}</span>
                 </div>
               </div>
               <div className="mt-2 grid grid-cols-3 gap-1.5">
-                <StatChip label="עסקאות" value={String(r.trades)} />
-                <StatChip label="ניצחון" value={r.trades > 0 ? `${r.wr.toFixed(0)}%` : "—"} tone={r.trades >= 4 ? (r.wr >= 50 ? "good" : "bad") : undefined} />
+                <StatChip label={t("bots.mega.trades", lang)} value={String(r.trades)} />
+                <StatChip label={t("bots.mega.wins", lang)} value={r.trades > 0 ? `${r.wr.toFixed(0)}%` : "—"} tone={r.trades >= 4 ? (r.wr >= 50 ? "good" : "bad") : undefined} />
                 <StatChip label="P/L" value={`${r.net >= 0 ? "+" : ""}$${r.net.toFixed(0)}`} tone={r.net > 0 ? "good" : r.net < 0 ? "bad" : undefined} />
               </div>
               <div className="mt-1.5 flex items-center justify-between text-[9px] font-mono text-muted-foreground">
-                <span>{r.market}</span>
-                <span>{r.open > 0 ? <span className="text-primary">{r.open} פתוחות</span> : "אין פתוחות"}</span>
+                <span>{t(`bots.market.${r.market}`, lang)}</span>
+                <span>{r.open > 0 ? <span className="text-primary">{r.open} {t("bots.mega.openCount", lang)}</span> : t("bots.mega.noOpen", lang)}</span>
               </div>
             </div>
           ))}
@@ -972,7 +1010,7 @@ export default function Bots() {
       {(() => {
         const dyn = computeDynamicSizing(cash, totalDeposited, tradeHistory, settings.cashFloorPct);
         const portfolioRatio = totalDeposited > 0 ? cash / totalDeposited : 1;
-        const ratioLabel = portfolioRatio >= 1.05 ? "מצב רווח" : portfolioRatio <= 0.92 ? "מצב הפסד" : "מאוזן";
+        const ratioLabel = portfolioRatio >= 1.05 ? t("bots.dyn.profit", lang) : portfolioRatio <= 0.92 ? t("bots.dyn.loss", lang) : t("bots.dyn.balanced", lang);
         const ratioTone = portfolioRatio >= 1.05 ? "good" : portfolioRatio <= 0.92 ? "bad" : undefined;
         const recent = tradeHistory.slice(0, 10);
         const wr = recent.length >= 3 ? (recent.filter((t) => t.pnl > 0).length / recent.length * 100).toFixed(0) + "%" : "—";
@@ -984,9 +1022,9 @@ export default function Bots() {
                   <Cpu className="h-4 w-4" style={{ color: "hsl(196 80% 60%)" }} />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold tracking-wide">מנהל הון דינמי</h2>
+                  <h2 className="text-sm font-semibold tracking-wide">{t("bots.dyn.title", lang)}</h2>
                   <p className="text-[11px] text-muted-foreground" dir="rtl">
-                    עוקף את כל הגדרות המרג׳ין והמינוף של הבוטים — מחשב אוטומטית גודל פוזיציה ומינוף לפי שווי תיק המסחר, יחס בריאות ואחוז הניצחונות האחרון.
+                    {t("bots.dyn.desc", lang)}
                   </p>
                 </div>
               </div>
@@ -999,17 +1037,17 @@ export default function Bots() {
             {/* Live preview */}
             <div className="mt-4 rounded-md border border-border/40 bg-background/40 p-3">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono mb-2">
-                {settings.dynamicCapitalEnabled ? "ערכים פעילים כעת (עוקפים הגדרות ידניות)" : "תצוגה מקדימה — מה יהיה אם תופעל"}
+                {settings.dynamicCapitalEnabled ? t("bots.dyn.activeNow", lang) : t("bots.dyn.preview", lang)}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatChip label="מרג׳ין לעסקה" value={`$${dyn.margin}`} tone={settings.dynamicCapitalEnabled ? "good" : undefined} />
-                <StatChip label="מינוף" value={`${dyn.leverage}x`} tone={settings.dynamicCapitalEnabled ? "good" : undefined} />
-                <StatChip label="מצב תיק" value={ratioLabel} tone={ratioTone} />
-                <StatChip label="אחוז ניצחון (10 אחרונות)" value={wr} />
+                <StatChip label={t("bots.dyn.marginPerTrade", lang)} value={`$${dyn.margin}`} tone={settings.dynamicCapitalEnabled ? "good" : undefined} />
+                <StatChip label={t("bots.dyn.leverage", lang)} value={`${dyn.leverage}x`} tone={settings.dynamicCapitalEnabled ? "good" : undefined} />
+                <StatChip label={t("bots.dyn.portfolioState", lang)} value={ratioLabel} tone={ratioTone} />
+                <StatChip label={t("bots.dyn.winRate10", lang)} value={wr} />
               </div>
               {settings.dynamicCapitalEnabled && (
                 <p className="mt-2 text-[10px] text-muted-foreground" dir="rtl">
-                  הגדרות המרג׳ין, המינוף וגודל ה-Stake שהגדרת ידנית <span className="text-amber-400 font-semibold">מושבתות זמנית</span> — הסוכן הדינמי מחשב הכל מחדש לפי מצב התיק הנוכחי.
+                  {t("bots.dyn.activeNoteA", lang)}<span className="text-amber-400 font-semibold">{t("bots.dyn.disabledTemp", lang)}</span>{t("bots.dyn.activeNoteB", lang)}
                 </p>
               )}
             </div>
@@ -1023,14 +1061,14 @@ export default function Bots() {
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="h-3.5 w-3.5" style={{ color: "hsl(196 80% 60%)" }} />
-                      <span className="text-xs font-semibold">מנהל החשבון — רזרבת מזומן</span>
+                      <span className="text-xs font-semibold">{t("bots.acct.title", lang)}</span>
                     </div>
                     <span className="font-mono text-sm font-bold" style={{ color: "hsl(196 80% 60%)" }}>
                       {settings.cashFloorPct}%
                     </span>
                   </div>
                   <p className="text-[10px] text-muted-foreground mb-2">
-                    המנהל הוותיק שומר תמיד אחוז מההון כמזומן פנוי ואף פעם לא פותח עסקה שתוריד את המזומן מתחת לרצפה הזו — כך החשבון לא נתקע ליד אפס וממשיך לצמוח. מטרתו: למלא את החשבון במזומן.
+                    {t("bots.acct.desc", lang)}
                   </p>
                   <input
                     type="range"
@@ -1043,17 +1081,17 @@ export default function Bots() {
                     aria-label="Cash reserve floor percent"
                   />
                   <div className="mt-2 grid grid-cols-3 gap-3">
-                    <StatChip label="רצפת רזרבה" value={`$${floor.toFixed(0)}`} />
-                    <StatChip label="מזומן פנוי למסחר" value={`$${freeCash.toFixed(0)}`} tone={freeCash > 0 ? "good" : "bad"} />
+                    <StatChip label={t("bots.acct.reserveFloor", lang)} value={`$${floor.toFixed(0)}`} />
+                    <StatChip label={t("bots.acct.freeCash", lang)} value={`$${freeCash.toFixed(0)}`} tone={freeCash > 0 ? "good" : "bad"} />
                     <StatChip
-                      label="מצב מנהל"
-                      value={dyn.recoveryMode ? "מצב התאוששות" : "צמיחה"}
+                      label={t("bots.acct.managerMode", lang)}
+                      value={dyn.recoveryMode ? t("bots.acct.recovery", lang) : t("bots.acct.growth", lang)}
                       tone={dyn.recoveryMode ? "bad" : "good"}
                     />
                   </div>
                   {dyn.recoveryMode && (
                     <p className="mt-2 text-[10px] text-amber-400">
-                      מצב התאוששות פעיל — המנהל מקטין פוזיציות ומגביל מינוף (עד 3x) כדי להגן על ההון שנותר עד שהחשבון יתמלא מחדש.
+                      {t("bots.acct.recoveryNote", lang)}
                     </p>
                   )}
                 </div>
@@ -1068,7 +1106,7 @@ export default function Bots() {
         const driveDisabled = settings.dynamicCapitalEnabled;
         const drive = computeMomentumDriveSizing(cash, totalDeposited, settings.momentumDriveStakePct, settings.momentumDriveMaxLeverage);
         const driveRatio = totalDeposited > 0 ? cash / totalDeposited : 1;
-        const driveRatioLabel = driveRatio >= 1.15 ? "צמיחה חזקה" : driveRatio >= 1.0 ? "ניטרלי" : driveRatio >= 0.85 ? "מתחת לסף" : "הפסד";
+        const driveRatioLabel = driveRatio >= 1.15 ? t("bots.drive.strongGrowth", lang) : driveRatio >= 1.0 ? t("bots.drive.neutral", lang) : driveRatio >= 0.85 ? t("bots.drive.belowThreshold", lang) : t("bots.drive.loss", lang);
         const driveRatioTone = driveRatio >= 1.0 ? "good" : driveRatio >= 0.85 ? undefined : "bad";
         return (
           <section className="rounded-lg border p-4" style={{ borderColor: "hsl(43 74% 52% / 0.45)", background: "hsl(43 74% 52% / 0.05)" }}>
@@ -1078,9 +1116,9 @@ export default function Bots() {
                   <Rocket className="h-4 w-4" style={{ color: "hsl(43 74% 58%)" }} />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold tracking-wide" style={{ color: "hsl(43 74% 62%)" }}>בוט הנעה</h2>
+                  <h2 className="text-sm font-semibold tracking-wide" style={{ color: "hsl(43 74% 62%)" }}>{t("bots.drive.title", lang)}</h2>
                   <p className="text-[11px] text-muted-foreground" dir="rtl">
-                    מנוע ניהול סיכון פרופורציונלי לתיק — מכוון את <strong>כל</strong> המינופים וסכומי ההשקעה של כל הבוטים לפי שווי התיק הנוכחי. ללא הגבלת כמות עסקאות: רק המזומן הזמין קובע.
+                    {t("bots.drive.descA", lang)}<strong>{t("bots.drive.strongAll", lang)}</strong>{t("bots.drive.descB", lang)}
                   </p>
                 </div>
               </div>
@@ -1097,27 +1135,27 @@ export default function Bots() {
 
             {driveDisabled && (
               <p className="mt-2 text-[10px] text-amber-400" dir="rtl">
-                כבה את המנהל הדינמי כדי להפעיל בוט הנעה — שניהם לא יכולים לפעול יחד.
+                {t("bots.drive.conflict", lang)}
               </p>
             )}
 
             {/* Live preview + controls */}
             <div className="mt-4 rounded-md border border-border/40 bg-background/40 p-3">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono mb-2">
-                {settings.momentumDriveEnabled ? "ערכים פעילים כעת (עוקפים כל הגדרה אחרת)" : "תצוגה מקדימה — מה יהיה אם תופעל"}
+                {settings.momentumDriveEnabled ? t("bots.drive.activeNow", lang) : t("bots.dyn.preview", lang)}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatChip label="מרג׳ין לעסקה" value={`$${drive.margin}`} tone={settings.momentumDriveEnabled ? "good" : undefined} />
-                <StatChip label="מינוף" value={`${drive.leverage}x`} tone={settings.momentumDriveEnabled ? "good" : undefined} />
-                <StatChip label="מצב תיק" value={driveRatioLabel} tone={driveRatioTone} />
-                <StatChip label="הגבלת עסקאות" value="ללא" tone={settings.momentumDriveEnabled ? "good" : undefined} />
+                <StatChip label={t("bots.dyn.marginPerTrade", lang)} value={`$${drive.margin}`} tone={settings.momentumDriveEnabled ? "good" : undefined} />
+                <StatChip label={t("bots.dyn.leverage", lang)} value={`${drive.leverage}x`} tone={settings.momentumDriveEnabled ? "good" : undefined} />
+                <StatChip label={t("bots.dyn.portfolioState", lang)} value={driveRatioLabel} tone={driveRatioTone} />
+                <StatChip label={t("bots.drive.tradeLimit", lang)} value={t("bots.drive.none", lang)} tone={settings.momentumDriveEnabled ? "good" : undefined} />
               </div>
             </div>
 
             {/* Stake % slider */}
             <div className="mt-3 rounded-md border border-border/40 bg-background/40 p-3" dir="rtl">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-xs font-semibold">אחוז מרג׳ין מהתיק</span>
+                <span className="text-xs font-semibold">{t("bots.drive.marginPctOfPortfolio", lang)}</span>
                 <span className="font-mono text-sm font-bold" style={{ color: "hsl(43 74% 58%)" }}>{settings.momentumDriveStakePct}%</span>
               </div>
               <Slider
@@ -1131,14 +1169,14 @@ export default function Bots() {
                 aria-label="Momentum drive stake percent"
               />
               <p className="mt-1.5 text-[10px] text-muted-foreground">
-                כל עסקה תהיה {settings.momentumDriveStakePct}% מהמזומן הנוכחי — ${Math.round(cash * settings.momentumDriveStakePct / 100 / 10) * 10} לפי המצב הנוכחי.
+                {t("bots.drive.stakeNote", lang).replace("{pct}", String(settings.momentumDriveStakePct)).replace("{amt}", `$${Math.round(cash * settings.momentumDriveStakePct / 100 / 10) * 10}`)}
               </p>
             </div>
 
             {/* Max leverage slider */}
             <div className="mt-3 rounded-md border border-border/40 bg-background/40 p-3" dir="rtl">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-xs font-semibold">מינוף מקסימלי</span>
+                <span className="text-xs font-semibold">{t("bots.drive.maxLeverage", lang)}</span>
                 <span className="font-mono text-sm font-bold" style={{ color: "hsl(43 74% 58%)" }}>{settings.momentumDriveMaxLeverage}x</span>
               </div>
               <Slider
@@ -1152,13 +1190,13 @@ export default function Bots() {
                 aria-label="Momentum drive max leverage"
               />
               <p className="mt-1.5 text-[10px] text-muted-foreground">
-                הבוט יתחיל ב-2x בזמן הפסד ויטפס עד {settings.momentumDriveMaxLeverage}x ככל שהתיק צומח.
+                {t("bots.drive.leverageNote", lang).replace("{lev}", String(settings.momentumDriveMaxLeverage))}
               </p>
             </div>
 
             {settings.momentumDriveEnabled && (
               <p className="mt-3 text-[10px] text-amber-400/90" dir="rtl">
-                בוט הנעה פעיל — הגדרות המרג׳ין, המינוף וגודל ה-Stake של כל הבוטים <span className="font-semibold">מושבתות</span> ומחושבות דינמית לפי שווי התיק. הגבלת עסקאות מרבית הוסרה; רק המזומן הזמין מגביל.
+                {t("bots.drive.activeNoteA", lang)}<span className="font-semibold">{t("bots.drive.disabled", lang)}</span>{t("bots.drive.activeNoteB", lang)}
               </p>
             )}
           </section>
@@ -1173,10 +1211,10 @@ export default function Bots() {
               <Layers className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold tracking-wide">הגדרות גלובליות לכל הבוטים</h2>
+              <h2 className="text-sm font-semibold tracking-wide">{t("bots.global.title", lang)}</h2>
               <p className="text-[11px] text-muted-foreground" dir="rtl">
-                מינוף וסכום השקעה אחיד לכל הבוטים בבת אחת. הגדרות האלה מופעלות את ההגדרות המקומיות של כל בוט.
-                {(settings.dynamicCapitalEnabled || settings.momentumDriveEnabled) && <span className="text-amber-400 font-semibold"> (מושבת בזמן שבוט הנעה / המנהל הדינמי פעיל.)</span>}
+                {t("bots.global.desc", lang)}
+                {(settings.dynamicCapitalEnabled || settings.momentumDriveEnabled) && <span className="text-amber-400 font-semibold">{t("bots.global.disabledNote", lang)}</span>}
               </p>
             </div>
           </div>
@@ -1186,7 +1224,7 @@ export default function Bots() {
         <div className="mt-3 rounded-md border border-border/40 bg-background/40 p-3" dir="rtl">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold">מינוף גלובלי</span>
+              <span className="text-xs font-semibold">{t("bots.global.leverage", lang)}</span>
               <span className="font-mono text-sm font-bold text-primary">{settings.globalLeverage}x</span>
             </div>
             <Switch
@@ -1208,8 +1246,8 @@ export default function Bots() {
           />
           <p className="mt-2 text-[10px] text-muted-foreground">
             {settings.globalLeverageEnabled
-              ? `כל הבוטים סוחרים במינוף ${settings.globalLeverage}x. ההגדרות האישיות של כל בוט מושבתות זמנית.`
-              : "כל בוט משתמש בהגדרת המינוף של עצמו."}
+              ? t("bots.global.leverageOn", lang).replace("{lev}", String(settings.globalLeverage))
+              : t("bots.global.leverageOff", lang)}
           </p>
         </div>
 
@@ -1217,7 +1255,7 @@ export default function Bots() {
         <div className="mt-3 rounded-md border border-border/40 bg-background/40 p-3" dir="rtl">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold">סכום השקעה קבוע</span>
+              <span className="text-xs font-semibold">{t("bots.global.fixedAmount", lang)}</span>
               <span className="font-mono text-sm font-bold text-primary">${settings.fixedAmount}</span>
             </div>
             <Switch
@@ -1243,8 +1281,8 @@ export default function Bots() {
           </div>
           <p className="mt-2 text-[10px] text-muted-foreground">
             {settings.fixedAmountEnabled
-              ? `כל הבוטים משקיעים $${settings.fixedAmount} לעסקה. ההגדרות האישיות של כל בוט מושבתות זמנית.`
-              : "כל בוט משתמש בהגדרת הסכום של עצמו."}
+              ? t("bots.global.fixedOn", lang).replace("{amt}", `$${settings.fixedAmount}`)
+              : t("bots.global.fixedOff", lang)}
           </p>
         </div>
       </section>
@@ -1259,7 +1297,7 @@ export default function Bots() {
             <div>
               <h2 className="text-sm font-semibold tracking-wide">Adaptive Manager</h2>
               <p className="text-[11px] text-muted-foreground" dir="rtl">
-                סוכן שמנהל את הבוטים: עוקב אחרי התוצאות של כל בוט בסימולציה ומכוונן את רמת הסלקטיביות שלו אוטומטית.
+                {t("bots.adaptive.desc", lang)}
               </p>
             </div>
           </div>
@@ -1290,7 +1328,7 @@ export default function Bots() {
         </div>
         <div className="mt-3 flex justify-end">
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={() => resetBotStats()}>
-            <RotateCcw className="h-3 w-3" /> אפס נתוני למידה
+            <RotateCcw className="h-3 w-3" /> {t("bots.adaptive.resetLearning", lang)}
           </Button>
         </div>
       </section>
@@ -1303,9 +1341,9 @@ export default function Bots() {
               <ShieldCheck className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold tracking-wide">זהירות לפי מטבע</h2>
+              <h2 className="text-sm font-semibold tracking-wide">{t("bots.caution.title", lang)}</h2>
               <p className="text-[11px] text-muted-foreground" dir="rtl">
-                הבוטים לומדים על אילו מטבעות הם נכשלים בעסקאות, ומעלים אוטומטית את רמת הזהירות והדיוק — דורשים סטאפ חזק יותר לפני שפותחים שם עסקה שוב, כדי לא לחזור על אותן טעויות.
+                {t("bots.caution.desc", lang)}
               </p>
             </div>
           </div>
@@ -1331,7 +1369,7 @@ export default function Bots() {
                             caution >= 1.5 ? "bg-red-500/15 text-red-400" : "bg-primary/10 text-primary"
                           }`}
                         >
-                          זהירות {caution.toFixed(2)}×
+                          {t("bots.caution.badge", lang)} {caution.toFixed(2)}×
                         </span>
                       </div>
                       <div className="mt-2 grid grid-cols-3 gap-2">
@@ -1345,18 +1383,18 @@ export default function Bots() {
               </div>
               <div className="mt-3 flex justify-end">
                 <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={() => resetAssetStats()}>
-                  <RotateCcw className="h-3 w-3" /> אפס זהירות מטבעות
+                  <RotateCcw className="h-3 w-3" /> {t("bots.caution.resetCoins", lang)}
                 </Button>
               </div>
             </>
           ) : (
             <p className="mt-4 text-[11px] text-muted-foreground" dir="rtl">
-              אין עדיין מטבעות בזהירות מוגברת. ככל שהבוטים יסחרו, מטבעות שיפסידו בהם שוב ושוב יופיעו כאן עם רמת זהירות גבוהה יותר.
+              {t("bots.caution.emptyNote", lang)}
             </p>
           )
         ) : (
           <p className="mt-4 text-[11px] text-muted-foreground" dir="rtl">
-            הלמידה לפי מטבע כבויה — הבוטים מתייחסים לכל המטבעות באותה רמת זהירות.
+            {t("bots.caution.offNote", lang)}
           </p>
         )}
       </section>
@@ -1369,9 +1407,9 @@ export default function Bots() {
               <ShieldAlert className="h-4 w-4 text-red-400" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold tracking-wide">Risk Manager — סוכן ניהול סיכונים</h2>
+              <h2 className="text-sm font-semibold tracking-wide">{t("bots.risk.title", lang)}</h2>
               <p className="text-[11px] text-muted-foreground" dir="rtl">
-                סופר-סוחר שעוצר בוטים מהביזוי ושומר על הון-ריט, הפסד יומי, ודד-דאון. אם בוט מוזיה שובו הושהת אוטומטית.
+                {t("bots.risk.desc", lang)}
               </p>
             </div>
           </div>
@@ -1391,13 +1429,13 @@ export default function Bots() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold">{b.title}</span>
                   <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${g.paused ? "bg-red-500/20 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
-                    {g.paused ? "הושהת" : "פועל"}
+                    {g.paused ? t("bots.mega.stPaused", lang) : t("bots.risk.running", lang)}
                   </span>
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   <StatChip label="Win %" value={stat.trades > 0 ? `${wr.toFixed(0)}%` : "—"} tone={stat.trades >= 4 ? (wr >= 50 ? "good" : "bad") : undefined} />
                   <StatChip label="DD" value={`${g.maxDrawdownPct.toFixed(1)}%`} tone={g.maxDrawdownPct >= 20 ? "bad" : undefined} />
-                  <StatChip label="היום" value={g.dailyLossHalt ? "STOP" : "OK"} tone={g.dailyLossHalt ? "bad" : "good"} />
+                  <StatChip label={t("bots.risk.today", lang)} value={g.dailyLossHalt ? "STOP" : "OK"} tone={g.dailyLossHalt ? "bad" : "good"} />
                 </div>
                 {g.paused && g.reason && (
                   <p className="mt-2 text-[10px] text-red-400/90 leading-snug" dir="rtl">{g.reason}</p>
@@ -1405,7 +1443,7 @@ export default function Bots() {
                 {g.paused && (
                   <div className="mt-2 flex justify-end">
                     <Button variant="ghost" size="sm" className="gap-1 text-[10px] text-muted-foreground" onClick={() => resetRiskGuard(b.id)}>
-                      <RotateCcw className="h-3 w-3" /> אפשר בוט
+                      <RotateCcw className="h-3 w-3" /> {t("bots.risk.enableBot", lang)}
                     </Button>
                   </div>
                 )}
@@ -1415,7 +1453,7 @@ export default function Bots() {
         </div>
         <div className="mt-3 flex justify-end">
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={() => resetRiskGuard()}>
-            <RotateCcw className="h-3 w-3" /> אפס כל ההושהות
+            <RotateCcw className="h-3 w-3" /> {t("bots.risk.resetAll", lang)}
           </Button>
         </div>
       </section>
@@ -1428,9 +1466,9 @@ export default function Bots() {
               <Scissors className="h-4 w-4 text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold tracking-wide">Smart Exit — סגירה חכמה</h2>
+              <h2 className="text-sm font-semibold tracking-wide">{t("bots.smartExit.title", lang)}</h2>
               <p className="text-[11px] text-muted-foreground" dir="rtl">
-                סוכן הסגירה: נועל רווחים קטנים מהר כמו סופרמרקט — אפילו עסקאות של דקה או חצי דקה. אבל כשיש פוטנציאל לרווח גדול הוא נותן לעסקה לרוץ עד שהמומנטום מתהפך.
+                {t("bots.smartExit.desc", lang)}
               </p>
             </div>
           </div>
@@ -1441,21 +1479,21 @@ export default function Bots() {
           />
         </div>
         <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-          <NumField label="נעילת רווח %" value={settings.scalpTakeProfitPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ scalpTakeProfitPct: v })} />
-          <NumField label="החזר סקאלפ %" value={settings.scalpGivebackPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ scalpGivebackPct: v })} />
-          <NumField label="סף ריצה %" value={settings.runnerTriggerPct} min={0.2} step={0.1} suffix="%" onChange={(v) => update({ runnerTriggerPct: v })} />
-          <NumField label="טריילינג ריצה %" value={settings.runnerTrailPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ runnerTrailPct: v })} />
-          <NumField label="מחזור אחרי (ש')" value={settings.maxScalpHoldSec} min={0} step={15} suffix="ש'" onChange={(v) => update({ maxScalpHoldSec: v })} />
+          <NumField label={t("bots.smartExit.lockProfit", lang)} value={settings.scalpTakeProfitPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ scalpTakeProfitPct: v })} />
+          <NumField label={t("bots.smartExit.scalpGiveback", lang)} value={settings.scalpGivebackPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ scalpGivebackPct: v })} />
+          <NumField label={t("bots.smartExit.runnerTrigger", lang)} value={settings.runnerTriggerPct} min={0.2} step={0.1} suffix="%" onChange={(v) => update({ runnerTriggerPct: v })} />
+          <NumField label={t("bots.smartExit.runnerTrail", lang)} value={settings.runnerTrailPct} min={0.1} step={0.1} suffix="%" onChange={(v) => update({ runnerTrailPct: v })} />
+          <NumField label={t("bots.smartExit.recycleAfter", lang)} value={settings.maxScalpHoldSec} min={0} step={15} suffix={t("bots.smartExit.secSuffix", lang)} onChange={(v) => update({ maxScalpHoldSec: v })} />
         </div>
         <p className="mt-3 text-[10px] text-muted-foreground/70" dir="rtl">
-          חל על עסקאות הקריפטו של כל הבוטים. נעילת הרווח מתחילה רק כשהעסקה בירוק; עסקאות חזקות שעוברות את "סף הריצה" מקבלות מרחב טריילינג גדול יותר כדי להמשיך לרוץ. הסוכן אף פעם לא מעמיק הפסד.
+          {t("bots.smartExit.note", lang)}
         </p>
       </section>
 
       {/* New bots */}
       <section className="space-y-3">
         <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-          <Rocket className="h-3.5 w-3.5" /> בוטים חדשים
+          <Rocket className="h-3.5 w-3.5" /> {t("bots.section.newBots", lang)}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {NEW_BOT_META.map((b) => {
@@ -1467,7 +1505,7 @@ export default function Bots() {
                 icon={b.icon}
                 title={b.title}
                 subtitle={b.subtitle}
-                hint={b.hint}
+                hint={t(NEW_BOT_HINT_KEY[b.id], lang)}
                 active={active}
                 onToggle={(v) => update({ [b.enabledKey]: v } as Partial<AutoTraderSettings>)}
                 open={counts[b.id]}
@@ -1488,7 +1526,7 @@ export default function Bots() {
                     onChange={(v) => update({ [b.maxKey]: v } as Partial<AutoTraderSettings>)}
                   />
                   <NumField
-                    label={b.thrLabel}
+                    label={t(NEW_BOT_THR_KEY[b.id], lang)}
                     value={settings[b.thrKey] as number}
                     min={1}
                     step={b.id === "dca" ? 5 : 1}
@@ -1513,7 +1551,7 @@ export default function Bots() {
             icon={Coins}
             title="Funding Arb Agent"
             subtitle="Delta-neutral cash-and-carry"
-            hint="פותח פוזיציות דלתא-נייטרל (בסיס + פרפ הפוך) שצוברות מימון מדומה — לימודי בלבד, ללא הבטחת תשואה"
+            hint={t("bots.funding.hint", lang)}
             active={settings.fundingEnabled}
             onToggle={(v) => update({ fundingEnabled: v })}
             open={counts.funding}
@@ -1534,7 +1572,7 @@ export default function Bots() {
                 onChange={(v) => update({ fundingMaxOpen: v })}
               />
               <NumField
-                label="מימון מינ' (% שנתי)"
+                label={t("bots.funding.minFunding", lang)}
                 value={settings.fundingMinAnnualizedPct}
                 min={1}
                 step={1}
@@ -1547,14 +1585,14 @@ export default function Bots() {
             icon={Sparkles}
             title="Options Agent"
             subtitle="Long CALL / PUT convexity"
-            hint="קונה אופציות CALL/PUT לונג בלבד על קריפטו ומניות לפי האותות החזקים — ההפסד המרבי הוא הפרמיה ששולמה בלבד. מדומה ולימודי בלבד, ללא הבטחת תשואה"
+            hint={t("bots.options.hint", lang)}
             active={settings.optionsEnabled}
             onToggle={(v) => update({ optionsEnabled: v })}
             open={counts.options}
           >
             <div className="grid grid-cols-2 gap-3">
               <NumField
-                label="פרמיה $ / עסקה"
+                label={t("bots.options.premium", lang)}
                 value={settings.optionStakePerTrade}
                 min={10}
                 step={10}
@@ -1568,14 +1606,14 @@ export default function Bots() {
                 onChange={(v) => update({ optionMaxOpen: v })}
               />
               <NumField
-                label="ביטחון מינ' %"
+                label={t("bots.options.minConfidence", lang)}
                 value={settings.optionMinConfidence}
                 min={1}
                 max={100}
                 onChange={(v) => update({ optionMinConfidence: v })}
               />
               <NumField
-                label="תפוגה (ימים)"
+                label={t("bots.options.expiry", lang)}
                 value={settings.optionExpiryDays}
                 min={1}
                 max={90}
@@ -1602,21 +1640,21 @@ export default function Bots() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold tracking-wide truncate">Scalp Squad · חמ״ל הסקאלפרים</h3>
+                <h3 className="text-sm font-semibold tracking-wide truncate">{t("bots.squad.header", lang)}</h3>
                 <Switch checked={scalpOn} onCheckedChange={(v) => applyCrypto(v, momOn)} aria-label="Toggle Scalp Squad" />
               </div>
-              <p className="text-[11px] text-muted-foreground">5 בוטים מתואמים שמחלקים ביניהם את איתותי הסקאלפ</p>
+              <p className="text-[11px] text-muted-foreground">{t("bots.squad.sub", lang)}</p>
               <p className="text-[10px] text-muted-foreground/70 mt-0.5" dir="rtl">
-                כל בוט מתמחה בפלח אחר (לונג / שורט / חזק / זריז / גיבוי); שניים לא נכנסים לאותו מטבע אלא בקונצנזוס גבוה
+                {t("bots.squad.hint", lang)}
               </p>
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[10px] font-mono text-muted-foreground">
               {squadOpen > 0 ? (
-                <span className="text-primary">{squadOpen} פוזיציות פתוחות</span>
+                <span className="text-primary">{squadOpen} {t("bots.squad.openPositions", lang)}</span>
               ) : (
-                <span>אין פוזיציות פתוחות</span>
+                <span>{t("bots.squad.noPositions", lang)}</span>
               )}
             </span>
             <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${scalpOn ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/40 text-muted-foreground"}`}>
@@ -1640,16 +1678,16 @@ export default function Bots() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1.5">
-                        <h4 className="text-xs font-semibold truncate" dir="rtl">{member.name}</h4>
-                        <span className="text-[8px] font-mono px-1 py-0.5 rounded bg-muted/40 text-muted-foreground shrink-0">{member.role}</span>
+                        <h4 className="text-xs font-semibold truncate" dir="rtl">{t(`bots.squad.${member.id}.name`, lang)}</h4>
+                        <span className="text-[8px] font-mono px-1 py-0.5 rounded bg-muted/40 text-muted-foreground shrink-0">{t(`bots.squad.${member.id}.role`, lang)}</span>
                       </div>
-                      <p className="text-[9px] text-muted-foreground/70 leading-tight mt-0.5" dir="rtl">{member.tagline}</p>
+                      <p className="text-[9px] text-muted-foreground/70 leading-tight mt-0.5" dir="rtl">{t(`bots.squad.${member.id}.tagline`, lang)}</p>
                     </div>
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-1">
-                    <StatChip label="פתוח" value={String(open)} tone={open > 0 ? "good" : undefined} />
-                    <StatChip label="עסקאות" value={trades > 0 ? `${wins}/${trades}` : "—"} />
-                    <StatChip label="רווח" value={trades > 0 ? `${net >= 0 ? "+" : "-"}$${Math.abs(Math.round(net))}` : "—"} tone={trades > 0 ? (net >= 0 ? "good" : "bad") : undefined} />
+                    <StatChip label={t("bots.squad.open", lang)} value={String(open)} tone={open > 0 ? "good" : undefined} />
+                    <StatChip label={t("bots.squad.tradesLabel", lang)} value={trades > 0 ? `${wins}/${trades}` : "—"} />
+                    <StatChip label={t("bots.squad.pnl", lang)} value={trades > 0 ? `${net >= 0 ? "+" : "-"}$${Math.abs(Math.round(net))}` : "—"} tone={trades > 0 ? (net >= 0 ? "good" : "bad") : undefined} />
                   </div>
                 </div>
               );
@@ -1660,24 +1698,24 @@ export default function Bots() {
           <div className="mt-3 pt-3 border-t border-border/60">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Megaphone className="h-3 w-3" /> תקשורת הצוות
+                <Megaphone className="h-3 w-3" /> {t("bots.squad.comms", lang)}
               </h4>
               {comms.length > 0 && (
                 <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-muted-foreground" onClick={clearSquadMessages}>
-                  <RotateCcw className="h-3 w-3" /> ניקוי
+                  <RotateCcw className="h-3 w-3" /> {t("bots.squad.clear", lang)}
                 </Button>
               )}
             </div>
             <div className="max-h-44 overflow-y-auto space-y-1 pr-1" dir="rtl">
               {comms.length === 0 ? (
                 <p className="text-[10px] text-muted-foreground/60 py-3 text-center">
-                  {scalpOn ? "ממתין לאיתותים — הצוות ידווח על כניסות, יציאות וגיבוי בזמן אמת." : "הפעל את הצוות כדי לראות תקשורת חיה."}
+                  {scalpOn ? t("bots.squad.commsWaiting", lang) : t("bots.squad.commsOff", lang)}
                 </p>
               ) : (
                 comms.map((m) => (
                   <div key={m.id} className="flex items-start gap-2 text-[10px] font-mono leading-snug">
                     <span className="text-muted-foreground/50 tabular-nums shrink-0" dir="ltr">{commsClock(m.at)}</span>
-                    <span className={`${COMMS_TONE[m.kind]} min-w-0`}>{m.text}</span>
+                    <span className={`${COMMS_TONE[m.kind]} min-w-0`}>{renderComms(m, lang)}</span>
                   </div>
                 ))
               )}
@@ -1689,18 +1727,18 @@ export default function Bots() {
       {/* Existing core bots */}
       <section className="space-y-3">
         <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-          <ShieldCheck className="h-3.5 w-3.5" /> בוטים קיימים
+          <ShieldCheck className="h-3.5 w-3.5" /> {t("bots.section.existingBots", lang)}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <BotCard id="bot-momentum" icon={Rocket} title="Momentum Bot" subtitle="Volume-surge runners" hint="רוכב על מטבעות עם זינוק נפח ומומנטום" active={momOn} onToggle={(v) => applyCrypto(scalpOn, v)} open={counts.momentum} />
-          <BotCard id="bot-smart" icon={Megaphone} title="Smart-Money Stocks" subtitle="Technical + influencer fusion" hint="מניות לפי שילוב טכני וסנטימנט משפיענים" active={settings.stocksEnabled} onToggle={(v) => update({ stocksEnabled: v })} open={counts.smart} />
-          <BotCard id="bot-poly" icon={Timer} title="Polymarket BTC" subtitle="Same-day up/down bets" hint="הימורי כיוון יומיים על ביטקוין" active={settings.polyEnabled} onToggle={(v) => update({ polyEnabled: v })} open={counts.poly} />
+          <BotCard id="bot-momentum" icon={Rocket} title="Momentum Bot" subtitle="Volume-surge runners" hint={t("bots.core.momentumHint", lang)} active={momOn} onToggle={(v) => applyCrypto(scalpOn, v)} open={counts.momentum} />
+          <BotCard id="bot-smart" icon={Megaphone} title="Smart-Money Stocks" subtitle="Technical + influencer fusion" hint={t("bots.core.smartHint", lang)} active={settings.stocksEnabled} onToggle={(v) => update({ stocksEnabled: v })} open={counts.smart} />
+          <BotCard id="bot-poly" icon={Timer} title="Polymarket BTC" subtitle="Same-day up/down bets" hint={t("bots.core.polyHint", lang)} active={settings.polyEnabled} onToggle={(v) => update({ polyEnabled: v })} open={counts.poly} />
         </div>
       </section>
 
       <p className="text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5" dir="rtl">
         <Activity className="h-3 w-3" />
-        כל הבוטים פועלים על תיק נייר (paper trading) בלבד — אין כאן כסף אמיתי או ייעוץ השקעות.
+        {t("bots.disclaimer", lang)}
       </p>
     </div>
   );

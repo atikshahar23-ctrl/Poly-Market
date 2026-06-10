@@ -16,11 +16,11 @@ export interface SquadMessage {
   at: number;
   /** Squad member id, or "squad" for coordinator-level chatter. */
   memberId: string;
-  /** Hebrew display name of the speaker. */
-  memberName: string;
   kind: SquadMessageKind;
-  /** Fully composed Hebrew line (volatile tokens already bidi-isolated). */
-  text: string;
+  /** i18n key of the line template (localized + interpolated at render). */
+  textKey: string;
+  /** Raw, un-localized tokens interpolated into the template at render time. */
+  tokens?: Record<string, string>;
 }
 
 const MAX_MESSAGES = 40;
@@ -34,18 +34,18 @@ function emit() {
 /** Publish one chatter line; newest first, capped to the last MAX_MESSAGES. */
 export function pushSquadMessage(msg: {
   memberId: string;
-  memberName: string;
   kind: SquadMessageKind;
-  text: string;
+  textKey: string;
+  tokens?: Record<string, string>;
   at?: number;
 }): void {
   const full: SquadMessage = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     at: msg.at ?? Date.now(),
     memberId: msg.memberId,
-    memberName: msg.memberName,
     kind: msg.kind,
-    text: msg.text,
+    textKey: msg.textKey,
+    tokens: msg.tokens,
   };
   messages = [full, ...messages].slice(0, MAX_MESSAGES);
   emit();

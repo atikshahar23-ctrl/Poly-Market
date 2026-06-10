@@ -14,10 +14,10 @@ import { recommendLevels } from "@/lib/recommend-levels";
 import { useAutoTrader, resolveSizing, cashReserveFloor, intensityProfile, alphaAdjust, assignScalpSquad, squadMemberBySource, SCALP_SQUAD, NEUTRAL_ALPHA, ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT, type AlphaState, type ScalpConfidence, type ScalpSquadMember } from "@/contexts/autotrader-context";
 import { useFavorites } from "@/contexts/favorites-context";
 import { useLivePrices } from "@/contexts/live-price-context";
-import { pushSquadMessage, clearSquadMessages, squadIso } from "@/lib/squad-comms";
+import { pushSquadMessage, clearSquadMessages } from "@/lib/squad-comms";
 import { toast } from "@/hooks/use-toast";
+import { t } from "@/lib/i18n";
 import { useLanguage } from "@/contexts/language-context";
-import { t as tr } from "@/lib/i18n";
 
 /** Compact signed USD string for squad chatter (e.g. "+$12" / "-$4"). */
 function fmtUsd(n: number): string {
@@ -112,7 +112,6 @@ export function AutoTraderEngine() {
   } = usePortfolio();
   const { settings, update, getAssetCaution, recordAssetResult, publishAlpha } = useAutoTrader();
   const { isFavorite } = useFavorites();
-  const { lang } = useLanguage();
   // Boost mode: while the deadline is in the future every bot trades at maximum
   // cadence — tiny cooldowns, faster polling and fast profit-banking.
   const boostActive = settings.boostUntil > Date.now();
@@ -121,6 +120,11 @@ export function AutoTraderEngine() {
   // Sub-second crypto prices from the free Binance WebSocket — lets SL/TP and the
   // pre-liquidation guard react near-instantly instead of waiting on 30s polling.
   const { get: getLivePrice, version: liveVersion } = useLivePrices();
+  // Localize transient toasts fired inside effects without re-subscribing them to
+  // `lang`: read the freshest language from a ref updated on every render.
+  const { lang } = useLanguage();
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const { data: overview } = useGetMarketOverview({
     query: { queryKey: getGetMarketOverviewQueryKey(), refetchInterval: 30000, staleTime: 20000 },
@@ -307,19 +311,18 @@ export function AutoTraderEngine() {
       const src = t.source ?? "";
       if (!src.startsWith("Scalp Squad")) continue;
       const member = squadMemberBySource(src);
-      const name = member?.name ?? tr("ate.squadName", lang);
       const sym = t.symbol ?? "";
       pushSquadMessage({
         memberId: member?.id ?? "squad",
-        memberName: name,
         kind: "exit",
-        text: `${name} ${tr("ate.closedProfit", lang)} ${squadIso(sym)} ${t.pnl >= 0 ? tr("ate.profit", lang) : tr("ate.closedLoss", lang)} ${squadIso(fmtUsd(t.pnl))}`,
+        textKey: "bots.comms.exit",
+        tokens: { sym, result: t.pnl >= 0 ? "profit" : "loss", usd: fmtUsd(t.pnl) },
       });
       pushSquadMessage({
         memberId: "squad",
-        memberName: tr("ate.coordination", lang),
         kind: "info",
-        text: `${tr("ate.freed", lang)}-${squadIso(sym)} — ${tr("ate.nextSetup", lang)}`,
+        textKey: "bots.comms.freed",
+        tokens: { sym },
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -412,8 +415,8 @@ export function AutoTraderEngine() {
             peakRef.current.delete(pos.id);
             toast({
               variant: "success",
-              title: `${tr("ate.smartClose", lang)} · ${isRunner ? tr("ate.profitRun", lang) : tr("ate.quickScalp", lang)} ${pos.asset}`,
-              description: `${pos.direction} +${gainPct.toFixed(2)}% (${tr("ate.peak", lang)} +${peakGainPct.toFixed(2)}%)`,
+              title: `${t("bots.ate.smartExitPrefix", langRef.current)} · ${isRunner ? t("bots.ate.runner", langRef.current) : t("bots.ate.quickScalp", langRef.current)} ${pos.asset}`,
+              description: `${pos.direction} +${gainPct.toFixed(2)}% ${t("bots.ate.descPeak", langRef.current).replace("{peak}", peakGainPct.toFixed(2))}`,
             });
           }
           continue;
@@ -425,8 +428,8 @@ export function AutoTraderEngine() {
           peakRef.current.delete(pos.id);
           toast({
             variant: "success",
-            title: `${tr("ate.smartClose", lang)} · ${tr("ate.recycle", lang)} ${pos.asset}`,
-            description: `${pos.direction} +${gainPct.toFixed(2)}% ${tr("ate.after", lang)} ${Math.round(ageMs / 1000)} ${tr("ate.secAbbr", lang)}`,
+            title: `${t("bots.ate.smartExitPrefix", langRef.current)} · ${t("bots.ate.recycle", langRef.current)} ${pos.asset}`,
+            description: `${pos.direction} +${gainPct.toFixed(2)}% ${t("bots.ate.descAfter", langRef.current).replace("{sec}", String(Math.round(ageMs / 1000)))}`,
           });
           continue;
         }
@@ -440,8 +443,8 @@ export function AutoTraderEngine() {
           peakRef.current.delete(pos.id);
           toast({
             variant: "destructive",
-            title: `${tr("ate.smartClose", lang)} · ${tr("ate.lossCut", lang)} ${pos.asset}`,
-            description: `${pos.direction} ${gainPct.toFixed(2)}% ${tr("ate.after", lang)} ${Math.round(ageMs / 1000)} ${tr("ate.secAbbr", lang)} · ${tr("ate.noSlSet", lang)}`,
+            title: `${t("bots.ate.smartExitPrefix", langRef.current)} · ${t("bots.ate.lossCut", langRef.current)} ${pos.asset}`,
+            description: `${pos.direction} ${gainPct.toFixed(2)}% ${t("bots.ate.descAfter", langRef.current).replace("{sec}", String(Math.round(ageMs / 1000)))} · ${t("bots.ate.noSl", langRef.current)}`,
           });
         }
       }
@@ -647,14 +650,11 @@ export function AutoTraderEngine() {
       now - lastBackupRef.current > 45000
     ) {
       lastBackupRef.current = now;
-      const dirHe = alphaState.direction === "LONG" ? tr("ate.dirLong", lang) : tr("ate.dirShort", lang);
       pushSquadMessage({
         memberId: "squad",
-        memberName: tr("ate.coordination", lang),
         kind: "backup",
-        text: tr("ate.backupCall", lang)
-          .replace("{dir}", squadIso(dirHe))
-          .replace("{conf}", squadIso(alphaState.confluence + "%")),
+        textKey: "bots.comms.backup",
+        tokens: { dir: alphaState.direction, pct: `${alphaState.confluence}%` },
       });
     }
 
@@ -698,16 +698,12 @@ export function AutoTraderEngine() {
       availableCash -= margin;
       autoOpen += 1;
       if (member) {
-        const dirHe = c.direction === "LONG" ? tr("ate.dirLong", lang) : tr("ate.dirShort", lang);
         const isBackup = (squadHeldByAsset.get(c.asset)?.size ?? 0) > 0;
         pushSquadMessage({
           memberId: member.id,
-          memberName: member.name,
           kind: isBackup ? "backup" : "entry",
-          text: (isBackup ? tr("ate.squadBackup", lang) : tr("ate.squadEntry", lang))
-            .replace("{name}", member.name)
-            .replace("{dir}", squadIso(dirHe))
-            .replace("{asset}", squadIso(c.asset)),
+          textKey: isBackup ? "bots.comms.backupJoin" : "bots.comms.entry",
+          tokens: { dir: c.direction, sym: c.asset },
         });
       }
       toast({

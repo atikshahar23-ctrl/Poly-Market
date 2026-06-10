@@ -13,6 +13,7 @@ import { useAutoTrader } from "@/contexts/autotrader-context";
 import { useLocation } from "wouter";
 import { X, Send, Sparkles, ExternalLink, Mic, MicOff, Volume2, VolumeX, Zap } from "lucide-react";
 import logoUrl from "@/assets/logo-heavy-guard.png";
+import { t } from "@/lib/i18n";
 
 interface MsgLink {
   label: string;
@@ -762,7 +763,7 @@ export function Jarvis() {
       {micSupported && (
         <button
           onClick={toggleMic}
-          aria-label={listening ? "Stop listening" : "Talk to JARVIS"}
+          aria-label={listening ? t("misc.jarvis.stopListening", lang) : t("misc.jarvis.talkToJarvis", lang)}
           className={`p-1.5 rounded transition-colors ${listening ? "bg-red-500/20 text-red-400 animate-pulse" : "text-muted-foreground hover:text-primary hover:bg-secondary/60"}`}
         >
           {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -771,7 +772,7 @@ export function Jarvis() {
       {ttsSupported && (
         <button
           onClick={() => setMuted((m) => !m)}
-          aria-label={muted ? "Unmute JARVIS" : "Mute JARVIS"}
+          aria-label={muted ? t("misc.jarvis.unmuteJarvis", lang) : t("misc.jarvis.muteJarvis", lang)}
           className={`p-1.5 rounded transition-colors ${muted ? "text-muted-foreground hover:text-foreground hover:bg-secondary/60" : "text-primary hover:bg-secondary/60"}`}
         >
           {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -824,7 +825,7 @@ export function Jarvis() {
                 </div>
                 <button
                   onClick={dismissBoost}
-                  aria-label="Dismiss boost alert"
+                  aria-label={t("misc.jarvis.dismissBoostAlert", lang)}
                   className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors shrink-0"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -884,7 +885,7 @@ export function Jarvis() {
                 </div>
                 <button
                   onClick={dismissTip}
-                  aria-label="Dismiss tip"
+                  aria-label={t("misc.jarvis.dismissTip", lang)}
                   className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors shrink-0"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -897,7 +898,7 @@ export function Jarvis() {
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            aria-label="Open JARVIS"
+            aria-label={t("misc.jarvis.openJarvis", lang)}
             className="relative grid place-items-center rounded-full cursor-grab active:cursor-grabbing jarvis-float"
             style={{ width: AVATAR, height: AVATAR, boxShadow: "0 0 28px hsl(207 30% 70% / 0.28)" }}
           >
@@ -1062,7 +1063,7 @@ export function Jarvis() {
               <button
                 type="button"
                 onClick={toggleMic}
-                aria-label={listening ? "Stop listening" : "Talk to JARVIS"}
+                aria-label={listening ? t("misc.jarvis.stopListening", lang) : t("misc.jarvis.talkToJarvis", lang)}
                 className={`h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 border transition-colors ${listening ? "bg-red-500/20 border-red-500/40 text-red-400 animate-pulse" : "border-border bg-secondary/40 text-muted-foreground hover:text-primary hover:border-primary/50"}`}
               >
                 {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}

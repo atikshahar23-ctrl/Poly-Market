@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useCalendarEvents } from "@/hooks/use-calendar-events";
+import { useLanguage } from "@/contexts/language-context";
 import { relativeDayLabel, type CalendarEvent } from "@/lib/news-calendar-bot";
 
 const SEEN_KEY = "arb_scan_calendar_seen";
@@ -30,6 +31,7 @@ function saveSeen(seen: Set<string>) {
  * high/medium-impact items trigger a toast to keep it quiet and useful.
  */
 export function CalendarAlerter() {
+  const { lang } = useLanguage();
   const { upcoming } = useCalendarEvents();
   const { toast } = useToast();
   const seenRef = useRef<Set<string>>(loadSeen());
@@ -45,12 +47,12 @@ export function CalendarAlerter() {
     for (const e of toAlert) {
       seenRef.current.add(e.id);
       toast({
-        title: `📅 ${relativeDayLabel(e, now)} · ${e.category}`,
+        title: `📅 ${relativeDayLabel(e, now, lang)} · ${e.category}`,
         description: e.title,
       });
     }
     saveSeen(seenRef.current);
-  }, [upcoming, toast]);
+  }, [upcoming, toast, lang]);
 
   return null;
 }
