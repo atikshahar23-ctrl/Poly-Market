@@ -434,6 +434,18 @@ export interface AutoTraderSettings {
   intensityByWallet: Record<string, number>;
 
   /**
+   * Per-wallet bot settings overrides. Each wallet can have its own copy of
+   * every bot setting (leverage, margin, enabled, strategy, etc.) so a "calm"
+   * long-term wallet and an "aggressive" scalping wallet don't share one config.
+   * A wallet without an entry falls back to the global settings.
+   *
+   * The `walletSettings` field is NEVER stored inside a wallet override (it is
+   * stripped by the setter); the active wallet's override is merged on top of the
+   * global defaults in `effectiveSettings`.
+   */
+  walletSettings: Record<string, Partial<AutoTraderSettings>>;
+
+  /**
    * Fleet-wide trade temperament applied to EVERY bot on top of the gear:
    * "NORMAL" = regular behaviour; "CALCULATED" = an extra-deliberate, long-term
    * mode that makes the bots much stricter, trade far less often, and ride
@@ -646,6 +658,7 @@ export const DEFAULT_SETTINGS: AutoTraderSettings = {
   cashFloorPct: 20,
   intensity: 2,
   intensityByWallet: {},
+  walletSettings: {},
   tradeMode: "NORMAL",
 
   strategy: "BOTH",
@@ -1041,29 +1054,51 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
   const [alpha, setAlpha] = useState<AlphaState>(NEUTRAL_ALPHA);
   const publishAlpha = useCallback((a: AlphaState) => setAlpha(a), []);
 
-  // When a new wallet is created, disarm every bot so the user starts fresh
-  // with no automated trading. All leverage/stake settings stay untouched.
+  // When a new wallet is created, disarm every bot for that specific wallet so
+  // the user starts fresh. All leverage/stake settings stay untouched; only the
+  // enablement flags are set to false.
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: CustomEvent<{ walletId: string }>) => {
+      const wid = e.detail.walletId;
       setSettings((prev) => ({
         ...prev,
-        enabled: false,
-        stocksEnabled: false,
-        polyEnabled: false,
-        dipEnabled: false,
-        breakoutEnabled: false,
-        dcaEnabled: false,
-        fundingEnabled: false,
-        optionsEnabled: false,
-        alphaCoordinatorEnabled: false,
-        dynamicCapitalEnabled: false,
-        maxPerfEnabled: false,
-        momentumDriveEnabled: false,
-        boostUntil: 0,
+        walletSettings: {
+          ...prev.walletSettings,
+          [wid]: {
+            ...(prev.walletSettings[wid] ?? {}),
+            enabled: false,
+            stocksEnabled: false,
+            polyEnabled: false,
+            dipEnabled: false,
+            breakoutEnabled: false,
+            dcaEnabled: false,
+            fundingEnabled: false,
+            optionsEnabled: false,
+            alphaCoordinatorEnabled: false,
+            dynamicCapitalEnabled: false,
+            maxPerfEnabled: false,
+            momentumDriveEnabled: false,
+          },
+        },
       }));
     };
-    window.addEventListener("wallet-created", handler);
-    return () => window.removeEventListener("wallet-created", handler);
+    window.addEventListener("wallet-created", handler as EventListener);
+    return () => window.removeEventListener("wallet-created", handler as EventListener);
+  }, []);
+
+  // When a wallet is deleted, clean up its per-wallet settings so the storage
+  // never accumulates orphaned state.
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ walletId: string }>) => {
+      const wid = e.detail.walletId;
+      setSettings((prev) => {
+        const { [wid]: _, ...restWalletSettings } = prev.walletSettings;
+        const { [wid]: __, ...restIntensity } = prev.intensityByWallet;
+        return { ...prev, walletSettings: restWalletSettings, intensityByWallet: restIntensity };
+      });
+    };
+    window.addEventListener("wallet-deleted", handler as EventListener);
+    return () => window.removeEventListener("wallet-deleted", handler as EventListener);
   }, []);
 
   // The trading-intensity gear is per-wallet. Track the active wallet so the gear
@@ -1092,23 +1127,79 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
     sync.save("autotrader", settings);
   }, [settings]);
 
+  /** Fields that are truly global (fleet-wide) and never scoped per-wallet. */
+  const GLOBAL_SETTINGS_KEYS = useMemo(
+    () =>
+      new Set<keyof AutoTraderSettings>([
+        "walletSettings",
+        "intensityByWallet",
+        "botStats",
+        "assetStats",
+        "recordedTradeIds",
+        "riskGuards",
+        "boostUntil",
+        "boostDurationMin",
+        "maxPerfEnabled",
+        "momentumDriveEnabled",
+        "momentumDriveStakePct",
+        "momentumDriveMaxLeverage",
+        "alphaCoordinatorEnabled",
+      ]),
+    [],
+  );
+
   const update = useCallback((patch: Partial<AutoTraderSettings>) => {
     setSettings((prev) => {
-      // Route the intensity gear to the active wallet so each wallet keeps its
-      // own level; everything else stays a shared fleet-wide setting.
-      if (patch.intensity !== undefined) {
-        const { intensity, ...rest } = patch;
-        const wid = activeWalletIdRef.current;
-        const level = Math.max(1, Math.min(5, Math.round(intensity) || 1));
-        return {
-          ...prev,
-          ...rest,
-          intensityByWallet: wid
-            ? { ...prev.intensityByWallet, [wid]: level }
-            : prev.intensityByWallet,
-        };
+      const wid = activeWalletIdRef.current;
+
+      // If there's no active wallet, everything is global
+      if (!wid) {
+        return { ...prev, ...patch };
       }
-      return { ...prev, ...patch };
+
+      // Separate global fields from wallet-specific fields
+      const globalPatch: Partial<AutoTraderSettings> = {};
+      const walletPatch: Partial<AutoTraderSettings> = {};
+
+      for (const [key, value] of Object.entries(patch)) {
+        const k = key as keyof AutoTraderSettings;
+        if (GLOBAL_SETTINGS_KEYS.has(k)) {
+          (globalPatch as any)[k] = value;
+        } else {
+          (walletPatch as any)[k] = value;
+        }
+      }
+
+      // Handle intensity specially (existing intensityByWallet mechanism)
+      if (patch.intensity !== undefined) {
+        const level = Math.max(1, Math.min(5, Math.round(patch.intensity) || 1));
+        globalPatch.intensityByWallet = {
+          ...prev.intensityByWallet,
+          [wid]: level,
+        };
+        // Don't store intensity in walletSettings; it stays in intensityByWallet
+        delete (walletPatch as any).intensity;
+      }
+
+      const hasWalletChanges = Object.keys(walletPatch).length > 0;
+      const hasGlobalChanges = Object.keys(globalPatch).length > 0;
+
+      if (!hasWalletChanges && !hasGlobalChanges) {
+        return prev;
+      }
+
+      const nextWalletSettings = hasWalletChanges
+        ? {
+            ...prev.walletSettings,
+            [wid]: { ...(prev.walletSettings[wid] ?? {}), ...walletPatch },
+          }
+        : prev.walletSettings;
+
+      return {
+        ...prev,
+        ...globalPatch,
+        walletSettings: nextWalletSettings,
+      };
     });
   }, []);
 
@@ -1121,13 +1212,20 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleEnabled = useCallback(() => {
-    setSettings((prev) => ({ ...prev, enabled: !prev.enabled }));
-  }, []);
+    const wid = activeWalletIdRef.current;
+    if (!wid) {
+      setSettings((prev) => ({ ...prev, enabled: !prev.enabled }));
+      return;
+    }
+    const perWallet = settings.walletSettings[wid];
+    const current = perWallet?.enabled ?? settings.enabled;
+    update({ enabled: !current });
+  }, [settings, update]);
 
   const startBoost = useCallback((durationMs = BOOST_DURATION_MS) => {
-    setSettings((prev) => ({
-      ...prev,
-      // Arm every bot so the whole fleet participates in the boost.
+    // boostUntil is global (controls the fleet-wide timer), while bot enablements
+    // are routed to the active wallet via update().
+    update({
       enabled: true,
       strategy: "BOTH",
       stocksEnabled: true,
@@ -1138,8 +1236,8 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
       fundingEnabled: true,
       optionsEnabled: true,
       boostUntil: Date.now() + Math.min(BOOST_MAX_MS, Math.max(1000, durationMs)),
-    }));
-  }, []);
+    });
+  }, [update]);
 
   const stopBoost = useCallback(() => {
     setSettings((prev) => (prev.boostUntil ? { ...prev, boostUntil: 0 } : prev));
@@ -1279,7 +1377,19 @@ export function AutoTraderProvider({ children }: { children: ReactNode }) {
   const effectiveSettings = useMemo<AutoTraderSettings>(() => {
     const perWallet = activeWalletId ? settings.intensityByWallet[activeWalletId] : undefined;
     const level = perWallet ?? settings.intensity;
-    let eff = level === settings.intensity ? settings : { ...settings, intensity: level };
+    // Merge the active wallet's per-wallet settings override on top of globals.
+    // Intensity is already resolved from intensityByWallet; strip it from the
+    // wallet override so it doesn't revert. Also strip nested collection fields
+    // so the merge never leaks a per-wallet copy of walletSettings/botStats/etc.
+    const walletOverride = activeWalletId ? settings.walletSettings[activeWalletId] : undefined;
+    let eff = walletOverride
+      ? (() => {
+          const { intensity: _i, walletSettings: _w, intensityByWallet: _ib, botStats: _b, assetStats: _a, recordedTradeIds: _r, riskGuards: _rg, ...clean } = walletOverride;
+          return { ...settings, intensity: level, ...clean };
+        })()
+      : level === settings.intensity
+        ? settings
+        : { ...settings, intensity: level };
 
     // ── Max Performance overrides ──
     // Layer the top-end fleet settings on top of the saved values WITHOUT

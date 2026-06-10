@@ -550,6 +550,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         prev.activeWalletId === id ? wallets[0].id : prev.activeWalletId;
       return { wallets, activeWalletId };
     });
+    if (!error) {
+      window.dispatchEvent(new CustomEvent("wallet-deleted", { detail: { walletId: id } }));
+    }
     return error;
   }, [lang]);
 
