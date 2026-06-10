@@ -723,6 +723,51 @@ export interface FundingBacktest {
   fetchedAt: string;
 }
 
+export interface BinanceCredentialsStatus {
+  connected: boolean;
+  /** Masked API key (e.g., abcd****wxyz). Null when not connected. */
+  key?: string | null;
+}
+
+export interface BinanceCredentialsInput {
+  /**
+     * Binance API key
+     * @minLength 1
+     */
+  apiKey: string;
+  /**
+     * Binance API secret
+     * @minLength 1
+     */
+  secret: string;
+}
+
+export interface BinanceAssetBalance {
+  asset: string;
+  free: number;
+  locked: number;
+  total: number;
+}
+
+export interface BinanceBalance {
+  /** Total USDT balance (free + locked) */
+  totalUsdt: number;
+  balances: BinanceAssetBalance[];
+}
+
+export interface BinanceOrder {
+  symbol: string;
+  side: string;
+  type: string;
+  price: number;
+  qty: number;
+  status: string;
+}
+
+export interface BinanceOrders {
+  orders: BinanceOrder[];
+}
+
 export type GetBinanceDataParams = {
 /**
  * Trading symbol (e.g. BTCUSDT, ETHUSDT)

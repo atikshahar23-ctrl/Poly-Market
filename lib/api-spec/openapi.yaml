@@ -16,6 +16,10 @@ tags:
     description: All-categories Polymarket browser
   - name: stocks
     description: Stock and index market data and recommendations
+  - name: user
+    description: User state and profile
+  - name: binance-user
+    description: User-managed Binance API credentials (read-only)
 paths:
   /healthz:
     get:
@@ -750,6 +754,138 @@ paths:
                 $ref: "#/components/schemas/UserStateEntry"
         "413":
           description: Payload too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/credentials:
+    get:
+      operationId: getBinanceCredentials
+      tags: [binance-user]
+      summary: Check if the user has connected a Binance API key
+      description: Returns the masked key and connection status. 401 if not signed in.
+      responses:
+        "200":
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceCredentialsStatus"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: putBinanceCredentials
+      tags: [binance-user]
+      summary: Save and encrypt Binance API credentials
+      description: Encrypts the key and secret using the server-side SESSION_SECRET and stores them in user_state. The server validates the credentials with a lightweight test call before saving.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BinanceCredentialsInput"
+      responses:
+        "200":
+          description: Saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceCredentialsStatus"
+        "400":
+          description: Invalid input or Binance rejected the test call
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteBinanceCredentials
+      tags: [binance-user]
+      summary: Remove stored Binance API credentials
+      description: Deletes the encrypted credentials from the server. This is a hard delete — no recovery.
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceCredentialsStatus"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/balance:
+    get:
+      operationId: getBinanceBalance
+      tags: [binance-user]
+      summary: Get the user's real Binance account balance
+      description: Fetches the live spot account balance from Binance using the stored API key. Returns total USDT and per-asset breakdown.
+      responses:
+        "200":
+          description: Balance data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceBalance"
+        "400":
+          description: No credentials stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Binance API error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/orders:
+    get:
+      operationId: getBinanceOrders
+      tags: [binance-user]
+      summary: Get the user's open orders on Binance
+      description: Fetches open spot orders from Binance using the stored API key.
+      responses:
+        "200":
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceOrders"
+        "400":
+          description: No credentials stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Binance API error
           content:
             application/json:
               schema:
@@ -2081,4 +2217,95 @@ components:
           items:
             $ref: "#/components/schemas/FundingRatePoint"
         fetchedAt:
+          type: string
+
+    BinanceCredentialsStatus:
+      type: object
+      required:
+        - connected
+      properties:
+        connected:
+          type: boolean
+        key:
+          type: string
+          nullable: true
+          description: Masked API key (e.g., abcd****wxyz). Null when not connected.
+
+    BinanceCredentialsInput:
+      type: object
+      required:
+        - apiKey
+        - secret
+      properties:
+        apiKey:
+          type: string
+          minLength: 1
+          description: Binance API key
+        secret:
+          type: string
+          minLength: 1
+          description: Binance API secret
+
+    BinanceBalance:
+      type: object
+      required:
+        - totalUsdt
+        - balances
+      properties:
+        totalUsdt:
+          type: number
+          description: Total USDT balance (free + locked)
+        balances:
+          type: array
+          items:
+            $ref: "#/components/schemas/BinanceAssetBalance"
+
+    BinanceAssetBalance:
+      type: object
+      required:
+        - asset
+        - free
+        - locked
+        - total
+      properties:
+        asset:
+          type: string
+        free:
+          type: number
+        locked:
+          type: number
+        total:
+          type: number
+
+    BinanceOrders:
+      type: object
+      required:
+        - orders
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/BinanceOrder"
+
+    BinanceOrder:
+      type: object
+      required:
+        - symbol
+        - side
+        - type
+        - price
+        - qty
+        - status
+      properties:
+        symbol:
+          type: string
+        side:
+          type: string
+        type:
+          type: string
+        price:
+          type: number
+        qty:
+          type: number
+        status:
           type: string

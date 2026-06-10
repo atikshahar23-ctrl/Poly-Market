@@ -282,6 +282,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "sim.liqLabel": { he: "חיסול", en: "LIQ" },
   "sim.liqTooltip": { he: "מחיר חיסול — אם המחיר החי חוצה אותו, הפוזיציה נסגרת בכפייה וכל המרג׳ין אובד (כמו בבורסה אמיתית).", en: "Liquidation price — if the live price crosses it, the position is force-closed and the entire margin is lost (just like a real exchange)." },
   "sim.closeChart": { he: "סגור גרף", en: "Close chart" },
+  "sim.realBalance": { he: "יתרה אמיתית בביננס", en: "Real Binance balance" },
 
   // --- Wallet Switcher ---
   "wallet.myWallets": { he: "הארנקים שלי", en: "My Wallets" },

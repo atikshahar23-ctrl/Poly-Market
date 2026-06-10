@@ -659,6 +659,76 @@ export const PutUserStateResponse = zod.object({
 
 
 /**
+ * Returns the masked key and connection status. 401 if not signed in.
+ * @summary Check if the user has connected a Binance API key
+ */
+export const GetBinanceCredentialsResponse = zod.object({
+  "connected": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key (e.g., abcd\*\*\*\*wxyz). Null when not connected.')
+})
+
+
+/**
+ * Encrypts the key and secret using the server-side SESSION_SECRET and stores them in user_state. The server validates the credentials with a lightweight test call before saving.
+ * @summary Save and encrypt Binance API credentials
+ */
+
+
+
+
+export const PutBinanceCredentialsBody = zod.object({
+  "apiKey": zod.string().min(1).describe('Binance API key'),
+  "secret": zod.string().min(1).describe('Binance API secret')
+})
+
+export const PutBinanceCredentialsResponse = zod.object({
+  "connected": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key (e.g., abcd\*\*\*\*wxyz). Null when not connected.')
+})
+
+
+/**
+ * Deletes the encrypted credentials from the server. This is a hard delete — no recovery.
+ * @summary Remove stored Binance API credentials
+ */
+export const DeleteBinanceCredentialsResponse = zod.object({
+  "connected": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key (e.g., abcd\*\*\*\*wxyz). Null when not connected.')
+})
+
+
+/**
+ * Fetches the live spot account balance from Binance using the stored API key. Returns total USDT and per-asset breakdown.
+ * @summary Get the user's real Binance account balance
+ */
+export const GetBinanceBalanceResponse = zod.object({
+  "totalUsdt": zod.number().describe('Total USDT balance (free + locked)'),
+  "balances": zod.array(zod.object({
+  "asset": zod.string(),
+  "free": zod.number(),
+  "locked": zod.number(),
+  "total": zod.number()
+}))
+})
+
+
+/**
+ * Fetches open spot orders from Binance using the stored API key.
+ * @summary Get the user's open orders on Binance
+ */
+export const GetBinanceOrdersResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "symbol": zod.string(),
+  "side": zod.string(),
+  "type": zod.string(),
+  "price": zod.number(),
+  "qty": zod.number(),
+  "status": zod.string()
+}))
+})
+
+
+/**
  * Upserts the caller's profile row with their privacy-safe display name and latest active-wallet value (cash + open position value). The user is derived from the Clerk session — never from the body. Implausible values are ignored (sane server-side bounds); the display name is still saved.
 
  * @summary Report the signed-in user's active-wallet value and display name

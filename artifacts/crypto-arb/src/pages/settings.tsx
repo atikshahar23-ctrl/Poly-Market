@@ -10,6 +10,10 @@ import {
   AlertTriangle,
   Info,
   Check,
+  Key,
+  Link,
+  Link2Off,
+  Shield,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 import { useAutoTrader, type AutoTraderSettings } from "@/contexts/autotrader-context";
@@ -20,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +36,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  useGetBinanceCredentials,
+  usePutBinanceCredentials,
+  useDeleteBinanceCredentials,
+} from "@workspace/api-client-react";
 
 const MOTION_KEY = "hg.reduceMotion";
 
@@ -148,6 +158,16 @@ export default function Settings() {
     }
   });
   const [appliedProfile, setAppliedProfile] = useState<RiskProfileId | null>(null);
+
+  // Binance API key inputs
+  const [binanceKey, setBinanceKey] = useState("");
+  const [binanceSecret, setBinanceSecret] = useState("");
+  const [binanceError, setBinanceError] = useState<string | null>(null);
+  const [binanceSuccess, setBinanceSuccess] = useState(false);
+
+  const { data: credStatus, isLoading: credLoading } = useGetBinanceCredentials();
+  const putCreds = usePutBinanceCredentials();
+  const deleteCreds = useDeleteBinanceCredentials();
 
   const activeProfile = detectProfile(settings);
 
@@ -346,6 +366,121 @@ export default function Settings() {
           />
         </CardContent>
       </Card>
+
+      {/* Binance API connection */}
+      {user && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Key className="h-4 w-4 text-primary" />
+              {t("set.binance.title", lang)}
+              {credStatus?.connected && (
+                <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                  <Link className="h-3 w-3 mr-1" />
+                  {t("set.binance.connected", lang)}
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>{t("set.binance.desc", lang)}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {credLoading ? (
+              <p className="text-sm text-muted-foreground">{t("nav.apiLoading", lang)}</p>
+            ) : credStatus?.connected ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/40 p-3">
+                  <Shield className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{credStatus.key}</p>
+                    <p className="text-xs text-muted-foreground">{t("set.binance.masked", lang)} · {t("set.binance.readOnly", lang)}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setBinanceError(null);
+                    setBinanceSuccess(false);
+                    deleteCreds.mutate(undefined, {
+                      onSuccess: () => {
+                        setBinanceKey("");
+                        setBinanceSecret("");
+                      },
+                      onError: () => setBinanceError(t("set.binance.errorDelete", lang)),
+                    });
+                  }}
+                  disabled={deleteCreds.isPending}
+                >
+                  <Link2Off className="h-4 w-4 mr-2" />
+                  {deleteCreds.isPending ? t("set.binance.delete", lang) + "..." : t("set.binance.delete", lang)}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">{t("set.binance.keyLabel", lang)}</label>
+                  <Input
+                    type="text"
+                    value={binanceKey}
+                    onChange={(e) => { setBinanceKey(e.target.value); setBinanceError(null); setBinanceSuccess(false); }}
+                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    autoComplete="off"
+                    dir="ltr"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">{t("set.binance.secretLabel", lang)}</label>
+                  <Input
+                    type="password"
+                    value={binanceSecret}
+                    onChange={(e) => { setBinanceSecret(e.target.value); setBinanceError(null); setBinanceSuccess(false); }}
+                    placeholder="••••••••••••••••"
+                    autoComplete="off"
+                    dir="ltr"
+                  />
+                </div>
+                {binanceError && (
+                  <p className="text-xs text-destructive">{binanceError}</p>
+                )}
+                {binanceSuccess && (
+                  <p className="text-xs text-emerald-500">{t("set.binance.saved", lang)}</p>
+                )}
+                <Button
+                  className="w-full"
+                  size="sm"
+                  onClick={() => {
+                    if (!binanceKey.trim() || !binanceSecret.trim()) {
+                      setBinanceError(t("set.binance.errorSave", lang));
+                      return;
+                    }
+                    setBinanceError(null);
+                    setBinanceSuccess(false);
+                    putCreds.mutate(
+                      { data: { apiKey: binanceKey.trim(), secret: binanceSecret.trim() } },
+                      {
+                        onSuccess: () => {
+                          setBinanceSuccess(true);
+                          setBinanceKey("");
+                          setBinanceSecret("");
+                        },
+                        onError: (err) => {
+                          const msg = (err as Error)?.message || t("set.binance.errorSave", lang);
+                          setBinanceError(msg);
+                        },
+                      }
+                    );
+                  }}
+                  disabled={putCreds.isPending}
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  {putCreds.isPending ? t("set.binance.save", lang) + "..." : t("set.binance.save", lang)}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Onboarding */}
       <Card>

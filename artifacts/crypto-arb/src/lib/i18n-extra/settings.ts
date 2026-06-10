@@ -56,4 +56,19 @@ export const settingsStrings: Record<string, Record<"he" | "en", string>> = {
 
   "set.about.title": { he: "אודות", en: "About" },
   "set.about.disclaimer": { he: "כל הפעילות היא הדמיה חינוכית בכסף וירטואלי בלבד — אין כסף אמיתי, אין הבטחות לרווח ואין ייעוץ פיננסי.", en: "All activity is educational simulation with virtual money only — no real money, no profit guarantees, and no financial advice." },
+
+  // --- Binance API ---
+  "set.binance.title": { he: "חיבור ביננס", en: "Binance Connection" },
+  "set.binance.desc": { he: "חברו את חשבון הביננס האמיתי שלכם לקבלת נתוני יתרה ועסקאות חיות (קריאה בלבד — אין מסחר אמיתי דרך האפליקציה).", en: "Connect your real Binance account to see live balance and open orders (read-only — no real trading through the app)." },
+  "set.binance.keyLabel": { he: "API Key", en: "API Key" },
+  "set.binance.secretLabel": { he: "API Secret", en: "API Secret" },
+  "set.binance.save": { he: "שמירה והצפנה", en: "Save & Encrypt" },
+  "set.binance.delete": { he: "ניתוק", en: "Disconnect" },
+  "set.binance.connected": { he: "מחובר", en: "Connected" },
+  "set.binance.notConnected": { he: "לא מחובר", en: "Not connected" },
+  "set.binance.masked": { he: "מוצפן במאגר", en: "Encrypted on server" },
+  "set.binance.readOnly": { he: "קריאה בלבד — המפתח אינו יכול לבצע עסקאות.", en: "Read-only — this key cannot place trades." },
+  "set.binance.errorSave": { he: "שגיאה בשמירה — בדקו שהמפתח והסוד נכונים.", en: "Save failed — check the key and secret are correct." },
+  "set.binance.errorDelete": { he: "שגיאה בניתוק", en: "Disconnect failed" },
+  "set.binance.saved": { he: "המפתח נשמר בהצלחה", en: "Key saved successfully" },
 };

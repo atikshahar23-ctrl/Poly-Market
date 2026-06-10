@@ -5,6 +5,8 @@ import {
   useGetAllMarkets, getGetAllMarketsQueryKey,
   useGetStocks, getGetStocksQueryKey,
   useGetStockRecommendations, getGetStockRecommendationsQueryKey,
+  useGetBinanceBalance,
+  useGetBinanceCredentials,
   type StockRecommendation, type StockQuote,
 } from "@workspace/api-client-react";
 import {
@@ -32,7 +34,7 @@ import {
   TrendingUp, TrendingDown, Wallet, RotateCcw, Search,
   ChartCandlestick, BarChart3, Trophy, History, X, Plus,
   ArrowUpRight, ArrowDownRight, LineChart, Lightbulb, ExternalLink,
-  ShieldAlert, Target, Clock, Bot, Sparkles, PlayCircle, Skull,
+  ShieldAlert, Target, Clock, Bot, Sparkles, PlayCircle, Skull, Link,
 } from "lucide-react";
 
 const LEVERAGE_OPTIONS = [1, 2, 3, 5, 10] as const;
@@ -161,6 +163,29 @@ function CompactStats({ unrealizedPnl, totalPositionValue }: { unrealizedPnl: nu
           <div className={`text-[8px] sm:text-[9px] font-mono ${s.subColor ?? "text-muted-foreground"}`}>{s.sub}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ─── Real Binance balance (read-only) ─── */
+function BinanceRealBalance() {
+  const { lang } = useLanguage();
+  const { data, isLoading } = useGetBinanceBalance();
+  const { data: credStatus } = useGetBinanceCredentials();
+  const totalUsdt = data?.totalUsdt ?? 0;
+  const isConnected = credStatus?.connected ?? false;
+
+  if (!isConnected) return null;
+
+  return (
+    <div
+      className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/5 px-2 py-1"
+      title={t("sim.realBalance", lang)}
+    >
+      <Link className="h-3 w-3 text-emerald-500 shrink-0" />
+      <span className="text-[10px] font-mono text-emerald-500">
+        {isLoading ? "..." : `${fmt(totalUsdt, 2)} USDT`}
+      </span>
     </div>
   );
 }
@@ -1511,6 +1536,7 @@ export default function SimulatorPage() {
             <span className="font-bold">{unrealizedPnl >= 0 ? "+" : ""}{fmtUsd(unrealizedPnl)}</span>
           </div>
           <div className="hidden md:flex"><WalletAge /></div>
+          <BinanceRealBalance />
           <button onClick={() => setShowDeposit(true)}
             className="flex items-center gap-1 text-[10px] font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 transition-opacity rounded px-2.5 py-1">
             <Plus className="h-3 w-3" /> Deposit

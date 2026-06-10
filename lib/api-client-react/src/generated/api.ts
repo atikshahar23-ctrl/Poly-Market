@@ -22,7 +22,11 @@ import type {
 import type {
   AckCreditsInput,
   BacktestFundingAssetParams,
+  BinanceBalance,
+  BinanceCredentialsInput,
+  BinanceCredentialsStatus,
   BinanceData,
+  BinanceOrders,
   CheckFundingAssetParams,
   CoinTicker,
   Credits,
@@ -2015,6 +2019,383 @@ export const usePutUserState = <TError = ErrorType<ErrorResponse | UserStateEntr
       > => {
       return useMutation(getPutUserStateMutationOptions(options));
     }
+
+export const getGetBinanceCredentialsUrl = () => {
+
+
+
+
+  return `/api/user/binance/credentials`
+}
+
+/**
+ * Returns the masked key and connection status. 401 if not signed in.
+ * @summary Check if the user has connected a Binance API key
+ */
+export const getBinanceCredentials = async ( options?: RequestInit): Promise<BinanceCredentialsStatus> => {
+
+  return customFetch<BinanceCredentialsStatus>(getGetBinanceCredentialsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBinanceCredentialsQueryKey = () => {
+    return [
+    `/api/user/binance/credentials`
+    ] as const;
+    }
+
+
+export const getGetBinanceCredentialsQueryOptions = <TData = Awaited<ReturnType<typeof getBinanceCredentials>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceCredentials>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBinanceCredentialsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBinanceCredentials>>> = ({ signal }) => getBinanceCredentials({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBinanceCredentials>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBinanceCredentialsQueryResult = NonNullable<Awaited<ReturnType<typeof getBinanceCredentials>>>
+export type GetBinanceCredentialsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Check if the user has connected a Binance API key
+ */
+
+export function useGetBinanceCredentials<TData = Awaited<ReturnType<typeof getBinanceCredentials>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceCredentials>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBinanceCredentialsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getPutBinanceCredentialsUrl = () => {
+
+
+
+
+  return `/api/user/binance/credentials`
+}
+
+/**
+ * Encrypts the key and secret using the server-side SESSION_SECRET and stores them in user_state. The server validates the credentials with a lightweight test call before saving.
+ * @summary Save and encrypt Binance API credentials
+ */
+export const putBinanceCredentials = async (binanceCredentialsInput: BinanceCredentialsInput, options?: RequestInit): Promise<BinanceCredentialsStatus> => {
+
+  return customFetch<BinanceCredentialsStatus>(getPutBinanceCredentialsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      binanceCredentialsInput,)
+  }
+);}
+
+
+
+
+export const getPutBinanceCredentialsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putBinanceCredentials>>, TError,{data: BodyType<BinanceCredentialsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof putBinanceCredentials>>, TError,{data: BodyType<BinanceCredentialsInput>}, TContext> => {
+
+const mutationKey = ['putBinanceCredentials'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putBinanceCredentials>>, {data: BodyType<BinanceCredentialsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  putBinanceCredentials(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PutBinanceCredentialsMutationResult = NonNullable<Awaited<ReturnType<typeof putBinanceCredentials>>>
+    export type PutBinanceCredentialsMutationBody = BodyType<BinanceCredentialsInput>
+    export type PutBinanceCredentialsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save and encrypt Binance API credentials
+ */
+export const usePutBinanceCredentials = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putBinanceCredentials>>, TError,{data: BodyType<BinanceCredentialsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof putBinanceCredentials>>,
+        TError,
+        {data: BodyType<BinanceCredentialsInput>},
+        TContext
+      > => {
+      return useMutation(getPutBinanceCredentialsMutationOptions(options));
+    }
+
+export const getDeleteBinanceCredentialsUrl = () => {
+
+
+
+
+  return `/api/user/binance/credentials`
+}
+
+/**
+ * Deletes the encrypted credentials from the server. This is a hard delete — no recovery.
+ * @summary Remove stored Binance API credentials
+ */
+export const deleteBinanceCredentials = async ( options?: RequestInit): Promise<BinanceCredentialsStatus> => {
+
+  return customFetch<BinanceCredentialsStatus>(getDeleteBinanceCredentialsUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteBinanceCredentialsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBinanceCredentials>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBinanceCredentials>>, TError,void, TContext> => {
+
+const mutationKey = ['deleteBinanceCredentials'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBinanceCredentials>>, void> = () => {
+
+
+          return  deleteBinanceCredentials(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBinanceCredentialsMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBinanceCredentials>>>
+
+    export type DeleteBinanceCredentialsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove stored Binance API credentials
+ */
+export const useDeleteBinanceCredentials = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBinanceCredentials>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBinanceCredentials>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteBinanceCredentialsMutationOptions(options));
+    }
+
+export const getGetBinanceBalanceUrl = () => {
+
+
+
+
+  return `/api/user/binance/balance`
+}
+
+/**
+ * Fetches the live spot account balance from Binance using the stored API key. Returns total USDT and per-asset breakdown.
+ * @summary Get the user's real Binance account balance
+ */
+export const getBinanceBalance = async ( options?: RequestInit): Promise<BinanceBalance> => {
+
+  return customFetch<BinanceBalance>(getGetBinanceBalanceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBinanceBalanceQueryKey = () => {
+    return [
+    `/api/user/binance/balance`
+    ] as const;
+    }
+
+
+export const getGetBinanceBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getBinanceBalance>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBinanceBalanceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBinanceBalance>>> = ({ signal }) => getBinanceBalance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBinanceBalance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBinanceBalanceQueryResult = NonNullable<Awaited<ReturnType<typeof getBinanceBalance>>>
+export type GetBinanceBalanceQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the user's real Binance account balance
+ */
+
+export function useGetBinanceBalance<TData = Awaited<ReturnType<typeof getBinanceBalance>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBinanceBalanceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetBinanceOrdersUrl = () => {
+
+
+
+
+  return `/api/user/binance/orders`
+}
+
+/**
+ * Fetches open spot orders from Binance using the stored API key.
+ * @summary Get the user's open orders on Binance
+ */
+export const getBinanceOrders = async ( options?: RequestInit): Promise<BinanceOrders> => {
+
+  return customFetch<BinanceOrders>(getGetBinanceOrdersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBinanceOrdersQueryKey = () => {
+    return [
+    `/api/user/binance/orders`
+    ] as const;
+    }
+
+
+export const getGetBinanceOrdersQueryOptions = <TData = Awaited<ReturnType<typeof getBinanceOrders>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBinanceOrdersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBinanceOrders>>> = ({ signal }) => getBinanceOrders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBinanceOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBinanceOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof getBinanceOrders>>>
+export type GetBinanceOrdersQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the user's open orders on Binance
+ */
+
+export function useGetBinanceOrders<TData = Awaited<ReturnType<typeof getBinanceOrders>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBinanceOrdersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getReportWalletUrl = () => {
 
