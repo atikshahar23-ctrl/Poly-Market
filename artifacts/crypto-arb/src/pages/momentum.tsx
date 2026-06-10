@@ -32,7 +32,7 @@ interface StageMeta {
   label: string;
 }
 
-/** Rule-based JARVIS momentum explanation — pure, no AI, no network. */
+/** Rule-based JARVIS momentum explanation — pure, no network. */
 function explainMomentumCoin(c: MomentumCoin, lang: Lang): string[] {
   const lines: string[] = [];
   const stageKey = `momentum.stage.${c.stage}`;

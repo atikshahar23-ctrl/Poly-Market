@@ -1,5 +1,5 @@
 /**
- * News Calendar Bot — a 100% free, rule-based engine (NO paid AI) that reads the
+ * News Calendar Bot — a 100% free, rule-based engine that reads the
  * live news feed, extracts the dates it mentions, classifies how market-moving
  * each item is, and merges them with the static macro calendar so the app can
  * fill a calendar and warn the user a couple of days before important events.

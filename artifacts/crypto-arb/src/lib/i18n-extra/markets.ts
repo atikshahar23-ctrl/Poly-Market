@@ -1,5 +1,5 @@
 export const marketsStrings: Record<string, Record<"he" | "en", string>> = {
-  // ── Momentum (JARVIS rule-based explanation) ──
+  //  Momentum (JARVIS rule-based explanation) 
   "momentum.stage.HOT": { he: "🔥 מטבע חם — בשיא הפעילות", en: "🔥 Hot coin — peak activity" },
   "momentum.stage.SURGING": { he: "🚀 התפרצות — תנועה חזקה ומהירה", en: "🚀 Surging — strong, fast move" },
   "momentum.stage.BUILDING": { he: "📊 בניית תנועה — תנע מצטבר", en: "📊 Building — accumulating momentum" },
@@ -15,7 +15,7 @@ export const marketsStrings: Record<string, Record<"he" | "en", string>> = {
   "momentum.roc1h.up": { he: "+{n}% בשעה — מגמה שעתית חיובית ברורה.", en: "+{n}% in an hour — a clear positive hourly trend." },
   "momentum.roc1h.down": { he: "{n}% בשעה — מגמה שעתית שלילית.", en: "{n}% in an hour — a negative hourly trend." },
 
-  // ── Stock Desk: category / action / confidence labels ──
+  //  Stock Desk: category / action / confidence labels 
   "markets.stockCat.TECH": { he: "טכנולוגיה", en: "Technology" },
   "markets.stockCat.ENERGY": { he: "אנרגיה", en: "Energy" },
   "markets.stockCat.RESOURCES": { he: "חומרי גלם", en: "Raw Materials" },
@@ -28,7 +28,7 @@ export const marketsStrings: Record<string, Record<"he" | "en", string>> = {
   "markets.conf.MEDIUM": { he: "ביטחון בינוני", en: "Medium confidence" },
   "markets.conf.LOW": { he: "ביטחון נמוך", en: "Low confidence" },
 
-  // ── Stock Desk: rule-based rationale ──
+  //  Stock Desk: rule-based rationale 
   "markets.rationale.buy": {
     he: "מומנטום חיובי — עלייה של {mom}% ב-5 ימי מסחר, {day} היום, ונסחרת ב-{range}% מטווח החודש. הסוכן מזהה תנאים להמשך כלפי מעלה.",
     en: "Positive momentum — up {mom}% over 5 trading days, {day} today, trading at {range}% of the monthly range. The agent sees conditions for continued upside.",
@@ -42,7 +42,7 @@ export const marketsStrings: Record<string, Record<"he" | "en", string>> = {
     en: "Choppy — a {mom} move over 5 days and {day} today ({range}% of range). No clear edge; wait for a stronger signal.",
   },
 
-  // ── Stock Desk: day summary band ──
+  //  Stock Desk: day summary band 
   "markets.day.heading": { he: "סיכום המסחר היום", en: "Today's Trading Summary" },
   "markets.day.rangeLabel": { he: "מחצות (00:00) עד {time} · {date}", en: "Midnight (00:00) to {time} · {date}" },
   "markets.day.loading": { he: "טוען סיכום…", en: "Loading summary…" },
@@ -67,7 +67,7 @@ export const marketsStrings: Record<string, Record<"he" | "en", string>> = {
     en: "Educational only · Data reflects the daily change vs. the previous close, updated throughout the trading day.",
   },
 
-  // ── Stock Desk: misc labels ──
+  //  Stock Desk: misc labels 
   "markets.label.price": { he: "מחיר", en: "Price" },
   "markets.label.today": { he: "היום", en: "Today" },
   "markets.label.fiveDays": { he: "5 ימים", en: "5 days" },
@@ -124,14 +124,14 @@ export const marketsStrings: Record<string, Record<"he" | "en", string>> = {
   "markets.level.target": { he: "יעד", en: "Target" },
   "markets.level.stop": { he: "סטופ", en: "Stop" },
 
-  // ── Trade Desk ──
+  //  Trade Desk 
   "markets.hideChart": { he: "הסתר גרף", en: "Hide chart" },
   "markets.showProbChart": { he: "הצג גרף הסתברות", en: "Show probability chart" },
   "markets.probChart": { he: "גרף הסתברות", en: "Probability chart" },
   "markets.allActivePositions": { he: "כל העסקאות הפעילות · קריפטו · מניות · Polymarket", en: "All active positions · Crypto · Stocks · Polymarket" },
   "markets.openFromHint": { he: "פתח עסקה מה-Simulator, Scalp Signals או Momentum Radar", en: "Open a position from the Simulator, Scalp Signals or Momentum Radar" },
 
-  // ── Universal stock search ──
+  //  Universal stock search 
   "markets.loadingStock": { he: "טוען נתוני {sym}…", en: "Loading {sym} data…" },
   "markets.noTradeData": { he: "לא נמצאו נתוני מסחר עבור {sym}.", en: "No trading data found for {sym}." },
   "markets.searchPlaceholder": {
@@ -141,7 +141,7 @@ export const marketsStrings: Record<string, Record<"he" | "en", string>> = {
   "markets.searching": { he: "מחפש…", en: "Searching…" },
   "markets.noResults": { he: "לא נמצאו תוצאות", en: "No results found" },
 
-  // ── Funding Arbitrage ──
+  //  Funding Arbitrage 
   "markets.funding.title": { he: "ארביטראז' מימון", en: "Funding Arbitrage" },
   "markets.funding.subtitle": {
     he: "תרחישים חינוכיים של עסקת cash-and-carry דלתא-ניטרלית: רגל בסיס מול חוזה עתידי שגובה/משלם מימון. ללא כסף אמיתי.",
@@ -202,14 +202,14 @@ export const marketsStrings: Record<string, Record<"he" | "en", string>> = {
   "markets.funding.positionOpened": { he: "עסקת מימון נפתחה", en: "funding position opened" },
   "markets.funding.leg": { he: "רגל", en: "leg" },
 
-  // ── Scalp (JARVIS explanation frame — base keys live in i18n.ts) ──
+  //  Scalp (JARVIS explanation frame — base keys live in i18n.ts) 
   "scalp.rrPrefix": { he: "יחס סיכון/סיכוי", en: "R/R" },
   "scalp.confLine": {
     he: "ביטחון {label} (ציון {n}) — {suffix}",
     en: "Confidence {label} (score {n}) — {suffix}",
   },
 
-  // ── Sidebar news relative time ──
+  //  Sidebar news relative time 
   "markets.news.now": { he: "עכשיו", en: "now" },
   "markets.news.minAgo": { he: "לפני {n} ד׳", en: "{n}m ago" },
   "markets.news.hrAgo": { he: "לפני {n} ש׳", en: "{n}h ago" },

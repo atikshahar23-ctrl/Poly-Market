@@ -9,7 +9,7 @@ import { miscStrings } from "./i18n-extra/misc";
 import { settingsStrings } from "./i18n-extra/settings";
 
 const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
-  // --- Sidebar / Navigation ---
+  // Sidebar / Navigation
   "nav.dashboard": { he: "לוח בקרה", en: "Dashboard" },
   "nav.advisor": { he: "היועץ הראשי", en: "Master Advisor" },
   "nav.simulator": { he: "תיק ההשקעות", en: "Portfolio" },
@@ -70,14 +70,14 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "nav.apiLive": { he: "חי", en: "LIVE" },
   "nav.apiError": { he: "שגיאה", en: "ERR" },
 
-  // --- Dashboard ---
+  // Dashboard
   "dashboard.subtitle": {
     he: "סקאן בזמן אמת · פיוצ׳רס Binance × סנטימנט Polymarket · בוטים × ניהול סיכונים",
     en: "Real-time scan · Binance futures × Polymarket sentiment · Bots × Risk management",
   },
   "dashboard.closed": { he: "סגורות", en: "closed" },
 
-  // --- Browse / Market Scanner ---
+  // Browse / Market Scanner 
   "browse.demoBet": { he: "הימור דמו", en: "Demo Bet" },
   "browse.betBtn": { he: "הימור", en: "Bet" },
   "browse.betTitle": { he: "פתח הימור דמו (כסף משחק)", en: "Open demo bet (play money)" },
@@ -88,7 +88,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "browse.betFailed.title": { he: "ההימור נכשל", en: "Bet failed" },
   "browse.betOpened.title": { he: "הימור דמו נפתח", en: "Demo bet opened" },
 
-  // --- Quick Bets ---
+  // Quick Bets 
   "quickbets.subtitle": {
     he: "שווקי חיזוי קצרי-טווח עם פתרון תוך 48 שעות — בוט חכם ממליץ צד לכל שוק.",
     en: "Short-term prediction markets resolving within 48h — smart bot recommends a side for each market.",
@@ -106,7 +106,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "quickbets.reason.noEasier": { he: "NO קל יותר", en: "NO more likely" },
   "quickbets.reason.fiftyfifty": { he: "50/50 — קל יותר", en: "50/50 — coin flip" },
 
-  // --- Leaderboard ---
+  // Leaderboard 
   "leaderboard.title": { he: "מיטב הסוחרים", en: "Top Traders" },
   "leaderboard.subtitle": {
     he: "עשרת הסוחרים המובילים לפי שווי התיק הפעיל — דמו לימודי בלבד.",
@@ -124,7 +124,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "leaderboard.error": { he: "לא ניתן לטעון את הדירוג כעת. נסו לרענן בעוד רגע.", en: "Could not load the leaderboard. Try refreshing in a moment." },
   "leaderboard.empty": { he: "עדיין אין סוחרים בדירוג. התחילו לסחור כדי להופיע כאן.", en: "No traders in the rankings yet. Start trading to appear here." },
 
-  // --- Bots page ---
+  // Bots page 
   "bots.subtitle": {
     he: "מרכז שליטה אחד לכל הבוטים — סימולציית מסחר בלבד (כסף וירטואלי).",
     en: "One control center for all bots — paper trading only (virtual money).",
@@ -192,7 +192,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "bots.alphaDir.waiting": { he: "ממתין לקונצנזוס", en: "Awaiting consensus" },
   "bots.alphaDir.off": { he: "כבוי", en: "Off" },
 
-  // --- Briefing ---
+  // Briefing 
   "briefing.title": { he: "תדריך השוק — סקירת בוקר", en: "Market Briefing — Morning Review" },
   "briefing.markets": { he: "קריפטו · מניות · שווקי חיזוי", en: "Crypto · Stocks · Prediction Markets" },
   "briefing.disclaimer": {
@@ -246,7 +246,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "briefing.scenario.breadthDown.title": { he: "חולשה רחבה בקריפטו", en: "Broad crypto weakness" },
   "briefing.scenario.fgTitle": { he: "מדד פחד/חמדנות", en: "Fear/Greed index" },
 
-  // --- Scalp ---
+  // Scalp 
   "scalp.jarvisBtn": { he: "🤖 JARVIS — למה?", en: "🤖 JARVIS — Why?" },
   "scalp.jarvisTitle": { he: "ניתוח JARVIS", en: "JARVIS Analysis" },
   "scalp.jarvisDisclaimer": { he: "(כלי חינוכי בלבד · אינו ייעוץ פיננסי)", en: "(Educational tool only · Not financial advice)" },
@@ -267,7 +267,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "scalp.confLabel.medium": { he: "בינוני", en: "Medium" },
   "scalp.confLabel.low": { he: "נמוך", en: "Low" },
 
-  // --- Simulator ---
+  // Simulator 
   "sim.day": { he: "יום", en: "day" },
   "sim.days": { he: "ימים", en: "days" },
   "sim.hour": { he: "שעה", en: "hour" },
@@ -284,7 +284,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "sim.closeChart": { he: "סגור גרף", en: "Close chart" },
   "sim.realBalance": { he: "יתרה אמיתית בביננס", en: "Real Binance balance" },
 
-  // --- Wallet Switcher ---
+  // Wallet Switcher 
   "wallet.myWallets": { he: "הארנקים שלי", en: "My Wallets" },
   "wallet.positions": { he: "פוזיציות", en: "positions" },
   "wallet.changeGear": { he: "שינוי עוצמה", en: "Change Gear" },
@@ -301,7 +301,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "wallet.cancel": { he: "ביטול", en: "Cancel" },
   "wallet.create": { he: "יצירה", en: "Create" },
 
-  // --- Trade Analytics ---
+  // Trade Analytics 
   "ta.title": { he: "ניתוח עסקאות ולמידת הסוכן", en: "Trade Analytics & Agent Learning" },
   "ta.reset": { he: "הוזל אחורה לבסיס הארנק", en: "Reset to Wallet Base" },
   "ta.equityCurve": { he: "עקומת הון (רווח/הפסד מצטבר)", en: "Equity Curve (Cumulative P&L)" },
@@ -327,14 +327,14 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "ta.resetConfirm": { he: "לאפס את תיק המסחר? הפעולה תמחק את כל ההיסטוריה, הפוזיציות הפתוחות, נתוני הלמידה והיתרה — ותוחזר אותו למצב פתיחה", en: "Reset trading portfolio? This will delete all history, open positions, learning data and balance — and restore it to the starting state" },
   "ta.resetSuffix": { he: "פעולה בלת חזור.", en: "Irreversible action." },
 
-  // --- Bot Stats ---
+  // Bot Stats 
   "bs.winRate": { he: "אחוז ניצחון", en: "Win Rate" },
   "bs.trades": { he: "עסקאות", en: "Trades" },
   "bs.cumulativePnl": { he: "רווח כולל", en: "Cumulative P&L" },
   "bs.wins": { he: "W", en: "W" },
   "bs.losses": { he: "L", en: "L" },
 
-  // --- AutoTrader Engine ---
+  // AutoTrader Engine 
   "ate.closedProfit": { he: "סגר", en: "closed" },
   "ate.closedLoss": { he: "בהפסד", en: "at a loss" },
   "ate.profit": { he: "ברווח", en: "in profit" },
@@ -345,20 +345,20 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "ate.quickScalp": { he: "סקאלפ מהיר", en: "Quick Scalp" },
   "ate.lossCut": { he: "קציצת הפסד", en: "Loss Cut" },
 
-  // --- Market Clock ---
+  // Market Clock 
   "mc.noEvents": { he: "אין אירועים מיוחדים ביום זה — מסחר רגיל.", en: "No special events today — regular trading." },
 
-  // --- Stock Chart ---
+  // Stock Chart 
   "sc.closePosition": { he: "סגור פוזיציה", en: "Close Position" },
 
-  // --- Social Banners ---
+  // Social Banners 
   "sb.addedFunds": { he: "נוספו", en: "Added" },
   "sb.toWallet": { he: "לארנק הפעיל (דמו לימודי).", en: "to the active wallet (demo/educational)." },
   "sb.dailyReward": { he: "תגמול כניסה יומי", en: "Daily Login Reward" },
   "sb.rewardPending": { he: "התגמול ממתין לך — לחיצה אחת והוא בארנק.", en: "Reward is waiting — one tap and it is in your wallet." },
   "sb.pts": { he: "נקודות", en: "pts" },
 
-  // --- Onboarding ---
+  // Onboarding 
   "ob.virtualMoney": { he: "כסף וירטואלי לתרגול בלבד. כל הפעילות היא הדמיה חינוכית — אין כסף אמיתי, אין הבטחות לרווח ואין ייעוץ פיננסי.", en: "Virtual money for practice only. All activity is educational simulation — no real money, no profit guarantees, and no financial advice." },
   "ob.dashboardReady": { he: "לוח המחוונים, הסימולטור והבוטים ממתינים לכם. בואו נתחיל לתרגל.", en: "The dashboard, simulator, and bots are ready. Let's start practicing." },
   "ob.login": { he: "כניסה למערכת", en: "Enter System" },

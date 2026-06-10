@@ -1,5 +1,5 @@
 export const historyStrings: Record<string, Record<"he" | "en", string>> = {
-  // ── History page ──
+  //  History page 
   "history.subtitle": {
     he: "מעקב הדמו המלא שלך — כל פוזיציה שנסגרה, אחוז ההצלחה והרווח/הפסד. הדמיה חינוכית בלבד, ללא כסף אמיתי.",
     en: "Your full demo log — every closed position, win rate, and P&L. Educational simulation only, no real money.",
@@ -114,7 +114,7 @@ export const historyStrings: Record<string, Record<"he" | "en", string>> = {
   "history.share.btnAria": { he: "שתף רווח", en: "Share profit" },
   "history.assetFallback": { he: "נכס", en: "asset" },
 
-  // ── Insights page / engine (shared bot-perf labels used by History too) ──
+  //  Insights page / engine (shared bot-perf labels used by History too) 
   "insights.botPerformance": { he: "ביצועי בוטים", en: "Bot Performance" },
   "insights.activeCount": { he: "{n} פעילים", en: "{n} active" },
   "insights.stat.trades": { he: "עסקאות", en: "Trades" },
@@ -155,7 +155,7 @@ export const historyStrings: Record<string, Record<"he" | "en", string>> = {
     he: "ככל שהמכפיל גבוה יותר, הסוכן דורש סטאפ חזק יותר לפני כניסה חוזרת לאותו נכס.",
     en: "The higher the multiplier, the stronger the setup the agent requires before re-entering that asset.",
   },
-  "insights.conclusionsTitle": { he: "מסקנות (מבוסס-חוקים, ללא AI בתשלום)", en: "Conclusions (rule-based, no paid AI)" },
+  "insights.conclusionsTitle": { he: "מסקנות (מבוסס-חוקים)", en: "Conclusions (rule-based)" },
 
   // Insights asset-class labels (insights.ts)
   "insights.class.binance": { he: "קריפטו (פיוצ'רס)", en: "Crypto (Futures)" },
@@ -229,7 +229,7 @@ export const historyStrings: Record<string, Record<"he" | "en", string>> = {
     en: "All insights are rule-based and for educational purposes only — not financial advice and not a return guarantee.",
   },
 
-  // ── Tools page ──
+  //  Tools page 
   "tools.title": { he: "כלי סחור", en: "Trading Tools" },
   "tools.subtitle": {
     he: "כל המחשבונים האלה מיועדים לשוק האמיתי — הובה אותם לחינוכיה והדמיה בלבד. אין כאן ייעוץ השקעות או הבטחת תשואות.",
@@ -302,7 +302,7 @@ export const historyStrings: Record<string, Record<"he" | "en", string>> = {
   "tools.compound.finalCapital": { he: "הון סופי (חזוי)", en: "Final capital (projected)" },
   "tools.compound.minWin": { he: "אחוז הצלחה המינימאלי דרוש", en: "Minimum required win rate" },
 
-  // ── Auto-analysis summaries (lib/ta.ts) ──
+  //  Auto-analysis summaries (lib/ta.ts) 
   "analysis.summaryLong": {
     he: "מגמה חזוקה לאחזק יציאה לאורך (אינדיקטורים {n}/{total} בוחרים)",
     en: "Trend favors a long entry ({n}/{total} indicators agree)",

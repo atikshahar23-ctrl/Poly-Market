@@ -34,7 +34,7 @@ function dirMeta(direction: ScalpSignal["direction"]) {
   return { Icon: Minus, color: "#71717a", label: "NEUTRAL" };
 }
 
-/** Rule-based JARVIS explanation — pure, no AI, no network. */
+/** Rule-based JARVIS explanation — pure, no network. */
 function explainScalpSignal(s: ScalpSignal, lang: Lang): string[] {
   const lines: string[] = [];
 

@@ -1,5 +1,5 @@
 export const miscStrings: Record<string, Record<"he" | "en", string>> = {
-  // --- Landing page ---
+  // Landing page
   "landing.memberLogin": { he: "כניסת חברים", en: "Member Login" },
   "landing.requestMembership": { he: "בקשת חברות", en: "Request Membership" },
   "landing.heroTitle1": { he: "מודיעין שוק.", en: "Market Intelligence." },
@@ -35,8 +35,8 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
   },
   "landing.feat.jarvis.title": { he: "עוזר JARVIS", en: "JARVIS Assistant" },
   "landing.feat.jarvis.desc": {
-    he: "מוח חכם מבוסס כללים, דו-לשוני (עברית/אנגלית) — ללא בינה מלאכותית בתשלום.",
-    en: "A smart rule-based engine, bilingual (Hebrew/English) — no paid AI.",
+    he: "מוח חכם מבוסס כללים, דו-לשוני (עברית/אנגלית).",
+    en: "A smart rule-based engine, bilingual (Hebrew/English).",
   },
   "landing.feat.predictions.title": { he: "שווקי תחזיות", en: "Prediction Markets" },
   "landing.feat.predictions.desc": {
@@ -44,7 +44,7 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
     en: "Cross-reference Binance data against Polymarket crowd sentiment to spot gaps.",
   },
 
-  // --- Onboarding wizard (additional ob.* keys; some ob.* already in i18n.ts) ---
+  // Onboarding wizard (additional ob.* keys; some ob.* already in i18n.ts)
   "ob.welcome": { he: "ברוכים הבאים", en: "Welcome" },
   "ob.focusQuestion": { he: "במה נתמקד?", en: "What shall we focus on?" },
   "ob.focusSubtitle": {
@@ -83,8 +83,66 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
   },
   "ob.back": { he: "חזרה", en: "Back" },
   "ob.continue": { he: "המשך", en: "Continue" },
+  "ob.next": { he: "הבא", en: "Next" },
+  "ob.tutorial": { he: "סיור מודרך", en: "Guided Tour" },
+  "ob.tutorialTitle": { he: "מה מחכה לכם כאן", en: "What awaits you here" },
+  "ob.tutorialSubtitle": {
+    he: "חמש דקות סיור — ותדעו בדיוק איך להשתמש במערכת.",
+    en: "A five-minute tour — and you'll know exactly how to use the system.",
+  },
+  "ob.tutorial.scanner.title": { he: "סורק שוק חי", en: "Live Market Scanner" },
+  "ob.tutorial.scanner.desc": {
+    he: "נתוני קריפטו, מניות ושווקי תחזיות בזמן אמת — עם אותות סקאלפ ומומנטום.",
+    en: "Real-time crypto, stocks, and prediction-market data — with scalp and momentum signals.",
+  },
+  "ob.tutorial.simulator.title": { he: "סימולטור מסחר", en: "Trading Simulator" },
+  "ob.tutorial.simulator.desc": {
+    he: "תרגול בכסף וירטואלי עם תיקים מרובים, עקומת שווי וניהול סיכונים אמיתי.",
+    en: "Practice with virtual money using multiple portfolios, equity curves, and real risk management.",
+  },
+  "ob.tutorial.bots.title": { he: "מרכז פיקוד בוטים", en: "Bot Command Center" },
+  "ob.tutorial.bots.desc": {
+    he: "בוטים אוטומטיים לתרגול — כל אחד עם אסטרטגיה ומטרה שונה. אפשר להפעיל, להשהות ולכוון.",
+    en: "Automated practice bots — each with a different strategy and goal. Arm, pause, and tune them.",
+  },
+  "ob.tutorial.research.title": { he: "שולחן מחקר", en: "Research Desk" },
+  "ob.tutorial.research.desc": {
+    he: "חיפוש סמלים וחברות עם מחירים חיים וקישורים לנתונים חיצוניים — הכול חינם.",
+    en: "Symbol and company lookup with live prices and external data links — all free.",
+  },
+  "ob.tutorial.advisor.title": { he: "היועץ הראשי", en: "Master Advisor" },
+  "ob.tutorial.advisor.desc": {
+    he: "מנוע חוקים חינוכי שקורא את השוק ומציע תרחישים ללימוד — לא ייעוץ השקעות.",
+    en: "A rule-based educational engine that reads the market and suggests learning scenarios — not investment advice.",
+  },
+  "ob.quiz": { he: "בוחן ידע", en: "Knowledge Check" },
+  "ob.quizTitle": { he: "בדיקת הבנה", en: "Understanding Check" },
+  "ob.quizSubtitle": {
+    he: "ארבע שאלות קצרות כדי לוודא שאתם מכירים את הכללים הבסיסיים.",
+    en: "Four short questions to make sure you know the basic rules.",
+  },
+  "ob.quiz.q1": { he: "איזה כסף משמש בסימולטור?", en: "What money is used in the simulator?" },
+  "ob.quiz.a1.real": { he: "כסף אמיתי", en: "Real money" },
+  "ob.quiz.a1.virtual": { he: "כסף וירטואלי (דמו)", en: "Virtual money (demo)" },
+  "ob.quiz.q2": { he: "האם הבוטים מבטיחים רווח?", en: "Do the bots guarantee profit?" },
+  "ob.quiz.a2.yes": { he: "כן, הבוטים מבטיחים רווח", en: "Yes, the bots guarantee profit" },
+  "ob.quiz.a2.no": { he: "לא, אין הבטחות לרווח", en: "No, there are no profit guarantees" },
+  "ob.quiz.q3": { he: "מהי מטרת Stop-Loss?", en: "What is the purpose of Stop-Loss?" },
+  "ob.quiz.a3.profit": { he: "להגדיל רווח", en: "To increase profit" },
+  "ob.quiz.a3.limit": { he: "להגביל הפסד אם המחיר נוגד כיוון", en: "To limit loss if price moves against you" },
+  "ob.quiz.q4": { he: "האם המערכת נותנת ייעוץ השקעות?", en: "Does the system provide investment advice?" },
+  "ob.quiz.a4.yes": { he: "כן, ייעוץ השקעות מקצועי", en: "Yes, professional investment advice" },
+  "ob.quiz.a4.no": { he: "לא, הכול הוא הדמיה חינוכית בלבד", en: "No, everything is educational simulation only" },
+  "ob.quiz.correct": { he: "נכון!", en: "Correct!" },
+  "ob.quiz.wrong": { he: "לא נכון — נסו שוב.", en: "Incorrect — try again." },
+  "ob.quiz.pass": { he: "עברתם! מוכנים להתחיל.", en: "You passed! Ready to start." },
+  "ob.quiz.retry": { he: "נסו שוב", en: "Try again" },
+  "ob.quiz.score": { he: "ציון: {n}/4", en: "Score: {n}/4" },
+  "ob.start": { he: "התחל", en: "Start" },
+  "ob.skip": { he: "דלג", en: "Skip" },
+  "ob.educationalOnly": { he: "הדמיה חינוכית בלבד", en: "Educational simulation only" },
 
-  // --- Market Clock (additional mc.* keys; mc.noEvents already in i18n.ts) ---
+  // Market Clock (additional mc.* keys; mc.noEvents already in i18n.ts)
   "mc.kind.holiday": { he: "חג", en: "Holiday" },
   "mc.kind.macro": { he: "FOMC/NFP", en: "FOMC/NFP" },
   "mc.kind.expiry": { he: "תפוגה", en: "Expiry" },
@@ -101,7 +159,7 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
     en: "Educational calendar only — known dates in advance, not live data and not financial advice.",
   },
 
-  // --- Social Banners (additional sb.* keys; some sb.* already in i18n.ts) ---
+  // Social Banners (additional sb.* keys; some sb.* already in i18n.ts)
   "sb.rewardAdded": { he: "התגמול היומי נוסף", en: "Daily reward added" },
   "sb.alreadyClaimedTitle": { he: "כבר נאסף היום", en: "Already claimed today" },
   "sb.alreadyClaimedDesc": { he: "אפשר לאסוף שוב מחר.", en: "Come back tomorrow to claim again." },
@@ -141,7 +199,7 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
     en: "Added {amount} to your active wallet (educational demo).",
   },
 
-  // --- AutoTrader Engine (additional ate.* keys; some ate.* already in i18n.ts) ---
+  // AutoTrader Engine (additional ate.* keys; some ate.* already in i18n.ts)
   "ate.peak": { he: "שיא", en: "peak" },
   "ate.recycle": { he: "מִחזוּר", en: "Recycle" },
   "ate.after": { he: "אחרי", en: "after" },
@@ -164,16 +222,16 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
     en: "{name} opened {dir} on {asset}",
   },
 
-  // --- Ticker Tape ---
+  // Ticker Tape
   "tt.play": { he: "הפעל", en: "Play" },
   "tt.pause": { he: "השהה", en: "Pause" },
   "tt.playScroll": { he: "הפעל גלילת מחירים", en: "Resume price scroll" },
   "tt.pauseScroll": { he: "השהה גלילת מחירים", en: "Pause price scroll" },
 
-  // --- Auth Shell ---
+  // Auth Shell
   "auth.privateClub": { he: "מועדון פרטי", en: "Private Club" },
 
-  // --- Wallet Progress ---
+  // Wallet Progress
   "wp.title": { he: "התקדמות הארנק", en: "Wallet Progress" },
   "wp.noTrades": { he: "אין עדיין עסקאות סגורות", en: "No closed trades yet" },
   "wp.willUpdate": {
@@ -181,7 +239,7 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
     en: "The chart updates as you close positions",
   },
 
-  // --- Social context toasts ---
+  // Social context toasts
   "social.referralBonusTitle": { he: "בונוס הזמנה התקבל", en: "Referral bonus received" },
   "social.referralBonusDesc": {
     he: "נוספו {n} לארנק הפעיל שלך (דמו לימודי).",
@@ -189,7 +247,7 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
   },
   "social.referralCodeTitle": { he: "קוד הזמנה", en: "Referral code" },
 
-  // --- merged from task #80 i18n branch (rebase union) ---
+  // merged from task #80 i18n branch (rebase union)
   "misc.jarvis.stopListening": { he: "הפסק הקשבה", en: "Stop listening" },
   "misc.jarvis.talkToJarvis": { he: "דבר עם ג'רוויס", en: "Talk to JARVIS" },
   "misc.jarvis.unmuteJarvis": { he: "בטל השתקת ג'רוויס", en: "Unmute JARVIS" },
@@ -262,7 +320,7 @@ export const miscStrings: Record<string, Record<"he" | "en", string>> = {
   "misc.landing.feature.research.title": { he: "שולחן מחקר", en: "Research Desk" },
   "misc.landing.feature.research.desc": { he: "חיפוש חופשי של מניות וקריפטו עם מחירים חיים וקישורי מחקר חיצוניים.", en: "Free search of stocks and crypto with live prices and external research links." },
   "misc.landing.feature.jarvis.title": { he: "עוזר JARVIS", en: "JARVIS Assistant" },
-  "misc.landing.feature.jarvis.desc": { he: "מוח חכם מבוסס כללים, דו-לשוני (עברית/אנגלית) — ללא בינה מלאכותית בתשלום.", en: "Rule-based smart brain, bilingual (Hebrew/English) — no paid AI." },
+  "misc.landing.feature.jarvis.desc": { he: "מוח חכם מבוסס כללים, דו-לשוני (עברית/אנגלית).", en: "Rule-based smart brain, bilingual (Hebrew/English)." },
   "misc.landing.feature.predictions.title": { he: "שווקי תחזיות", en: "Prediction Markets" },
   "misc.landing.feature.predictions.desc": { he: "הצלבת נתוני בינאנס מול סנטימנט הקהל ב-Polymarket לזיהוי פערים.", en: "Cross Binance data against Polymarket crowd sentiment to identify gaps." },
   "misc.landing.disclaimer": { he: "הדמיה חינוכית בלבד. כל הנתונים והאותות מיועדים ללימוד ולתרגול — אין כסף אמיתי, אין הבטחות לרווח ואין ייעוץ פיננסי. ביצועי עבר אינם מעידים על העתיד.", en: "Educational simulation only. All data and signals are for learning and practice — no real money, no profit guarantees, and no financial advice. Past performance does not indicate future results." },

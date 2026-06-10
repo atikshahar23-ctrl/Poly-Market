@@ -1,5 +1,5 @@
 export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
-  // --- Event Calendar page ---
+  // Event Calendar page
   "calendar.title": { he: "יומן האירועים", en: "Event Calendar" },
   "calendar.autoBot": { he: "בוט אוטומטי", en: "Auto Bot" },
   "calendar.subtitle": {
@@ -31,7 +31,7 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
   "calendar.impactMedium": { he: "השפעה בינונית", en: "Medium impact" },
   "calendar.impactLow": { he: "השפעה נמוכה", en: "Low impact" },
 
-  // --- Master Advisor page (chrome) ---
+  // Master Advisor page (chrome)
   "advisor.title": { he: "היועץ הראשי", en: "Master Advisor" },
   "advisor.subtitle": {
     he: "קריאה אחת מסכמת של השוק והתיק, עם מהלכים מדורגים לאישורך — סימולציה בלבד.",
@@ -39,8 +39,8 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
   },
   "advisor.langToggle": { he: "English", en: "עברית" },
   "advisor.disclaimer": {
-    he: "היועץ הראשי הוא מנוע חוקים חינוכי בלבד — הוא אינו AI, אינו מבטיח רווחים ואינו ייעוץ השקעות. כל מהלך הוא תרחיש ללימוד שמופעל רק לאחר שתאשר אותו, על תיק נייר.",
-    en: "The Master Advisor is a rule-based educational engine only — not AI, no promised returns, not financial advice. Every move is a learning scenario that runs only after you approve it, on a paper portfolio.",
+    he: "היועץ הראשי הוא מנוע חוקים חינוכי בלבד — אינו מבטיח רווחים ואינו ייעוץ השקעות. כל מהלך הוא תרחיש ללימוד שמופעל רק לאחר שתאשר אותו, על תיק נייר.",
+    en: "The Master Advisor is a rule-based educational engine only — no promised returns, not financial advice. Every move is a learning scenario that runs only after you approve it, on a paper portfolio.",
   },
   "advisor.readTitle": { he: "הקריאה של היועץ", en: "The Advisor's read" },
   "advisor.market": { he: "שוק", en: "Market" },
@@ -73,12 +73,12 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
     en: "All moves run on a paper portfolio only — no real money, no promised returns, no investment advice.",
   },
 
-  // --- Master Advisor — tone labels ---
+  // Master Advisor — tone labels
   "advisor.tone.critical": { he: "הגנה", en: "Protect" },
   "advisor.tone.opportunity": { he: "הזדמנות", en: "Opportunity" },
   "advisor.tone.tune": { he: "כוונון", en: "Tune-up" },
 
-  // --- Master Advisor — bot names ---
+  // Master Advisor — bot names
   "advisor.bot.scalp": { he: "בוט סקאלפ", en: "Scalp Bot" },
   "advisor.bot.momentum": { he: "בוט מומנטום", en: "Momentum Bot" },
   "advisor.bot.smart": { he: "כסף חכם", en: "Smart-Money" },
@@ -87,13 +87,13 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
   "advisor.bot.breakout": { he: "צייד פריצות", en: "Breakout Hunter" },
   "advisor.bot.dca": { he: "DCA שבבי-כחול", en: "Blue-Chip DCA" },
 
-  // --- Master Advisor — direction & mode words ---
+  // Master Advisor — direction & mode words
   "advisor.dir.up": { he: "עולה", en: "up" },
   "advisor.dir.down": { he: "יורד", en: "down" },
   "advisor.mode.calculated": { he: "מחושב", en: "Calculated" },
   "advisor.mode.normal": { he: "רגיל", en: "Normal" },
 
-  // --- Master Advisor — watch list ---
+  // Master Advisor — watch list
   "advisor.watch.scalp": {
     he: "סקאלפ: {asset} בכיוון {dir} בביטחון גבוה — נקודה לעקוב אחריה.",
     en: "Scalp: {asset} leaning {dir} at high confidence — one to watch.",
@@ -107,7 +107,7 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
     en: "Smart money: {symbol} flagged BUY at high confidence — worth tracking.",
   },
 
-  // --- Master Advisor — action toasts ---
+  // Master Advisor — action toasts
   "advisor.toast.applied": { he: "היועץ ביצע את המהלך", en: "Advisor applied the move" },
   "advisor.action.armAll": { he: "כל הבוטים חומשו.", en: "All bots armed." },
   "advisor.action.disarmAll": { he: "כל הבוטים כובו.", en: "All bots disarmed." },
@@ -123,7 +123,7 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
   "advisor.action.closedN": { he: "{n} פוזיציות בוט נסגרו.", en: "{n} bot positions closed." },
   "advisor.action.closedNone": { he: "לא היו פוזיציות בוט פתוחות.", en: "No open bot positions." },
 
-  // --- Master Advisor — the read (master-advisor.ts) ---
+  // Master Advisor — the read (master-advisor.ts)
   "advisor.dirWord.long": { he: "כיוון עולה", en: "an upward lean" },
   "advisor.dirWord.short": { he: "כיוון יורד", en: "a downward lean" },
   "advisor.dirWord.neutral": { he: "ללא הכרעה ברורה", en: "no clear lean" },
@@ -173,7 +173,7 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
     en: "The active wallet holds about {cashPct} percent free cash, {openAuto} open bot positions, and a realized result today of {daily}. {fleet}{wallet} {dd}",
   },
 
-  // --- Master Advisor — moves ---
+  // Master Advisor — moves
   "advisor.move.close.title": { he: "להקטין חשיפה עכשיו", en: "Reduce exposure now" },
   "advisor.move.close.body": {
     he: "ההפסד היום והירידה בערך מצטברים. תרחיש להגנת הון: לסגור את כל פוזיציות הבוט הפתוחות ({n}) ולחזור למזומן. זו פעולה חינוכית בלבד.",
@@ -253,7 +253,7 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
   },
   "advisor.move.autopilot.cta": { he: "הפעל טייס אוטומטי", en: "Enable Auto-Pilot" },
 
-  // --- Briefing — scenario bodies & extras ---
+  // Briefing — scenario bodies & extras
   "briefing.scenario.btcUp.body": {
     he: "BTC {pct}% ביממה. בשעתיים הקרובות שווה לעקוב אם הוא מחזיק מעל ${price} — אזור שבירה כלפי מטה יבטל את התמונה החיובית. נקודה ללימוד: לזהות מתי מומנטום נחלש.",
     en: "BTC {pct}% in 24h. Watch the next 2 hours: if it holds above ${price}, the bullish picture stays intact. Learning point: identify when momentum starts fading.",

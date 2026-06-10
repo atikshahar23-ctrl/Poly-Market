@@ -1,5 +1,5 @@
 export const botsStrings: Record<string, Record<"he" | "en", string>> = {
-  // ── Header controls / toasts (already referenced from bots.tsx) ──
+  //  Header controls / toasts (already referenced from bots.tsx) 
   "bots.armAll": { he: "הפעל הכל", en: "Arm All" },
   "bots.disarmAll": { he: "כבה הכל", en: "Disarm All" },
   "bots.autoPilot": { he: "אוטומטי", en: "Auto-Pilot" },
@@ -33,7 +33,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.toast.pauseOffTitle": { he: "הצי חזר לפעולה", en: "Fleet resumed" },
   "bots.toast.pauseOffDesc": { he: "הבוטים חוזרים לפתוח עסקאות חדשות בהתאם לאיתותים.", en: "Bots resume opening new trades based on signals." },
 
-  // ── Header / banners ──
+  //  Header / banners 
   "bots.headerSubtitle": { he: "מרכז שליטה אחד לכל הבוטים — סימולציית מסחר בלבד (כסף וירטואלי).", en: "One command center for all bots — trading simulation only (virtual money)." },
   "bots.emergencyStopTitle": { he: "עצירת חירום: מכבה את כל הבוטים וסוגר מיד את כל פוזיציות הבוט", en: "Emergency stop: disarms all bots and immediately closes all bot positions" },
   "bots.emergencyStop": { he: "עצירת חירום", en: "Emergency Stop" },
@@ -42,7 +42,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.boostBadge": { he: "מצב בוסט פעיל", en: "Boost active" },
   "bots.boostBannerMid": { he: " — כל הבוטים סוחרים בקצב המהיר ביותר (קירור מינימלי, מימוש רווחים זריז) כדי לבצע הרבה עסקאות קטנות. הקצב חוזר לרגיל בעוד ", en: " — all bots trade at the fastest cadence (minimal cooldown, quick profit-taking) to make many small trades. Cadence returns to normal in " },
 
-  // ── Alpha coordinator ──
+  //  Alpha coordinator 
   "bots.alpha.dirLong": { he: "עלייה (LONG)", en: "Up (LONG)" },
   "bots.alpha.dirShort": { he: "ירידה (SHORT)", en: "Down (SHORT)" },
   "bots.alpha.dirWaiting": { he: "ממתין לקונצנזוס", en: "Awaiting consensus" },
@@ -76,7 +76,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.alpha.converging": { he: "הצי מתכנס לכיוון {dir} ({pct}%) — הבוטים מתחילים לנוע באותו כיוון.", en: "The fleet is converging toward {dir} ({pct}%) — the bots start moving in the same direction." },
   "bots.alpha.noMajority": { he: "אין עדיין רוב ברור ({pct}%+ נדרש כדי לגבש כיוון) — כל בוט פועל לפי הסטאפ שלו עד שמופיע קונצנזוס.", en: "No clear majority yet ({pct}%+ needed to form a direction) — each bot acts on its own setup until consensus appears." },
 
-  // ── Intensity gear ──
+  //  Intensity gear 
   "bots.intensity.1": { he: "רגוע", en: "Calm" },
   "bots.intensity.2": { he: "מתון", en: "Mild" },
   "bots.intensity.3": { he: "מאוזן", en: "Balanced" },
@@ -100,7 +100,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.gear.selNormal": { he: "רגילה", en: "Normal" },
   "bots.gear.boostNote": { he: "בזמן בוסט הקצב נדרס לקצב המהיר ביותר ללא קשר להילוך; ההילוך חוזר לפעול כשהבוסט מסתיים.", en: "During boost the cadence is overridden to the fastest regardless of gear; the gear resumes when boost ends." },
 
-  // ── Trade mode ──
+  //  Trade mode 
   "bots.mode.title": { he: "סגנון מסחר — בורר לכל הבוטים", en: "Trading Style — Fleet Selector" },
   "bots.mode.descA": { he: "בורר נוסף שמשפיע על ", en: "Another selector that affects " },
   "bots.mode.spanAll": { he: "כל הבוטים", en: "all bots" },
@@ -136,7 +136,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.mode.shlomiName": { he: "שלומי", en: "Shlomi" },
   "bots.mode.calcName": { he: "המחושב", en: "Calculated" },
 
-  // ── Mega-Agent + fleet ──
+  //  Mega-Agent + fleet 
   "bots.market.crypto": { he: "קריפטו", en: "Crypto" },
   "bots.market.stocks": { he: "מניות", en: "Stocks" },
   "bots.market.predictions": { he: "תחזיות", en: "Predictions" },
@@ -161,7 +161,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.mega.openCount": { he: "פתוחות", en: "open" },
   "bots.mega.noOpen": { he: "אין פתוחות", en: "None open" },
 
-  // ── Dynamic capital ──
+  //  Dynamic capital 
   "bots.dyn.profit": { he: "מצב רווח", en: "Profit Mode" },
   "bots.dyn.loss": { he: "מצב הפסד", en: "Loss Mode" },
   "bots.dyn.balanced": { he: "מאוזן", en: "Balanced" },
@@ -177,12 +177,12 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.dyn.disabledTemp": { he: "מושבתות זמנית", en: "temporarily disabled" },
   "bots.dyn.activeNoteB": { he: " — הסוכן הדינמי מחשב הכל מחדש לפי מצב התיק הנוכחי.", en: " — the dynamic agent recomputes everything from the current portfolio state." },
 
-  // ── Shared field labels ──
+  //  Shared field labels 
   "bots.field.marginPerTrade": { he: "מרג׳ין לעסקה", en: "Margin per Trade" },
   "bots.field.leverage": { he: "מינוף", en: "Leverage" },
   "bots.field.portfolioState": { he: "מצב תיק", en: "Portfolio State" },
 
-  // ── Account manager ──
+  //  Account manager 
   "bots.acct.title": { he: "מנהל החשבון — רזרבת מזומן", en: "Account Manager — Cash Reserve" },
   "bots.acct.desc": { he: "המנהל הוותיק שומר תמיד אחוז מההון כמזומן פנוי ואף פעם לא פותח עסקה שתוריד את המזומן מתחת לרצפה הזו — כך החשבון לא נתקע ליד אפס וממשיך לצמוח. מטרתו: למלא את החשבון במזומן.", en: "The veteran manager always keeps a percentage of capital as free cash and never opens a trade that would drop cash below this floor — so the account never gets stuck near zero and keeps growing. Its goal: fill the account with cash." },
   "bots.acct.reserveFloor": { he: "רצפת רזרבה", en: "Reserve Floor" },
@@ -192,7 +192,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.acct.growth": { he: "צמיחה", en: "Growth" },
   "bots.acct.recoveryNote": { he: "מצב התאוששות פעיל — המנהל מקטין פוזיציות ומגביל מינוף (עד 3x) כדי להגן על ההון שנותר עד שהחשבון יתמלא מחדש.", en: "Recovery mode active — the manager shrinks positions and caps leverage (up to 3x) to protect remaining capital until the account refills." },
 
-  // ── Momentum drive ──
+  //  Momentum drive 
   "bots.drive.strongGrowth": { he: "צמיחה חזקה", en: "Strong Growth" },
   "bots.drive.neutral": { he: "ניטרלי", en: "Neutral" },
   "bots.drive.belowThreshold": { he: "מתחת לסף", en: "Below Threshold" },
@@ -213,7 +213,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.drive.disabled": { he: "מושבתות", en: "disabled" },
   "bots.drive.activeNoteB": { he: " ומחושבות דינמית לפי שווי התיק. הגבלת עסקאות מרבית הוסרה; רק המזומן הזמין מגביל.", en: " and computed dynamically from the portfolio value. The max-trades cap is removed; only available cash limits." },
 
-  // ── Global overrides ──
+  //  Global overrides 
   "bots.global.title": { he: "הגדרות גלובליות לכל הבוטים", en: "Global Settings for All Bots" },
   "bots.global.desc": { he: "מינוף וסכום השקעה אחיד לכל הבוטים בבת אחת. הגדרות האלה מופעלות את ההגדרות המקומיות של כל בוט.", en: "Uniform leverage and stake for all bots at once. These settings override each bot's local settings." },
   "bots.global.disabledNote": { he: " (מושבת בזמן שבוט הנעה / המנהל הדינמי פעיל.)", en: " (disabled while Drive Bot / Dynamic Manager is active.)" },
@@ -224,11 +224,11 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.global.fixedOn": { he: "כל הבוטים משקיעים {amt} לעסקה. ההגדרות האישיות של כל בוט מושבתות זמנית.", en: "All bots invest {amt} per trade. Each bot's personal settings are temporarily disabled." },
   "bots.global.fixedOff": { he: "כל בוט משתמש בהגדרת הסכום של עצמו.", en: "Each bot uses its own amount setting." },
 
-  // ── Adaptive manager ──
+  //  Adaptive manager 
   "bots.adaptive.desc": { he: "סוכן שמנהל את הבוטים: עוקב אחרי התוצאות של כל בוט בסימולציה ומכוונן את רמת הסלקטיביות שלו אוטומטית.", en: "An agent that manages the bots: tracks each bot's simulation results and tunes its selectivity automatically." },
   "bots.adaptive.resetLearning": { he: "אפס נתוני למידה", en: "Reset Learning Data" },
 
-  // ── Per-coin caution ──
+  //  Per-coin caution 
   "bots.caution.title": { he: "זהירות לפי מטבע", en: "Per-Coin Caution" },
   "bots.caution.desc": { he: "הבוטים לומדים על אילו מטבעות הם נכשלים בעסקאות, ומעלים אוטומטית את רמת הזהירות והדיוק — דורשים סטאפ חזק יותר לפני שפותחים שם עסקה שוב, כדי לא לחזור על אותן טעויות.", en: "The bots learn which coins they keep losing on and automatically raise their caution and precision — requiring a stronger setup before trading there again, to avoid repeating the same mistakes." },
   "bots.caution.badge": { he: "זהירות", en: "Caution" },
@@ -236,7 +236,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.caution.emptyNote": { he: "אין עדיין מטבעות בזהירות מוגברת. ככל שהבוטים יסחרו, מטבעות שיפסידו בהם שוב ושוב יופיעו כאן עם רמת זהירות גבוהה יותר.", en: "No coins under raised caution yet. As the bots trade, coins they keep losing on will appear here with higher caution." },
   "bots.caution.offNote": { he: "הלמידה לפי מטבע כבויה — הבוטים מתייחסים לכל המטבעות באותה רמת זהירות.", en: "Per-coin learning is off — the bots treat all coins with the same caution." },
 
-  // ── Risk manager ──
+  //  Risk manager 
   "bots.risk.title": { he: "Risk Manager — סוכן ניהול סיכונים", en: "Risk Manager" },
   "bots.risk.desc": { he: "סופר-סוחר שעוצר בוטים מהביזוי ושומר על הון-ריט, הפסד יומי, ודד-דאון. אם בוט מוזיה שובו הושהת אוטומטית.", en: "A super-trader that halts bots from blowing up and protects equity, daily loss and drawdown. If a bot keeps losing, it is paused automatically." },
   "bots.risk.running": { he: "פועל", en: "Running" },
@@ -244,7 +244,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.risk.enableBot": { he: "אפשר בוט", en: "Enable Bot" },
   "bots.risk.resetAll": { he: "אפס כל ההושהות", en: "Reset All Pauses" },
 
-  // ── Smart exit ──
+  //  Smart exit 
   "bots.smartExit.title": { he: "Smart Exit — סגירה חכמה", en: "Smart Exit" },
   "bots.smartExit.desc": { he: "סוכן הסגירה: נועל רווחים קטנים מהר כמו סופרמרקט — אפילו עסקאות של דקה או חצי דקה. אבל כשיש פוטנציאל לרווח גדול הוא נותן לעסקה לרוץ עד שהמומנטום מתהפך.", en: "The exit agent: locks small profits fast like a supermarket — even one- or half-minute trades. But when there's potential for a big gain it lets the trade run until momentum reverses." },
   "bots.smartExit.lockProfit": { he: "נעילת רווח %", en: "Profit Lock %" },
@@ -255,7 +255,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.smartExit.secSuffix": { he: "ש'", en: "s" },
   "bots.smartExit.note": { he: "חל על עסקאות הקריפטו של כל הבוטים. נעילת הרווח מתחילה רק כשהעסקה בירוק; עסקאות חזקות שעוברות את \"סף הריצה\" מקבלות מרחב טריילינג גדול יותר כדי להמשיך לרוץ. הסוכן אף פעם לא מעמיק הפסד.", en: "Applies to all bots' crypto trades. Profit lock starts only when the trade is green; strong trades that pass the \"runner trigger\" get more trailing room to keep running. The agent never deepens a loss." },
 
-  // ── New bots / sections ──
+  //  New bots / sections 
   "bots.section.newBots": { he: "בוטים חדשים", en: "New Bots" },
   "bots.section.existingBots": { he: "בוטים קיימים", en: "Existing Bots" },
   "bots.newbot.dipHint": { he: "קונה את מטבעות הקריפטו עם הירידה הגדולה ביותר ב-24 שעות", en: "Buys the crypto coins with the biggest 24h drop" },
@@ -274,7 +274,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.core.smartHint": { he: "מניות לפי שילוב טכני וסנטימנט משפיענים", en: "Stocks by combined technicals and influencer sentiment" },
   "bots.core.polyHint": { he: "הימורי כיוון יומיים על ביטקוין", en: "Daily directional bets on Bitcoin" },
 
-  // ── Scalp Squad ──
+  //  Scalp Squad 
   "bots.squad.header": { he: "Scalp Squad · חמ״ל הסקאלפרים", en: "Scalp Squad · Scalpers' War Room" },
   "bots.squad.headerSuffix": { he: "חמ״ל הסקאלפרים", en: "Scalpers' War Room" },
   "bots.disclaimer": { he: "כל הבוטים פועלים על תיק נייר (paper trading) בלבד — אין כאן כסף אמיתי או ייעוץ השקעות.", en: "All bots run on a paper-trading portfolio only — there is no real money or investment advice here." },
@@ -310,7 +310,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.squad.scout.source": { he: "Scalp Squad · הסייר", en: "Scalp Squad · Scout" },
   "bots.squad.sweeper.source": { he: "Scalp Squad · המגבה", en: "Scalp Squad · Sweeper" },
 
-  // ── Live comms templates ──
+  //  Live comms templates 
   "bots.comms.exit": { he: "{name} סגר {sym} {result} {usd}", en: "{name} closed {sym} {result} {usd}" },
   "bots.comms.freed": { he: "הון פנוי שוחרר מ-{sym} — מגויס מחדש לסטאפ הבא", en: "Freed capital from {sym} — redeploying to the next setup" },
   "bots.comms.backup": { he: "קונצנזוס {dir} חזק ({pct}) — הצוות מתכנס לכיוון, גיבוי מוכן", en: "Strong {dir} consensus ({pct}) — the squad is converging, backup ready" },
@@ -322,7 +322,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.comms.atLoss": { he: "בהפסד", en: "at a loss" },
   "bots.comms.team": { he: "הצוות", en: "the squad" },
 
-  // ── Smart-exit toasts (autotrader-engine) ──
+  //  Smart-exit toasts (autotrader-engine) 
   "bots.ate.smartExitPrefix": { he: "סגירה חכמה", en: "Smart Exit" },
   "bots.ate.runner": { he: "ריצת רווח", en: "Profit Runner" },
   "bots.ate.quickScalp": { he: "סקאלפ מהיר", en: "Quick Scalp" },
@@ -332,7 +332,7 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.ate.descAfter": { he: "אחרי {sec} ש'", en: "after {sec}s" },
   "bots.ate.noSl": { he: "אין SL מוגדר", en: "no SL set" },
 
-  // ── Bot stats popover ──
+  //  Bot stats popover 
   "bots.pop.bot": { he: "בוט", en: "Bot" },
   "bots.pop.open": { he: "פתוח", en: "open" },
   "bots.pop.noOpen": { he: "אין פתוח", en: "None open" },

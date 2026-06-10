@@ -57,7 +57,7 @@ export const settingsStrings: Record<string, Record<"he" | "en", string>> = {
   "set.about.title": { he: "אודות", en: "About" },
   "set.about.disclaimer": { he: "כל הפעילות היא הדמיה חינוכית בכסף וירטואלי בלבד — אין כסף אמיתי, אין הבטחות לרווח ואין ייעוץ פיננסי.", en: "All activity is educational simulation with virtual money only — no real money, no profit guarantees, and no financial advice." },
 
-  // --- Binance API ---
+  // Binance API
   "set.binance.title": { he: "חיבור ביננס", en: "Binance Connection" },
   "set.binance.desc": { he: "חברו את חשבון הביננס האמיתי שלכם לקבלת נתוני יתרה ועסקאות חיות (קריאה בלבד — אין מסחר אמיתי דרך האפליקציה).", en: "Connect your real Binance account to see live balance and open orders (read-only — no real trading through the app)." },
   "set.binance.keyLabel": { he: "API Key", en: "API Key" },

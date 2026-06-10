@@ -14,7 +14,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string
   POLITICS: { label: "Politics",  color: "text-blue-400",        bg: "bg-blue-500/15 border-blue-500/25" },
   SPORTS:   { label: "Sports",    color: "text-emerald-400",     bg: "bg-emerald-500/15 border-emerald-500/25" },
   ECONOMY:  { label: "Economy",   color: "text-purple-400",      bg: "bg-purple-500/15 border-purple-500/25" },
-  TECH:     { label: "Tech/AI",   color: "text-cyan-400",        bg: "bg-cyan-500/15 border-cyan-500/25" },
+  TECH:     { label: "Tech",      color: "text-cyan-400",        bg: "bg-cyan-500/15 border-cyan-500/25" },
   OTHER:    { label: "Other",     color: "text-muted-foreground", bg: "bg-muted/30 border-border" },
   ALL:      { label: "All",       color: "text-foreground",      bg: "bg-secondary/50 border-border" },
 };

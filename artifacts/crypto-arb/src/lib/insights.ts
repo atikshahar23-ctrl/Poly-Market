@@ -13,7 +13,7 @@ import { t, type Lang } from "@/lib/i18n";
 /* ──────────────────────────────────────────────────────────────────────────
  * Rule-based analytics & insights engine.
  *
- * Pure functions only — no React, no paid AI. Aggregates closed-trade history,
+ * Pure functions only — no React. Aggregates closed-trade history,
  * open positions and the per-asset caution scorecards into per-asset-class and
  * per-bot summaries plus plain-language Hebrew conclusions, framed strictly as
  * educational observations (never advice or guarantees).
