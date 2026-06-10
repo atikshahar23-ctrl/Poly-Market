@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { usePortfolio } from "@/contexts/portfolio-context";
 import { useAutoTrader, type TradeMode } from "@/contexts/autotrader-context";
 import { useLivePrices } from "@/contexts/live-price-context";
+import { useLanguage } from "@/contexts/language-context";
+import { t } from "@/lib/i18n";
 import { toast } from "@/hooks/use-toast";
 import {
   useGetMarketOverview, getGetMarketOverviewQueryKey,
@@ -22,7 +24,7 @@ import {
 import {
   buildAdvisorRead, buildAdvisorMoves, classifyBots,
   type AdvisorSnapshot, type AdvisorMove, type AdvisorActionSpec,
-  type AdvisorIcon, type Lang, type MoveTone, type AdvisorBot,
+  type AdvisorIcon, type MoveTone, type AdvisorBot,
 } from "@/lib/master-advisor";
 
 /** Bot keys + bilingual labels + closed-trade attribution (mirrors Bot Command). */
@@ -42,18 +44,18 @@ const ICONS: Record<AdvisorIcon, React.ComponentType<{ className?: string }>> = 
   brain: Brain, turtle: Turtle, sparkles: Sparkles,
 };
 
-const TONE_STYLE: Record<MoveTone, { border: string; bg: string; chip: string; label: { he: string; en: string } }> = {
+const TONE_STYLE: Record<MoveTone, { border: string; bg: string; chip: string }> = {
   critical: {
     border: "hsl(0 72% 51% / 0.4)", bg: "hsl(0 72% 51% / 0.05)",
-    chip: "bg-red-500/15 text-red-400", label: { he: "הגנה", en: "Protect" },
+    chip: "bg-red-500/15 text-red-400",
   },
   opportunity: {
     border: "hsl(207 30% 70% / 0.45)", bg: "hsl(207 30% 70% / 0.05)",
-    chip: "bg-primary/15 text-primary", label: { he: "הזדמנות", en: "Opportunity" },
+    chip: "bg-primary/15 text-primary",
   },
   tune: {
     border: "hsl(39 28% 72% / 0.35)", bg: "hsl(39 28% 72% / 0.04)",
-    chip: "bg-cyan-500/15 text-cyan-400", label: { he: "כוונון", en: "Tune-up" },
+    chip: "bg-cyan-500/15 text-cyan-400",
   },
 };
 
@@ -66,9 +68,8 @@ function realizedToday(history: { pnl: number; closedAt: string }[]): number {
 }
 
 export default function MasterAdvisor() {
-  const [lang, setLang] = useState<Lang>("he");
+  const { lang, setLang, dir } = useLanguage();
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
-  const he = lang === "he";
 
   const {
     cash, totalDeposited, tradeHistory,
@@ -145,7 +146,7 @@ export default function MasterAdvisor() {
       const wins = ts.filter((t) => t.pnl > 0).length;
       const net = ts.reduce((a, t) => a + t.pnl, 0);
       return {
-        key: d.key, he: d.he, en: d.en,
+        key: d.key,
         armed: armedFor[d.key] ?? false,
         paused: getRiskGuard(d.key).paused,
         trades, wins,
@@ -208,10 +209,10 @@ export default function MasterAdvisor() {
     };
   }, [overview, movers, alpha, cash, totalDeposited, tradeHistory, binancePositions, stockPositions, polyPositions, settings, wallets, activeWalletId, scalp, momentum, stockRecs, shortTerm, getBotStat, getRiskGuard]);
 
-  const read = useMemo(() => buildAdvisorRead(snapshot), [snapshot]);
+  const read = useMemo(() => buildAdvisorRead(snapshot, lang), [snapshot, lang]);
   const moves = useMemo(
-    () => buildAdvisorMoves(snapshot).filter((m) => !dismissed.has(m.id)).slice(0, 6),
-    [snapshot, dismissed],
+    () => buildAdvisorMoves(snapshot, lang).filter((m) => !dismissed.has(m.id)).slice(0, 6),
+    [snapshot, lang, dismissed],
   );
 
   // ── Fleet standing for the briefing: good / weak / paused buckets ──
@@ -247,31 +248,27 @@ export default function MasterAdvisor() {
       items.push({
         icon: up ? TrendingUp : TrendingDown,
         tone: up ? "up" : "down",
-        text: he
-          ? `סקאלפ: ${s.asset} בכיוון ${up ? "עולה" : "יורד"} בביטחון גבוה — נקודה לעקוב אחריה.`
-          : `Scalp: ${s.asset} leaning ${up ? "up" : "down"} at high confidence — one to watch.`,
+        text: t("advisor.watch.scalp", lang)
+          .replace("{asset}", s.asset)
+          .replace("{dir}", up ? t("advisor.dir.up", lang) : t("advisor.dir.down", lang)),
       });
     }
     const m = (momentum ?? []).find((x) => x.rvol >= 3 && x.roc15m > 0);
     if (m) {
       items.push({
         icon: Rocket, tone: "up",
-        text: he
-          ? `מומנטום: ${m.asset} עם זינוק נפח חריג — תרחיש לימוד של פריצה.`
-          : `Momentum: ${m.asset} on an unusual volume surge — a breakout to study.`,
+        text: t("advisor.watch.momentum", lang).replace("{asset}", m.asset),
       });
     }
     const b = (stockRecs ?? []).find((x) => x.action === "BUY" && x.confidence === "HIGH");
     if (b) {
       items.push({
         icon: ArrowUpRight, tone: "up",
-        text: he
-          ? `כסף חכם: ${b.symbol} מסומן לקנייה בביטחון גבוה — שווה מעקב.`
-          : `Smart money: ${b.symbol} flagged BUY at high confidence — worth tracking.`,
+        text: t("advisor.watch.smart", lang).replace("{symbol}", b.symbol),
       });
     }
     return items;
-  }, [scalp, momentum, stockRecs, he]);
+  }, [scalp, momentum, stockRecs, lang]);
 
   function armAll(on: boolean) {
     update({
@@ -310,19 +307,20 @@ export default function MasterAdvisor() {
 
   function runAction(spec: AdvisorActionSpec): string {
     switch (spec.kind) {
-      case "ARM_ALL": armAll(true); return he ? "כל הבוטים חומשו." : "All bots armed.";
-      case "DISARM_ALL": armAll(false); return he ? "כל הבוטים כובו." : "All bots disarmed.";
+      case "ARM_ALL": armAll(true); return t("advisor.action.armAll", lang);
+      case "DISARM_ALL": armAll(false); return t("advisor.action.disarmAll", lang);
       case "SET_INTENSITY":
         update({ intensity: spec.intensity ?? settings.intensity });
-        return he ? `הילוך המסחר עודכן לדרגה ${spec.intensity}.` : `Trading gear set to level ${spec.intensity}.`;
+        return t("advisor.action.setIntensity", lang).replace("{n}", String(spec.intensity));
       case "SET_TRADE_MODE":
         update({ tradeMode: (spec.tradeMode ?? "NORMAL") as TradeMode });
-        return he
-          ? `מצב המסחר עודכן ל${spec.tradeMode === "CALCULATED" ? "מחושב" : "רגיל"}.`
-          : `Trade mode set to ${spec.tradeMode === "CALCULATED" ? "Calculated" : "Normal"}.`;
+        return t("advisor.action.setTradeMode", lang).replace(
+          "{mode}",
+          spec.tradeMode === "CALCULATED" ? t("advisor.mode.calculated", lang) : t("advisor.mode.normal", lang),
+        );
       case "SET_CASH_FLOOR":
         update({ cashFloorPct: spec.cashFloorPct ?? settings.cashFloorPct });
-        return he ? `רזרבת המזומן נקבעה ל-${spec.cashFloorPct} אחוז.` : `Cash reserve set to ${spec.cashFloorPct} percent.`;
+        return t("advisor.action.setCashFloor", lang).replace("{n}", String(spec.cashFloorPct));
       case "ENABLE_AUTOPILOT":
         update({
           autoPilotEnabled: true, dynamicCapitalEnabled: true, smartExitEnabled: true,
@@ -330,27 +328,27 @@ export default function MasterAdvisor() {
           alphaCoordinatorEnabled: true, catastrophicExitEnabled: true, dailyStopEnabled: true,
         });
         armAll(true);
-        return he ? "מצב אוטומטי מלא הופעל." : "Full Auto-Pilot enabled.";
+        return t("advisor.action.autopilot", lang);
       case "ENABLE_ALPHA":
         update({ alphaCoordinatorEnabled: true });
-        return he ? "מתאם האלפא הודלק." : "Alpha Coordinator enabled.";
+        return t("advisor.action.alpha", lang);
       case "START_BOOST":
         startBoost(settings.boostDurationMin * 60_000);
-        return he ? "בוסט הופעל." : "Boost started.";
+        return t("advisor.action.boost", lang);
       case "ENABLE_RISK_MANAGER":
         update({ riskManagerEnabled: true });
-        return he ? "מנהל הסיכונים הודלק." : "Risk Manager enabled.";
+        return t("advisor.action.riskManager", lang);
       case "ENABLE_SMART_EXIT":
         update({ smartExitEnabled: true });
-        return he ? "סגירה חכמה הודלקה." : "Smart Exit enabled.";
+        return t("advisor.action.smartExit", lang);
       case "ENABLE_DAILY_STOP":
         update({ dailyStopEnabled: true });
-        return he ? "עצירת הפסד יומית הודלקה." : "Daily loss stop enabled.";
+        return t("advisor.action.dailyStop", lang);
       case "CLOSE_BOT_POSITIONS": {
         const n = closeBotPositions();
-        return he
-          ? n > 0 ? `${n} פוזיציות בוט נסגרו.` : "לא היו פוזיציות בוט פתוחות."
-          : n > 0 ? `${n} bot positions closed.` : "No open bot positions.";
+        return n > 0
+          ? t("advisor.action.closedN", lang).replace("{n}", String(n))
+          : t("advisor.action.closedNone", lang);
       }
       default: return "";
     }
@@ -359,20 +357,19 @@ export default function MasterAdvisor() {
   function approve(m: AdvisorMove) {
     const result = runAction(m.action);
     setDismissed((prev) => new Set(prev).add(m.id));
-    toast({ title: he ? "היועץ ביצע את המהלך" : "Advisor applied the move", description: result });
+    toast({ title: t("advisor.toast.applied", lang), description: result });
   }
 
   function dismiss(m: AdvisorMove) {
     setDismissed((prev) => new Set(prev).add(m.id));
   }
 
-  const t = read[lang];
   const regimeIcon = read.regime === "RISK_ON" ? ArrowUpRight : read.regime === "RISK_OFF" ? ArrowDownRight : Minus;
   const RegimeIcon = regimeIcon;
   const regimeColor = read.regime === "RISK_ON" ? "text-emerald-400" : read.regime === "RISK_OFF" ? "text-red-400" : "text-cyan-400";
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6" dir={he ? "rtl" : "ltr"}>
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6" dir={dir}>
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:pr-44">
         <div className="flex items-center gap-3">
@@ -384,12 +381,10 @@ export default function MasterAdvisor() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              {he ? "היועץ הראשי" : "Master Advisor"}
+              {t("advisor.title", lang)}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {he
-                ? "קריאה אחת מסכמת של השוק והתיק, עם מהלכים מדורגים לאישורך — סימולציה בלבד."
-                : "One synthesized read of the market and your book, with ranked moves for your approval — simulation only."}
+              {t("advisor.subtitle", lang)}
             </p>
           </div>
         </div>
@@ -397,11 +392,11 @@ export default function MasterAdvisor() {
           variant="outline"
           size="sm"
           className="gap-2 font-mono shrink-0"
-          onClick={() => setLang((p) => (p === "he" ? "en" : "he"))}
+          onClick={() => setLang(lang === "he" ? "en" : "he")}
           aria-label="Toggle language"
         >
           <Languages className="h-4 w-4" />
-          {he ? "English" : "עברית"}
+          {t("advisor.langToggle", lang)}
         </Button>
       </header>
 
@@ -412,9 +407,7 @@ export default function MasterAdvisor() {
       >
         <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          {he
-            ? "היועץ הראשי הוא מנוע חוקים חינוכי בלבד — הוא אינו AI, אינו מבטיח רווחים ואינו ייעוץ השקעות. כל מהלך הוא תרחיש ללימוד שמופעל רק לאחר שתאשר אותו, על תיק נייר."
-            : "The Master Advisor is a rule-based educational engine only — not AI, no promised returns, not financial advice. Every move is a learning scenario that runs only after you approve it, on a paper portfolio."}
+          {t("advisor.disclaimer", lang)}
         </p>
       </div>
 
@@ -423,35 +416,35 @@ export default function MasterAdvisor() {
         <div className="flex items-center gap-2 mb-3">
           <Brain className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-mono uppercase tracking-[0.2em] text-muted-foreground">
-            {he ? "הקריאה של היועץ" : "The Advisor's read"}
+            {t("advisor.readTitle", lang)}
           </h2>
         </div>
         <div className="flex items-start gap-3">
           <RegimeIcon className={`h-7 w-7 shrink-0 ${regimeColor}`} />
           <div className="min-w-0">
-            <p className={`text-lg font-bold ${regimeColor}`}>{t.tag}</p>
-            <p className="text-sm text-foreground/90 mt-1 leading-relaxed">{t.headline}</p>
+            <p className={`text-lg font-bold ${regimeColor}`}>{read.tag}</p>
+            <p className="text-sm text-foreground/90 mt-1 leading-relaxed">{read.headline}</p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-lg border border-border/60 bg-background/40 p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <Activity className="h-3.5 w-3.5 text-cyan-400" />
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{he ? "שוק" : "Market"}</span>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{t("advisor.market", lang)}</span>
             </div>
-            <p className="text-xs text-foreground/85 leading-relaxed">{t.market}</p>
+            <p className="text-xs text-foreground/85 leading-relaxed">{read.market}</p>
           </div>
           <div className="rounded-lg border border-border/60 bg-background/40 p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <Wallet className="h-3.5 w-3.5 text-primary" />
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{he ? "תיק" : "Portfolio"}</span>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{t("advisor.portfolio", lang)}</span>
             </div>
-            <p className="text-xs text-foreground/85 leading-relaxed">{t.portfolio}</p>
+            <p className="text-xs text-foreground/85 leading-relaxed">{read.portfolio}</p>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
-          <span>{he ? "נטיית סיכון" : "Risk bias"}: <span className={regimeColor}>{read.bias > 0 ? "+" : ""}{read.bias}</span></span>
-          <span>{he ? "ביטחון בקריאה" : "Read conviction"}: <span className="text-foreground">{read.conviction}%</span></span>
+          <span>{t("advisor.riskBias", lang)}: <span className={regimeColor}>{read.bias > 0 ? "+" : ""}{read.bias}</span></span>
+          <span>{t("advisor.conviction", lang)}: <span className="text-foreground">{read.conviction}%</span></span>
         </div>
       </section>
 
@@ -460,13 +453,13 @@ export default function MasterAdvisor() {
         <section className="rounded-xl border border-border bg-secondary/20 p-4">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-              <Gauge className="h-3.5 w-3.5" /> {he ? "מצב הצי" : "Fleet standing"}
+              <Gauge className="h-3.5 w-3.5" /> {t("advisor.fleetStanding", lang)}
             </h2>
             <div className="flex items-center gap-3 text-[10px] font-mono">
-              <span className="text-emerald-400">{fleetView.good} {he ? "טובים" : "good"}</span>
-              <span className="text-red-400">{fleetView.weak} {he ? "חלשים" : "weak"}</span>
+              <span className="text-emerald-400">{fleetView.good} {t("advisor.good", lang)}</span>
+              <span className="text-red-400">{fleetView.weak} {t("advisor.weak", lang)}</span>
               {fleetView.paused > 0 && (
-                <span className="text-amber-400">{fleetView.paused} {he ? "מושהים" : "paused"}</span>
+                <span className="text-amber-400">{fleetView.paused} {t("advisor.pausedPlural", lang)}</span>
               )}
             </div>
           </div>
@@ -474,24 +467,24 @@ export default function MasterAdvisor() {
             {fleetView.rows.map((b) => {
               const color = b.standing === "good" ? "text-emerald-400" : b.standing === "weak" ? "text-red-400" : "text-muted-foreground";
               const dot = b.standing === "good" ? "bg-emerald-400" : b.standing === "weak" ? "bg-red-400" : "bg-muted-foreground";
-              const wr = b.trades > 0 ? `${Math.round(b.winRate)}%` : (he ? "—" : "—");
+              const wr = b.trades > 0 ? `${Math.round(b.winRate)}%` : "—";
               return (
                 <div key={b.key} className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-3 py-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
-                    <span className="text-xs font-medium truncate">{he ? b.he : b.en}</span>
+                    <span className="text-xs font-medium truncate">{t(`advisor.bot.${b.key}`, lang)}</span>
                     {b.paused && (
                       <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 shrink-0">
-                        {he ? "מושהה" : "paused"}
+                        {t("advisor.paused", lang)}
                       </span>
                     )}
                     {!b.armed && !b.paused && (
-                      <span className="text-[9px] font-mono text-muted-foreground/70 shrink-0">{he ? "כבוי" : "off"}</span>
+                      <span className="text-[9px] font-mono text-muted-foreground/70 shrink-0">{t("advisor.off", lang)}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-[10px] font-mono shrink-0">
-                    <span className="text-muted-foreground">{b.trades} {he ? "עסקאות" : "trades"}</span>
-                    <span className={color}>{he ? "הצלחה" : "win"} {wr}</span>
+                    <span className="text-muted-foreground">{b.trades} {t("advisor.trades", lang)}</span>
+                    <span className={color}>{t("advisor.win", lang)} {wr}</span>
                   </div>
                 </div>
               );
@@ -504,7 +497,7 @@ export default function MasterAdvisor() {
       {walletRanking.length > 0 && (
         <section className="rounded-xl border border-border bg-secondary/20 p-4">
           <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-3">
-            <Wallet className="h-3.5 w-3.5" /> {he ? "דירוג הארנקים לפי מזומן פנוי" : "Wallets ranked by free cash"}
+            <Wallet className="h-3.5 w-3.5" /> {t("advisor.walletsRanked", lang)}
           </h2>
           <div className="space-y-2">
             {walletRanking.map((w, i) => {
@@ -517,13 +510,13 @@ export default function MasterAdvisor() {
                     <span className="text-xs font-medium truncate">{w.name}</span>
                     {w.active && (
                       <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-primary/15 text-primary shrink-0">
-                        {he ? "פעיל" : "active"}
+                        {t("advisor.active", lang)}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-[10px] font-mono shrink-0">
-                    <span className="text-muted-foreground">{w.openPositions} {he ? "פוזיציות" : "open"}</span>
-                    <span className={color}>{pct}% {he ? "מזומן" : "cash"}</span>
+                    <span className="text-muted-foreground">{w.openPositions} {t("advisor.openPositions", lang)}</span>
+                    <span className={color}>{pct}% {t("advisor.cash", lang)}</span>
                   </div>
                 </div>
               );
@@ -536,10 +529,10 @@ export default function MasterAdvisor() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-            <Compass className="h-3.5 w-3.5" /> {he ? "מהלכים מדורגים לאישורך" : "Ranked moves for your approval"}
+            <Compass className="h-3.5 w-3.5" /> {t("advisor.rankedMoves", lang)}
           </h2>
           {moves.length > 0 && (
-            <span className="text-[10px] font-mono text-muted-foreground">{moves.length} {he ? "מהלכים" : "moves"}</span>
+            <span className="text-[10px] font-mono text-muted-foreground">{moves.length} {t("advisor.moves", lang)}</span>
           )}
         </div>
 
@@ -547,19 +540,16 @@ export default function MasterAdvisor() {
           <div className="rounded-lg border border-border bg-secondary/20 p-6 text-center">
             <ShieldCheck className="h-7 w-7 text-emerald-400 mx-auto mb-2" />
             <p className="text-sm text-foreground/85">
-              {he ? "אין כרגע מהלך שדורש את תשומת ליבך." : "Nothing needs your attention right now."}
+              {t("advisor.noMoves", lang)}
             </p>
             <p className="text-[11px] text-muted-foreground mt-1">
-              {he
-                ? "היועץ ימשיך לקרוא את השוק והתיק ויציע מהלך כשיזהה הזדמנות או סיכון."
-                : "The advisor keeps reading the market and your book, and will surface a move when it spots an opportunity or a risk."}
+              {t("advisor.noMovesSub", lang)}
             </p>
           </div>
         ) : (
           moves.map((m, i) => {
             const Icon = ICONS[m.icon];
             const tone = TONE_STYLE[m.tone];
-            const c = m[lang];
             return (
               <div
                 key={m.id}
@@ -577,19 +567,19 @@ export default function MasterAdvisor() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-semibold tracking-wide">{c.title}</h3>
+                      <h3 className="text-sm font-semibold tracking-wide">{m.title}</h3>
                       <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${tone.chip}`}>
-                        {tone.label[lang]}
+                        {t(`advisor.tone.${m.tone}`, lang)}
                       </span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{c.body}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{m.body}</p>
                     <div className="mt-3 flex items-center gap-2">
                       <Button
                         size="sm"
                         className="h-8 gap-1.5 font-mono"
                         onClick={() => approve(m)}
                       >
-                        <Check className="h-3.5 w-3.5" /> {c.cta}
+                        <Check className="h-3.5 w-3.5" /> {m.cta}
                       </Button>
                       <Button
                         size="sm"
@@ -597,7 +587,7 @@ export default function MasterAdvisor() {
                         className="h-8 gap-1.5 font-mono text-muted-foreground"
                         onClick={() => dismiss(m)}
                       >
-                        <X className="h-3.5 w-3.5" /> {he ? "התעלם" : "Dismiss"}
+                        <X className="h-3.5 w-3.5" /> {t("advisor.dismiss", lang)}
                       </Button>
                     </div>
                   </div>
@@ -612,7 +602,7 @@ export default function MasterAdvisor() {
       {watching.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-            <Eye className="h-3.5 w-3.5" /> {he ? "מה שאני עוקב אחריו" : "What I'm watching"}
+            <Eye className="h-3.5 w-3.5" /> {t("advisor.watching", lang)}
           </h2>
           <div className="rounded-lg border border-border bg-secondary/20 divide-y divide-border/60">
             {watching.map((w, i) => {
@@ -631,9 +621,7 @@ export default function MasterAdvisor() {
 
       <p className="text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5">
         <Activity className="h-3 w-3" />
-        {he
-          ? "כל המהלכים פועלים על תיק נייר בלבד — אין כאן כסף אמיתי, הבטחת תשואה או ייעוץ השקעות."
-          : "All moves run on a paper portfolio only — no real money, no promised returns, no investment advice."}
+        {t("advisor.footer", lang)}
       </p>
     </div>
   );

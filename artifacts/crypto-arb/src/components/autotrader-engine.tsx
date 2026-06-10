@@ -11,7 +11,7 @@ import {
 import type { ScalpSignal, MomentumCoin, PolymarketMarket, StockRecommendation, InfluencerSignal, StockQuote } from "@workspace/api-client-react";
 import { usePortfolio, type TrailConfig } from "@/contexts/portfolio-context";
 import { recommendLevels } from "@/lib/recommend-levels";
-import { useAutoTrader, resolveSizing, cashReserveFloor, intensityProfile, alphaAdjust, assignScalpSquad, squadMemberBySource, SCALP_SQUAD, NEUTRAL_ALPHA, ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT, type AlphaState, type ScalpConfidence, type ScalpSquadMember } from "@/contexts/autotrader-context";
+import { useAutoTrader, resolveSizing, cashReserveFloor, intensityProfile, alphaAdjust, assignScalpSquad, squadMemberBySource, getSquadMemberSourceKey, SCALP_SQUAD, NEUTRAL_ALPHA, ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT, type AlphaState, type ScalpConfidence, type ScalpSquadMember } from "@/contexts/autotrader-context";
 import { useFavorites } from "@/contexts/favorites-context";
 import { useLivePrices } from "@/contexts/live-price-context";
 import { pushSquadMessage, clearSquadMessages } from "@/lib/squad-comms";
@@ -679,7 +679,8 @@ export function AutoTraderEngine() {
       // so per-member stats, fleet counts and comms all attribute correctly.
       const member: ScalpSquadMember | undefined =
         c.source === "Scalp signal" ? squadAssign.get(c.asset) : undefined;
-      const source = member ? member.source : c.source;
+      const sourceKey = member ? getSquadMemberSourceKey(member.id) : undefined;
+      const source = sourceKey ? t(sourceKey, lang) : c.source;
       const err = openBinancePosition({
         asset: c.asset,
         direction: c.direction,

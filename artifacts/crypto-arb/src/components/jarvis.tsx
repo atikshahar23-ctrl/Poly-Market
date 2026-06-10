@@ -268,7 +268,7 @@ export function Jarvis() {
     if (buy) {
       out.push({
         id: `buy-${buy.symbol}`,
-        label: he ? `קנייה ${buy.symbol} · ${buy.confidence}` : `Buy ${buy.symbol} · ${buy.confidence}`,
+        label: `${t("misc.jarvis.buyLabel", lang).replace("{symbol}", buy.symbol)} · ${buy.confidence}`,
         tone: "buy",
         text: he
           ? `המניה החזקה ביותר לקנייה: ${buy.symbol} (${buy.name}) — ביטחון ${buy.confidence}. ${buy.rationale}`
@@ -286,7 +286,7 @@ export function Jarvis() {
         text: he
           ? `כסף חכם: ${inf.influencer} מזיז את ${inf.ticker} (${inf.name}). סיגנל ${inf.direction} בביטחון ${conf}%. "${inf.headline}"`
           : `Smart-Money, sir: ${inf.influencer} is moving ${inf.ticker} (${inf.name}). Signal ${inf.direction} at ${conf}% conviction. "${inf.headline}"`,
-        links: [tradeLink("stock"), { label: he ? "כתבה" : "Article", href: inf.url }, tvLink(inf.ticker.replace(".", ""))],
+        links: [tradeLink("stock"), { label: t("misc.jarvis.articleLink", lang), href: inf.url }, tvLink(inf.ticker.replace(".", ""))],
       });
     }
     const crypto = (cryptoRecs ?? []).filter((r) => r.action !== "WATCH")[0];
@@ -306,7 +306,7 @@ export function Jarvis() {
     if (sell) {
       out.push({
         id: `sell-${sell.symbol}`,
-        label: he ? `הימנע ${sell.symbol}` : `Avoid ${sell.symbol}`,
+        label: t("misc.jarvis.avoidLabel", lang).replace("{symbol}", sell.symbol),
         tone: "sell",
         text: he
           ? `כדאי להימנע או לצמצם את ${sell.symbol} (${sell.name}). ${sell.rationale}`
@@ -509,7 +509,7 @@ export function Jarvis() {
           text: he
             ? `כסף חכם: ${pick.influencer} מזיז את ${pick.ticker} (${pick.name}) — סיגנל ${pick.direction} בביטחון ${conf}% (טווח ${horizonHe(pick.horizon)}). כותרת: "${pick.headline}".`
             : `Smart-Money, sir: ${pick.influencer} is moving ${pick.ticker} (${pick.name}) — signal ${pick.direction} at ${conf}% conviction (${pick.horizon.toLowerCase()}-term). Headline: "${pick.headline}".`,
-          links: [tradeLink("stock"), { label: he ? "כתבה" : "Article", href: pick.url }, tvLink(pick.ticker.replace(".", ""))],
+          links: [tradeLink("stock"), { label: t("misc.jarvis.articleLink", l), href: pick.url }, tvLink(pick.ticker.replace(".", ""))],
         };
       }
 
@@ -579,7 +579,7 @@ export function Jarvis() {
             ? (he
               ? `${g.symbol} (${g.changePercent >= 0 ? "+" : ""}${g.changePercent.toFixed(1)}% היום)`
               : `${g.symbol} (${g.changePercent >= 0 ? "+" : ""}${g.changePercent.toFixed(1)}% today)`)
-            : (he ? "הנתונים עדיין נטענים." : "data still loading.");
+            : t("misc.jarvis.dataLoading", l);
           return {
             id, role: "jarvis",
             text: he
@@ -647,7 +647,7 @@ export function Jarvis() {
   const startListening = useCallback(() => {
     const he = langRef.current === "he";
     if (!micSupported) {
-      setMicError(he ? "קלט קולי אינו נתמך בדפדפן זה." : "Voice input isn't supported in this browser.");
+      setMicError(t("misc.jarvis.micNotSupported", he ? "he" : "en"));
       return;
     }
     setMicError(null);
@@ -655,7 +655,7 @@ export function Jarvis() {
     try {
       const Ctor = SpeechRecognitionCtor as new () => any;
       const rec = new Ctor();
-      rec.lang = he ? "he-IL" : "en-US";
+      rec.lang = he ? t("misc.jarvis.recLangHe", "he") : t("misc.jarvis.recLangEn", "en");
       rec.interimResults = false;
       rec.maxAlternatives = 1;
       rec.continuous = false;
@@ -670,9 +670,9 @@ export function Jarvis() {
       rec.onerror = (e: any) => {
         setListening(false);
         if (e?.error === "not-allowed" || e?.error === "service-not-allowed") {
-          setMicError(he ? "ההרשאה למיקרופון נדחתה. אפשר אותה בדפדפן כדי לדבר עם ג'רוויס." : "Microphone permission denied. Enable it in your browser to talk to JARVIS.");
+          setMicError(t("misc.jarvis.micPermissionDenied", he ? "he" : "en"));
         } else if (e?.error === "no-speech") {
-          setMicError(he ? "לא קלטתי — נסה שוב." : "Didn't catch that — try again.");
+          setMicError(t("misc.jarvis.micNoSpeech", he ? "he" : "en"));
         }
       };
       rec.onend = () => setListening(false);
@@ -680,7 +680,7 @@ export function Jarvis() {
       rec.start();
     } catch {
       setListening(false);
-      setMicError(he ? "לא הצלחתי להפעיל את המיקרופון." : "Couldn't start the microphone.");
+      setMicError(t("misc.jarvis.micStartFailed", he ? "he" : "en"));
     }
   }, [micSupported, SpeechRecognitionCtor, stopSpeaking, open, send]);
 
@@ -910,7 +910,7 @@ export function Jarvis() {
               </span>
             ) : tips.length > 0 && !showTip ? (
               <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-mono font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                {tips.length} tips
+                {t("misc.jarvis.tipsCount", lang).replace("{n}", String(tips.length))}
               </span>
             ) : null}
           </button>
@@ -951,7 +951,7 @@ export function Jarvis() {
                     return next;
                   })
                 }
-                aria-label="Toggle language"
+                aria-label={t("misc.jarvis.toggleLanguage", lang)}
                 title={lang === "en" ? "עברית" : "English"}
                 className="px-1.5 h-7 rounded text-[10px] font-mono font-bold border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
               >

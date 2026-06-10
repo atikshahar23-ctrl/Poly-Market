@@ -304,6 +304,11 @@ export const botsStrings: Record<string, Record<"he" | "en", string>> = {
   "bots.squad.sweeper.name": { he: "המגבה", en: "Sweeper" },
   "bots.squad.sweeper.role": { he: "גיבוי", en: "Backup" },
   "bots.squad.sweeper.tagline": { he: "רשת הביטחון — אוסף את מה שנשאר ומגבה את הצוות", en: "The safety net — mops up the rest and backs up the team" },
+  "bots.squad.vanguard.source": { he: "Scalp Squad · חוד החנית", en: "Scalp Squad · Spearhead" },
+  "bots.squad.longrider.source": { he: "Scalp Squad · רוכב המגמה", en: "Scalp Squad · Trend Rider" },
+  "bots.squad.shorthunter.source": { he: "Scalp Squad · צייד השורטים", en: "Scalp Squad · Short Hunter" },
+  "bots.squad.scout.source": { he: "Scalp Squad · הסייר", en: "Scalp Squad · Scout" },
+  "bots.squad.sweeper.source": { he: "Scalp Squad · המגבה", en: "Scalp Squad · Sweeper" },
 
   // ── Live comms templates ──
   "bots.comms.exit": { he: "{name} סגר {sym} {result} {usd}", en: "{name} closed {sym} {result} {usd}" },

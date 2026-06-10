@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { usePortfolio, type ClosedTrade } from "@/contexts/portfolio-context";
 import {
   useAutoTrader, computeDynamicSizing, computeMomentumDriveSizing, intensityProfile, SCALP_SQUAD,
+  getSquadMemberSourceKey,
   ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT,
   type AutoTraderSettings, type NewBotId, type RiskGuard, type TradeMode,
 } from "@/contexts/autotrader-context";
@@ -295,17 +296,19 @@ export default function Bots() {
   }, [binancePositions, stockPositions, polyPositions, fundingPositions, optionPositions]);
 
   // ── Scalp Squad ── per-member live open count + realized track record,
-  // attributed by the member's exact `source` tag.
+  // attributed by matching the translated source string.
   const squadRows = useMemo(() => {
     return SCALP_SQUAD.map((m) => {
-      const open = binancePositions.filter((p) => p.source === m.source).length;
-      const ts = tradeHistory.filter((t) => t.source === m.source);
+      const sourceKey = getSquadMemberSourceKey(m.id);
+      const source = sourceKey ? t(sourceKey, lang) : undefined;
+      const open = source ? binancePositions.filter((p) => p.source === source).length : 0;
+      const ts = source ? tradeHistory.filter((t) => t.source === source) : [];
       const trades = ts.length;
       const wins = ts.filter((t) => t.pnl > 0).length;
       const net = ts.reduce((a, t) => a + t.pnl, 0);
       return { member: m, open, trades, wins, net, wr: trades > 0 ? (wins / trades) * 100 : 0 };
     });
-  }, [binancePositions, tradeHistory]);
+  }, [binancePositions, tradeHistory, lang]);
   const squadOpen = squadRows.reduce((a, r) => a + r.open, 0);
 
   // Live squad coordination feed (entries, exits, hand-offs, backup calls).

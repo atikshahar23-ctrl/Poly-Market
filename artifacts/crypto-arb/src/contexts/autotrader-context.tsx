@@ -822,14 +822,6 @@ export interface ScalpCandidate {
  *  the live scalp signals. `fit` returns 0-1: how well a candidate suits it. */
 export interface ScalpSquadMember {
   id: string;
-  /** Display name. */
-  name: string;
-  /** Role tag (short). */
-  role: string;
-  /** One-line description of what this bot hunts. */
-  tagline: string;
-  /** Trade source tag — counts/fleet attribution match on "Scalp" substring. */
-  source: string;
   fit: (c: ScalpCandidate) => number;
 }
 
@@ -844,52 +836,76 @@ const CONF_WEIGHT: Record<ScalpConfidence, number> = { LOW: 0, MEDIUM: 1, HIGH: 
 export const SCALP_SQUAD: ScalpSquadMember[] = [
   {
     id: "vanguard",
-    name: "Spearhead",
-    role: "Lead",
-    tagline: "Catches the strongest setups, regardless of direction",
-    source: "Scalp Squad · חוד החנית",
     // Loves the highest-conviction setups regardless of direction.
     fit: (c) => 0.4 + 0.3 * (CONF_WEIGHT[c.confidence] / 2) + 0.3 * Math.min(1, c.score / 100),
   },
   {
     id: "longrider",
-    name: "Trend Rider",
-    role: "Long",
-    tagline: "Specializes in upside — rides positive momentum",
-    source: "Scalp Squad · רוכב המגמה",
     fit: (c) => (c.direction === "LONG" ? 0.85 + 0.15 * Math.min(1, c.score / 100) : 0.1),
   },
   {
     id: "shorthunter",
-    name: "Short Hunter",
-    role: "Short",
-    tagline: "Specializes in downside — exploits weakness and bearish setups",
-    source: "Scalp Squad · צייד השורטים",
     fit: (c) => (c.direction === "SHORT" ? 0.85 + 0.15 * Math.min(1, c.score / 100) : 0.1),
   },
   {
     id: "scout",
-    name: "Scout",
-    role: "Nimble",
-    tagline: "Catches mid-sized, quick opportunities before they strengthen",
-    source: "Scalp Squad · הסייר",
     fit: (c) => 0.5 + 0.35 * (c.confidence === "MEDIUM" ? 1 : 0.35) + 0.1 * Math.min(1, c.score / 100),
   },
   {
     id: "sweeper",
-    name: "Sweeper",
-    role: "Backup",
-    tagline: "The safety net — mops up the rest and backs up the team",
-    source: "Scalp Squad · המגבה",
     // Flat fit: the safety net that mops up leftovers the others skipped.
     fit: () => 0.45,
   },
 ];
 
-/** Look up a squad member by its trade `source` tag. */
+/**
+ * Map member id to the source tag. The source is built as
+ * "Scalp Squad · [TranslatedName]" and stored in trades/positions.
+ * This is used by autotrader-engine to mark which squad member opened a trade.
+ */
+const MEMBER_ID_TO_SOURCE_KEY: Record<string, string> = {
+  vanguard: "bots.squad.vanguard.source",
+  longrider: "bots.squad.longrider.source",
+  shorthunter: "bots.squad.shorthunter.source",
+  scout: "bots.squad.scout.source",
+  sweeper: "bots.squad.sweeper.source",
+};
+
+/**
+ * Get the source tag key for a squad member by id.
+ * The returned key can be passed to t() to get the translated source string.
+ */
+export function getSquadMemberSourceKey(memberId: string): string | undefined {
+  return MEMBER_ID_TO_SOURCE_KEY[memberId];
+}
+
+/** Look up a squad member by its id. */
+export function getSquadMemberById(memberId: string | undefined | null): ScalpSquadMember | undefined {
+  if (!memberId) return undefined;
+  return SCALP_SQUAD.find((m) => m.id === memberId);
+}
+
+/**
+ * Look up a squad member by its trade `source` tag (starts with "Scalp Squad").
+ * Since the source strings are translated, we match against the English name patterns.
+ */
 export function squadMemberBySource(source: string | undefined | null): ScalpSquadMember | undefined {
-  if (!source) return undefined;
-  return SCALP_SQUAD.find((m) => m.source === source);
+  if (!source || !source.startsWith("Scalp Squad")) return undefined;
+  // Match against English name patterns in the source string
+  // e.g., "Scalp Squad · Spearhead" → vanguard
+  const sourcePatterns: Record<string, string> = {
+    Spearhead: "vanguard",
+    "Trend Rider": "longrider",
+    "Short Hunter": "shorthunter",
+    Scout: "scout",
+    Sweeper: "sweeper",
+  };
+  for (const [pattern, memberId] of Object.entries(sourcePatterns)) {
+    if (source.includes(pattern)) {
+      return getSquadMemberById(memberId);
+    }
+  }
+  return undefined;
 }
 
 /**

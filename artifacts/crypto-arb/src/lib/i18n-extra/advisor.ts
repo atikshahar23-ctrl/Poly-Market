@@ -32,6 +32,7 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
   "calendar.impactLow": { he: "השפעה נמוכה", en: "Low impact" },
 
   // --- Master Advisor page (chrome) ---
+  "advisor.title": { he: "היועץ הראשי", en: "Master Advisor" },
   "advisor.subtitle": {
     he: "קריאה אחת מסכמת של השוק והתיק, עם מהלכים מדורגים לאישורך — סימולציה בלבד.",
     en: "One synthesized read of the market and your book, with ranked moves for your approval — simulation only.",
@@ -283,4 +284,12 @@ export const advisorStrings: Record<string, Record<"he" | "en", string>> = {
     en: "{label}. On days like this, volatility is typically higher than usual — key lesson: calendar events affect the market even before anything \"happens\".",
   },
   "briefing.row.rate15m": { he: "קצב 15ד׳", en: "15m rate" },
+  "briefing.opp.scalpTail": {
+    he: "לכיוון {dir} (כניסה ${entry}, יעד ${tp}, סטופ ${sl}).",
+    en: "{dir} (entry ${entry}, target ${tp}, stop ${sl}).",
+  },
+  "briefing.opp.momTail": {
+    he: "עם נפח יחסי פי {rvol} וקצב עלייה {roc}% ב-15 דק׳.",
+    en: "RVol ×{rvol}, rate {roc}% in 15 min.",
+  },
 };

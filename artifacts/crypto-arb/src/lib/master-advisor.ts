@@ -11,6 +11,7 @@
  * paper-trading scenario, never financial advice.
  */
 import type { AlphaState, TradeMode } from "@/contexts/autotrader-context";
+import { t } from "@/lib/i18n";
 
 export type Lang = "he" | "en";
 export type Regime = "RISK_ON" | "RISK_OFF" | "MIXED";
@@ -31,12 +32,6 @@ export interface AdvisorActionSpec {
   cashFloorPct?: number;
 }
 
-export interface LocalizedText {
-  title: string;
-  body: string;
-  cta: string;
-}
-
 export interface AdvisorMove {
   /** Stable id (kind + params) so dismissal survives re-renders. */
   id: string;
@@ -44,8 +39,10 @@ export interface AdvisorMove {
   /** Higher = more urgent; the page sorts and caps the list by this. */
   priority: number;
   icon: AdvisorIcon;
-  he: LocalizedText;
-  en: LocalizedText;
+  /** Localized copy, resolved for the requested language. */
+  title: string;
+  body: string;
+  cta: string;
   action: AdvisorActionSpec;
 }
 
@@ -55,15 +52,16 @@ export interface AdvisorRead {
   bias: number;
   /** 0…100 conviction in the read. */
   conviction: number;
-  he: { tag: string; headline: string; market: string; portfolio: string };
-  en: { tag: string; headline: string; market: string; portfolio: string };
+  /** Localized copy, resolved for the requested language. */
+  tag: string;
+  headline: string;
+  market: string;
+  portfolio: string;
 }
 
 /** One bot's standing, mirrored from the Bot Command fleet roll-up. */
 export interface AdvisorBot {
   key: string;
-  he: string;
-  en: string;
   armed: boolean;
   paused: boolean;
   trades: number;
@@ -128,10 +126,17 @@ export interface AdvisorSnapshot {
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
+/** Translate a key and interpolate {placeholders}. */
+function tr(key: string, lang: Lang, repl?: Record<string, string | number>): string {
+  let s = t(key, lang);
+  if (repl) for (const [k, v] of Object.entries(repl)) s = s.replaceAll(`{${k}}`, String(v));
+  return s;
+}
+
 function dirWord(d: AlphaState["direction"], lang: Lang): string {
-  if (d === "LONG") return lang === "he" ? "כיוון עולה" : "an upward lean";
-  if (d === "SHORT") return lang === "he" ? "כיוון יורד" : "a downward lean";
-  return lang === "he" ? "ללא הכרעה ברורה" : "no clear lean";
+  if (d === "LONG") return tr("advisor.dirWord.long", lang);
+  if (d === "SHORT") return tr("advisor.dirWord.short", lang);
+  return tr("advisor.dirWord.neutral", lang);
 }
 
 /** Net cross-source directional lean (positive = bullish, negative = bearish). */
@@ -149,7 +154,7 @@ export function classifyBots(bots: AdvisorBot[]) {
 }
 
 /** Synthesize the one top-level read of market + portfolio. */
-export function buildAdvisorRead(s: AdvisorSnapshot): AdvisorRead {
+export function buildAdvisorRead(s: AdvisorSnapshot, lang: Lang): AdvisorRead {
   const a = s.alpha;
   const lean = signalLean(s.signals);
   let bias = 0;
@@ -175,52 +180,53 @@ export function buildAdvisorRead(s: AdvisorSnapshot): AdvisorRead {
   const avg = `${s.avgChange >= 0 ? "+" : ""}${s.avgChange.toFixed(2)}%`;
   const fg = s.fearGreed != null ? String(s.fearGreed) : "—";
 
-  const heTag = regime === "RISK_ON" ? "סביבת סיכון חיובית" : regime === "RISK_OFF" ? "סביבת סיכון שלילית" : "תמונה מעורבת";
-  const enTag = regime === "RISK_ON" ? "Risk-on backdrop" : regime === "RISK_OFF" ? "Risk-off backdrop" : "Mixed picture";
+  const tag = regime === "RISK_ON"
+    ? tr("advisor.tag.riskOn", lang)
+    : regime === "RISK_OFF"
+      ? tr("advisor.tag.riskOff", lang)
+      : tr("advisor.tag.mixed", lang);
 
-  const ddNote_he = s.drawdownPct >= 12
-    ? `שים לב — ירידת ערך מוערכת של כ-${s.drawdownPct.toFixed(0)} אחוז מההפקדה.`
-    : "ירידת הערך עדיין מתונה.";
-  const ddNote_en = s.drawdownPct >= 12
-    ? `Heads up — estimated drawdown of about ${s.drawdownPct.toFixed(0)} percent from deposits.`
-    : "Drawdown is still mild.";
+  const ddNote = s.drawdownPct >= 12
+    ? tr("advisor.read.ddHigh", lang, { n: s.drawdownPct.toFixed(0) })
+    : tr("advisor.read.ddLow", lang);
 
   // ── Cross-source confirmation sentence for the market read ──
   const sig = s.signals;
-  const sigNote_he = lean === 0 && sig.polyStrong === 0
-    ? "כרגע אין סיגנל בולט שמושך לכיוון אחד."
-    : `על פני המקורות אני רואה ${sig.scalpLongHigh} סקאלפ בכיוון עולה ו-${sig.scalpShortHigh} בכיוון יורד, ${sig.momentumSurges} זינוקי מומנטום, ${sig.stockBuyHigh} מניות לקנייה מול ${sig.stockSellHigh} למכירה, ו-${sig.polyStrong} שווקי תחזיות עם הכרעה ברורה.`;
-  const sigNote_en = lean === 0 && sig.polyStrong === 0
-    ? "Right now no single signal is pulling hard in one direction."
-    : `Across the feeds I see ${sig.scalpLongHigh} scalp setups leaning up and ${sig.scalpShortHigh} leaning down, ${sig.momentumSurges} momentum surges, ${sig.stockBuyHigh} stocks flagged buy versus ${sig.stockSellHigh} sell, and ${sig.polyStrong} prediction markets pricing a clear outcome.`;
+  const sigNote = lean === 0 && sig.polyStrong === 0
+    ? tr("advisor.read.sigNone", lang)
+    : tr("advisor.read.sigDetail", lang, {
+        scalpLong: sig.scalpLongHigh,
+        scalpShort: sig.scalpShortHigh,
+        momentum: sig.momentumSurges,
+        stockBuy: sig.stockBuyHigh,
+        stockSell: sig.stockSellHigh,
+        poly: sig.polyStrong,
+      });
 
   // ── Fleet standing sentence for the portfolio read ──
   const { rated, good, weak, paused } = classifyBots(s.bots);
-  let fleet_he: string;
-  let fleet_en: string;
+  let fleet: string;
   if (!s.anyBotsOn) {
-    fleet_he = "כל הבוטים כבויים כרגע.";
-    fleet_en = "All bots are currently idle.";
+    fleet = tr("advisor.read.fleetIdle", lang);
   } else if (rated.length === 0) {
-    fleet_he = "הצי פעיל אך עוד אין מספיק עסקאות סגורות כדי לדרג ביצועים.";
-    fleet_en = "The fleet is live but there aren't enough closed trades yet to rate performance.";
+    fleet = tr("advisor.read.fleetNoRated", lang);
   } else {
-    const pausedNote_he = paused.length ? `, ${paused.length} מושהים על ידי מנהל הסיכונים` : "";
-    const pausedNote_en = paused.length ? `, ${paused.length} paused by the Risk Manager` : "";
-    fleet_he = `הצי: ${good.length} בוטים במצב טוב, ${weak.length} זקוקים לתשומת לב${pausedNote_he}.`;
-    fleet_en = `Fleet: ${good.length} bots in good shape, ${weak.length} needing attention${pausedNote_en}.`;
+    const pausedNote = paused.length ? tr("advisor.read.fleetPaused", lang, { n: paused.length }) : "";
+    fleet = tr("advisor.read.fleetMain", lang, { good: good.length, weak: weak.length, paused: pausedNote });
   }
 
   // ── Multi-wallet ranking sentence (only when more than one wallet) ──
-  let wallet_he = "";
-  let wallet_en = "";
+  let wallet = "";
   if (s.wallets.length > 1) {
     const ranked = [...s.wallets].sort((x, y) => y.cashRatio - x.cashRatio);
     const strongest = ranked[0];
     const exposed = ranked[ranked.length - 1];
     if (strongest && exposed && strongest.id !== exposed.id) {
-      wallet_he = ` מבין ${s.wallets.length} הארנקים, הכי הרבה מזומן פנוי יש בארנק ${strongest.name}, והכי חשוף הוא ${exposed.name}.`;
-      wallet_en = ` Across ${s.wallets.length} wallets, the most free cash sits in ${strongest.name}, and the most exposed is ${exposed.name}.`;
+      wallet = tr("advisor.read.wallet", lang, {
+        n: s.wallets.length,
+        strong: strongest.name,
+        exposed: exposed.name,
+      });
     }
   }
 
@@ -228,23 +234,30 @@ export function buildAdvisorRead(s: AdvisorSnapshot): AdvisorRead {
     regime,
     bias,
     conviction,
-    he: {
-      tag: heTag,
-      headline: `קראתי את כל הזירה — ${heTag}.`,
-      market: `ביטקוין ${btc} ביממה, רוחב השוק ${avg}, ומדד הסנטימנט עומד על ${fg}. הקונצנזוס של המערכת מצביע על ${dirWord(a.direction, "he")} במתאם של ${a.confluence} אחוז על פני ${a.sources} מקורות סיגנל. ${sigNote_he}`,
-      portfolio: `בארנק הפעיל יש כ-${cashPct} אחוז מזומן פנוי, ${s.openAuto} פוזיציות בוט פתוחות, ותוצאה יומית ממומשת של ${daily}. ${fleet_he}${wallet_he} ${ddNote_he}`,
-    },
-    en: {
-      tag: enTag,
-      headline: `I've read the whole board — ${enTag.toLowerCase()}.`,
-      market: `Bitcoin ${btc} on the day, market breadth ${avg}, and the sentiment gauge sits at ${fg}. The system's consensus shows ${dirWord(a.direction, "en")} at ${a.confluence} percent confluence across ${a.sources} signal sources. ${sigNote_en}`,
-      portfolio: `The active wallet holds about ${cashPct} percent free cash, ${s.openAuto} open bot positions, and a realized result today of ${daily}. ${fleet_en}${wallet_en} ${ddNote_en}`,
-    },
+    tag,
+    headline: tr("advisor.read.headline", lang, { tag: lang === "en" ? tag.toLowerCase() : tag }),
+    market: tr("advisor.read.market", lang, {
+      btc,
+      avg,
+      fg,
+      dir: dirWord(a.direction, lang),
+      confluence: a.confluence,
+      sources: a.sources,
+      sig: sigNote,
+    }),
+    portfolio: tr("advisor.read.portfolio", lang, {
+      cashPct,
+      openAuto: s.openAuto,
+      daily,
+      fleet,
+      wallet,
+      dd: ddNote,
+    }),
   };
 }
 
 /** Generate every applicable suggested move, ranked by priority (desc). */
-export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
+export function buildAdvisorMoves(s: AdvisorSnapshot, lang: Lang): AdvisorMove[] {
   const moves: AdvisorMove[] = [];
   const a = s.alpha;
   const lean = signalLean(s.signals);
@@ -266,44 +279,27 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 100,
       icon: "siren",
       action: { kind: "CLOSE_BOT_POSITIONS" },
-      he: {
-        title: "להקטין חשיפה עכשיו",
-        body: `ההפסד היום והירידה בערך מצטברים. תרחיש להגנת הון: לסגור את כל פוזיציות הבוט הפתוחות (${s.openAuto}) ולחזור למזומן. זו פעולה חינוכית בלבד.`,
-        cta: "סגור את כל פוזיציות הבוט",
-      },
-      en: {
-        title: "Reduce exposure now",
-        body: `Today's loss and the equity dip are adding up. A capital-protection scenario: close every open bot position (${s.openAuto}) and step back to cash. Educational action only.`,
-        cta: "Close all bot positions",
-      },
+      title: tr("advisor.move.close.title", lang),
+      body: tr("advisor.move.close.body", lang, { n: s.openAuto }),
+      cta: tr("advisor.move.close.cta", lang),
     });
   }
 
   // Shift to Calculated mode after a red day OR when several bots are struggling.
   const redDay = s.dailyRealizedPct <= -4;
   if (s.anyBotsOn && (redDay || weakCount >= 2) && s.tradeMode !== "CALCULATED") {
-    const reason_he = redDay
-      ? "אחרי יום אדום"
-      : `${weakCount} מהבוטים שלך מתקשים`;
-    const reason_en = redDay
-      ? "After a red day"
-      : `${weakCount} of your bots are struggling`;
+    const reason = redDay
+      ? tr("advisor.move.calc.reasonRed", lang)
+      : tr("advisor.move.calc.reasonWeak", lang, { n: weakCount });
     moves.push({
       id: "calc-mode",
       tone: "critical",
       priority: weakCount >= 2 ? 96 : 94,
       icon: "turtle",
       action: { kind: "SET_TRADE_MODE", tradeMode: "CALCULATED" },
-      he: {
-        title: "לעבור למצב מחושב",
-        body: `${reason_he}, מצב מחושב הופך את כל הצי לסבלני ובררן הרבה יותר — פחות עסקאות, סף כניסה גבוה יותר, ושמירה על רווחים לאורך זמן.`,
-        cta: "הפעל מצב מחושב",
-      },
-      en: {
-        title: "Shift to Calculated mode",
-        body: `${reason_en}, Calculated mode makes the whole fleet far more patient and selective — fewer trades, a higher entry bar, and longer holds on winners.`,
-        cta: "Enable Calculated mode",
-      },
+      title: tr("advisor.move.calc.title", lang),
+      body: tr("advisor.move.calc.body", lang, { reason }),
+      cta: tr("advisor.move.calc.cta", lang),
     });
   }
 
@@ -315,63 +311,44 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 90,
       icon: "wallet",
       action: { kind: "SET_CASH_FLOOR", cashFloorPct: target },
-      he: {
-        title: "להעלות את רזרבת המזומן",
-        body: `המזומן הפנוי דק יחסית. תרחיש הגנתי: להעלות את רצפת המזומן ל-${target} אחוז כך שהבוטים לעולם לא ירוצו את החשבון עד הסוף.`,
-        cta: `קבע רזרבת מזומן ${target} אחוז`,
-      },
-      en: {
-        title: "Raise the cash reserve",
-        body: `Free cash is getting thin. A defensive scenario: lift the cash floor to ${target} percent so the bots never run the account down to nothing.`,
-        cta: `Set ${target} percent cash reserve`,
-      },
+      title: tr("advisor.move.cashFloor.title", lang),
+      body: tr("advisor.move.cashFloor.body", lang, { n: target }),
+      cta: tr("advisor.move.cashFloor.cta", lang, { n: target }),
     });
   }
 
   if (s.anyBotsOn && !s.riskManagerEnabled) {
     // When specific bots are already losing, this safety layer matters more.
     const urgent = weakCount >= 1;
-    const weakNote_he = urgent ? ` כבר ${weakCount} בוטים מפסידים — ` : " ";
-    const weakNote_en = urgent ? ` Already ${weakCount} bots are losing — ` : " ";
+    const weakNote = urgent ? tr("advisor.move.risk.weakNote", lang, { n: weakCount }) : " ";
     moves.push({
       id: "enable-risk-manager",
       tone: "critical",
       priority: urgent ? 92 : 86,
       icon: "shield",
       action: { kind: "ENABLE_RISK_MANAGER" },
-      he: {
-        title: "להדליק את מנהל הסיכונים",
-        body: `הבוטים פעילים אך מנהל הסיכונים כבוי.${weakNote_he}הוא משהה אוטומטית בוט שמפסיד ברצף או חוצה גבול הפסד יומי — שכבת הגנה בסיסית.`,
-        cta: "הדלק מנהל סיכונים",
-      },
-      en: {
-        title: "Turn on the Risk Manager",
-        body: `Bots are live but the Risk Manager is off.${weakNote_en}It auto-pauses a bot on a losing streak or a daily-loss breach — a baseline safety layer.`,
-        cta: "Enable Risk Manager",
-      },
+      title: tr("advisor.move.risk.title", lang),
+      body: tr("advisor.move.risk.body", lang, { weakNote }),
+      cta: tr("advisor.move.risk.cta", lang),
     });
   }
 
   // ── OPPORTUNITY: act on convergence (only when healthy) ──
   if (strong && healthy && !s.anyBotsOn) {
-    const confirmNote_he = confirmed ? " הסיגנלים החיים מאשרים את הכיוון." : "";
-    const confirmNote_en = confirmed ? " The live signals confirm the direction." : "";
+    const confirmNote = confirmed ? tr("advisor.move.arm.confirmNote", lang) : "";
     moves.push({
       id: "arm-fleet",
       tone: "opportunity",
       priority: 76,
       icon: "rocket",
       action: { kind: "ARM_ALL" },
-      he: {
-        title: "להפעיל את הצי על ההתכנסות",
-        body: `המקורות מתכנסים ל${dirWord(a.direction, "he")} במתאם ${a.confluence} אחוז והארנק במצב בריא.${confirmNote_he} תרחיש ללימוד: לחמש את כל הבוטים כדי לפעול על ההסכמה.`,
-        cta: "הפעל את כל הבוטים",
-      },
-      en: {
-        title: "Arm the fleet on convergence",
-        body: `Sources are converging on ${dirWord(a.direction, "en")} at ${a.confluence} percent confluence and the wallet is healthy.${confirmNote_en} A learning scenario: arm the bots to act on the agreement.`,
-        cta: "Arm all bots",
-      },
+      title: tr("advisor.move.arm.title", lang),
+      body: tr("advisor.move.arm.body", lang, {
+        dir: dirWord(a.direction, lang),
+        confluence: a.confluence,
+        confirm: confirmNote,
+      }),
+      cta: tr("advisor.move.arm.cta", lang),
     });
   }
 
@@ -383,16 +360,9 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 64,
       icon: "gauge",
       action: { kind: "SET_INTENSITY", intensity: next },
-      he: {
-        title: "להעלות הילוך מסחר",
-        body: `ההתכנסות חזקה והתיק בריא. תרחיש: להעלות את הילוך המסחר לדרגה ${next} כדי לפעול מעט יותר על ההזדמנות.`,
-        cta: `העלה הילוך לדרגה ${next}`,
-      },
-      en: {
-        title: "Raise the trading gear",
-        body: `Convergence is strong and the book is healthy. Scenario: move the trading gear up to level ${next} to lean a little more into the opportunity.`,
-        cta: `Raise gear to level ${next}`,
-      },
+      title: tr("advisor.move.intUp.title", lang),
+      body: tr("advisor.move.intUp.body", lang, { n: next }),
+      cta: tr("advisor.move.intUp.cta", lang, { n: next }),
     });
   }
 
@@ -405,16 +375,9 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 68,
       icon: "turtle",
       action: { kind: "SET_INTENSITY", intensity: next },
-      he: {
-        title: "להוריד הילוך בשוק מבולבל",
-        body: `אין כרגע הכרעה בין המקורות. בשוק ללא כיוון ברור, תרחיש שמרני הוא להוריד את הילוך המסחר לדרגה ${next} ולסחור פחות.`,
-        cta: `הורד הילוך לדרגה ${next}`,
-      },
-      en: {
-        title: "Ease the gear in a choppy tape",
-        body: `Sources aren't agreeing right now. With no clear direction, a conservative scenario is to drop the trading gear to level ${next} and trade less.`,
-        cta: `Lower gear to level ${next}`,
-      },
+      title: tr("advisor.move.intDown.title", lang),
+      body: tr("advisor.move.intDown.body", lang, { n: next }),
+      cta: tr("advisor.move.intDown.cta", lang, { n: next }),
     });
   }
 
@@ -426,16 +389,9 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 54,
       icon: "wallet",
       action: { kind: "SET_CASH_FLOOR", cashFloorPct: target },
-      he: {
-        title: "להגדיר רזרבת מזומן",
-        body: `אין כרגע רצפת מזומן מוגדרת. תרחיש בסיסי לניהול הון: לשמור ${target} אחוז מהחשבון תמיד פנויים.`,
-        cta: `קבע רזרבת מזומן ${target} אחוז`,
-      },
-      en: {
-        title: "Set a cash reserve",
-        body: `There's no cash floor set. A basic money-management scenario: always keep ${target} percent of the account free.`,
-        cta: `Set ${target} percent cash reserve`,
-      },
+      title: tr("advisor.move.cashBase.title", lang),
+      body: tr("advisor.move.cashBase.body", lang, { n: target }),
+      cta: tr("advisor.move.cashFloor.cta", lang, { n: target }),
     });
   }
 
@@ -446,16 +402,9 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 48,
       icon: "brain",
       action: { kind: "ENABLE_ALPHA" },
-      he: {
-        title: "להדליק את מתאם האלפא",
-        body: "מתאם האלפא מאחד את הסיגנלים לכיוון אחד ומאפשר לבוטים לפעול כמערך מתואם — כניסות קלות יותר כשמסכימים, מחמירות יותר כשמתנגדים.",
-        cta: "הדלק מתאם אלפא",
-      },
-      en: {
-        title: "Turn on the Alpha Coordinator",
-        body: "The Alpha Coordinator fuses signals into one direction so the bots act as a coordinated formation — easier entries when aligned, stricter when fighting it.",
-        cta: "Enable Alpha Coordinator",
-      },
+      title: tr("advisor.move.alpha.title", lang),
+      body: tr("advisor.move.alpha.body", lang),
+      cta: tr("advisor.move.alpha.cta", lang),
     });
   }
 
@@ -466,16 +415,9 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 44,
       icon: "scissors",
       action: { kind: "ENABLE_SMART_EXIT" },
-      he: {
-        title: "להדליק סגירה חכמה",
-        body: "סגירה חכמה נועלת רווחים קטנים מהר אך נותנת לעסקאות חזקות לרוץ. שכבת ניהול יציאה בסיסית לכל עסקאות הקריפטו של הבוטים.",
-        cta: "הדלק סגירה חכמה",
-      },
-      en: {
-        title: "Turn on Smart Exit",
-        body: "Smart Exit banks small wins fast but lets strong trades run. A baseline exit-management layer for all the bots' crypto trades.",
-        cta: "Enable Smart Exit",
-      },
+      title: tr("advisor.move.smartExit.title", lang),
+      body: tr("advisor.move.smartExit.body", lang),
+      cta: tr("advisor.move.smartExit.cta", lang),
     });
   }
 
@@ -486,16 +428,9 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 40,
       icon: "shield",
       action: { kind: "ENABLE_DAILY_STOP" },
-      he: {
-        title: "להדליק עצירת הפסד יומית",
-        body: "עצירת הפסד יומית מפסיקה לפתוח עסקאות חדשות אחרי שההפסד היומי חוצה את הסף — בלם פשוט לימים גרועים.",
-        cta: "הדלק עצירה יומית",
-      },
-      en: {
-        title: "Turn on the daily loss stop",
-        body: "The daily loss stop halts new trades once the day's loss crosses the limit — a simple brake for bad days.",
-        cta: "Enable daily stop",
-      },
+      title: tr("advisor.move.dailyStop.title", lang),
+      body: tr("advisor.move.dailyStop.body", lang),
+      cta: tr("advisor.move.dailyStop.cta", lang),
     });
   }
 
@@ -506,16 +441,9 @@ export function buildAdvisorMoves(s: AdvisorSnapshot): AdvisorMove[] {
       priority: 34,
       icon: "sparkles",
       action: { kind: "ENABLE_AUTOPILOT" },
-      he: {
-        title: "להעביר לטייס אוטומטי",
-        body: "התנאים יציבים. תרחיש להתנסות: להפעיל טייס אוטומטי — המערכת קובעת לבד גודל עסקה, מינוף, SL/TP וכל שכבות הניהול. סימולציה בלבד.",
-        cta: "הפעל טייס אוטומטי",
-      },
-      en: {
-        title: "Hand over to Auto-Pilot",
-        body: "Conditions are steady. A scenario to try: enable Auto-Pilot — the system sizes trades, leverage, SL/TP and runs the full management stack itself. Simulation only.",
-        cta: "Enable Auto-Pilot",
-      },
+      title: tr("advisor.move.autopilot.title", lang),
+      body: tr("advisor.move.autopilot.body", lang),
+      cta: tr("advisor.move.autopilot.cta", lang),
     });
   }
 
