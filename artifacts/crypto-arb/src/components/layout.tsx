@@ -353,6 +353,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             <TopControls />
+            <WalletSwitcher compact />
             <div className="flex items-center gap-2 border border-[#cdbfa4]/25 px-2.5 py-0.5 rounded bg-[#cdbfa4]/5">
               <span className="h-1.5 w-1.5 rounded-full bg-[#cdbfa4] jewel-dot" />
               <span className="text-[#cdbfa4] font-semibold">{t("nav.obsidianTier", lang)}</span>

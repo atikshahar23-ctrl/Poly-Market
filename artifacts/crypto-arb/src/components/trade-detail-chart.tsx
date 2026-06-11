@@ -170,7 +170,6 @@ export function TradeDetailChart({ trade }: Props) {
         vertLines: { color: "hsl(0 0% 9%)" },
         horzLines: { color: "hsl(0 0% 9%)" },
       },
-      rightPriceScale: { borderColor: "hsl(0 0% 13%)" },
       localization: { timeFormatter: israelTimeFormatter },
       timeScale: {
         borderColor: "hsl(0 0% 13%)",
@@ -195,12 +194,19 @@ export function TradeDetailChart({ trade }: Props) {
     const won = trade.pnl >= 0;
     // Adaptive price formatter: sub-cent coins (PEPE ~1e-6) need more precision
     const priceFormatter = (price: number) => {
-      const d = Math.abs(price) < 0.001 ? 8 : Math.abs(price) < 1 ? 6 : 2;
+      if (price == null || !Number.isFinite(price)) return "0";
+      const abs = Math.abs(price);
+      if (abs === 0) return "0";
+      const d = abs < 0.0001 ? 10 : abs < 0.001 ? 8 : abs < 1 ? 6 : 2;
       return price.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
     };
     chart.applyOptions({
       localization: {
         priceFormatter,
+      },
+      rightPriceScale: {
+        borderColor: "hsl(0 0% 13%)",
+        scaleMargins: { top: 0.1, bottom: 0.1 },
       },
     });
     if (Number.isFinite(trade.entryPrice)) {

@@ -14,7 +14,9 @@ import {
   Link,
   Link2Off,
   Shield,
+  Wallet as WalletIcon,
 } from "lucide-react";
+import { WalletSwitcher } from "@/components/wallet-switcher";
 import { useLanguage } from "@/contexts/language-context";
 import { useAutoTrader, type AutoTraderSettings } from "@/contexts/autotrader-context";
 import { usePortfolio } from "@/contexts/portfolio-context";
@@ -246,6 +248,20 @@ export default function Settings() {
               {t("set.language.en", lang)}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Wallet management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <WalletIcon className="h-4 w-4 text-primary" />
+            {t("set.wallet.title", lang)}
+          </CardTitle>
+          <CardDescription>{t("set.wallet.desc", lang)}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WalletSwitcher />
         </CardContent>
       </Card>
 

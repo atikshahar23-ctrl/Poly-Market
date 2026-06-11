@@ -523,7 +523,13 @@ router.get("/social/trades", async (req, res): Promise<void> => {
       .orderBy(desc(publicTrade.closedAt))
       .limit(200);
     const rows = await q;
-    res.json(GetPublicTradesResponse.parse({ trades: rows }));
+    const trades = rows.map((r) => ({
+      ...r,
+      closedAt: r.closedAt.toISOString(),
+      openedAt: r.openedAt?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+    res.json(GetPublicTradesResponse.parse({ trades }));
   } catch (err) {
     req.log.error({ err }, "Failed to load public trades");
     res.status(500).json({ error: "Failed to load public trades" });
@@ -562,11 +568,17 @@ router.post(
           pct: body.data.pct ?? null,
           leverage: body.data.leverage ?? null,
           source: body.data.source?.trim().slice(0, 40) ?? null,
-          closedAt: body.data.closedAt,
-          openedAt: body.data.openedAt ?? null,
+          closedAt: new Date(body.data.closedAt),
+          openedAt: body.data.openedAt ? new Date(body.data.openedAt) : null,
         })
         .returning();
-      res.json(CreatePublicTradeResponse.parse(row));
+      const rowOut = {
+        ...row,
+        closedAt: row.closedAt.toISOString(),
+        openedAt: row.openedAt?.toISOString() ?? null,
+        createdAt: row.createdAt.toISOString(),
+      };
+      res.json(CreatePublicTradeResponse.parse(rowOut));
     } catch (err) {
       req.log.error({ err }, "Failed to save public trade");
       res.status(500).json({ error: "Failed to save public trade" });

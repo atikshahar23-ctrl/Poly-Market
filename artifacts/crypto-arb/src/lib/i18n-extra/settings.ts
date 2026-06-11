@@ -9,6 +9,9 @@ export const settingsStrings: Record<string, Record<"he" | "en", string>> = {
   "set.language.he": { he: "עברית", en: "Hebrew" },
   "set.language.en": { he: "אנגלית", en: "English" },
 
+  "set.wallet.title": { he: "ארנקים", en: "Wallets" },
+  "set.wallet.desc": { he: "נהלו ארנקים, עברו ביניהם וכוונו את עוצמת הסחר.", en: "Manage wallets, switch between them, and tune trading intensity." },
+
   "set.risk.title": { he: "פרופיל סיכון", en: "Risk Profile" },
   "set.risk.desc": { he: "מערך מוכן של הגדרות לכל הבוטים. החלים על ברירות המחדל — תוכלו לכוונן כל פרט בנפרד בעמוד הבוטים.", en: "A ready-made set of defaults for every bot. Applies the baseline — you can still fine-tune each value on the Bots page." },
   "set.risk.conservative": { he: "שמרני", en: "Conservative" },
