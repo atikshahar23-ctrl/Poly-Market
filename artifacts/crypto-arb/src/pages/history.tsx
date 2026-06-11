@@ -61,10 +61,14 @@ function fmtUsd(n: number, dp = 2): string {
 }
 
 function fmtPrice(p: number): string {
-  if (p >= 1000) return p.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  if (p >= 1) return p.toFixed(2);
-  if (p >= 0.01) return p.toFixed(4);
-  return p.toPrecision(3);
+  if (!Number.isFinite(p) || p === 0) return "0";
+  const abs = Math.abs(p);
+  if (abs >= 1000) return p.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (abs >= 1) return p.toFixed(2);
+  if (abs >= 0.01) return p.toFixed(4);
+  if (abs >= 0.0001) return p.toFixed(6);
+  if (abs >= 0.000001) return p.toFixed(8);
+  return p.toFixed(10);
 }
 
 function exit(tr: ClosedTrade, lang: Lang) {
@@ -858,10 +862,14 @@ export default function HistoryPage() {
   );
 }
 
-type GroupKey = { type: string; symbol: string; direction: string };
-
-function groupKey(t: ClosedTrade): string {
-  return `${t.type}:${t.symbol || ""}:${t.direction || ""}`;
+/** Canonical label used to group trades by their bot/source. */
+function tradeGroup(t: ClosedTrade): string {
+  if (t.source) return botName(t.source) ?? t.source;
+  if (t.type === "POLYMARKET") return "Polymarket Bot";
+  if (t.type === "FUNDING") return "Funding Arb";
+  if (t.type === "OPTION") return "Options Agent";
+  if (t.auto) return "Auto-Trader";
+  return "Manual";
 }
 
 /* ─── Hover tooltip ──────────────────────────────────────────────────────── */
@@ -986,43 +994,127 @@ function TradeTooltip({ trade, x, y }: { trade: ClosedTrade; x: number; y: numbe
   );
 }
 
-const CATEGORY_ORDER = ["BINANCE", "STOCK", "POLYMARKET", "FUNDING", "OPTION"] as const;
-
-function CategoryHeaderRow({ type, count, totalCost, totalPnl, collapsed, onToggle }: {
-  type: string; count: number; totalCost: number; totalPnl: number; collapsed: boolean; onToggle: () => void;
+/* ─── Single trade row ───────────────────────────────────────────────────── */
+function TradeRow({ trade, onSelect, onHover, onLeave, onMove }: {
+  trade: ClosedTrade;
+  onSelect: (t: ClosedTrade, e?: React.MouseEvent) => void;
+  onHover: (t: ClosedTrade) => void;
+  onLeave: () => void;
+  onMove: (e: React.MouseEvent) => void;
 }) {
   const { lang } = useLanguage();
-  const up = totalPnl >= 0;
-  const pct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+  const up = trade.pnl >= 0;
+  const pct = trade.cost > 0 ? (trade.pnl / trade.cost) * 100 : 0;
+  const ex = exit(trade, lang);
+  const isLong = trade.direction === "LONG" || trade.direction === "YES";
+  const dirColor = isLong ? "#22c55e" : "#ef4444";
+  const dur = duration(trade, lang);
+
+  const entryFmt = trade.entryPrice != null ? fmtPrice(trade.entryPrice) : null;
+  const exitFmt = trade.exitPrice != null ? fmtPrice(trade.exitPrice) : null;
+
   return (
-    <button
-      onClick={onToggle}
-      className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left border-b border-border/60 hover:bg-secondary/20 transition-colors"
+    <div
+      onClick={(e) => onSelect(trade, e)}
+      onMouseEnter={() => onHover(trade)}
+      onMouseLeave={onLeave}
+      onMouseMove={onMove}
+      role="button"
+      tabIndex={0}
+      title={t("history.tooltip.viewDetails", lang)}
+      className="group flex items-center gap-2 sm:gap-3 px-3 py-2.5 cursor-pointer transition-colors hover:bg-secondary/30 border-b border-border/30 last:border-0"
     >
-      <div className="flex items-center gap-2 min-w-0">
-        {collapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-        <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-secondary/50 text-foreground/80">{typeLabel(type as ClosedTrade["type"], lang)}</span>
-        <span className="text-[10px] text-muted-foreground font-mono">{t("history.tradesCount", lang).replace("{n}", String(count))}</span>
+      {/* Icon + symbol */}
+      <div className="shrink-0">
+        {trade.type === "STOCK" ? (
+          <StockIcon symbol={trade.symbol ?? ""} size={22} />
+        ) : (
+          <CryptoIcon asset={trade.symbol ?? trade.type} size={22} />
+        )}
       </div>
-      <div className="flex items-center gap-2 text-right shrink-0">
-        <span className="text-[10px] text-muted-foreground font-mono">{t("history.marginAmount", lang).replace("{amount}", fmtUsd(totalCost))}</span>
-        <div className="font-mono text-[11px] font-black" style={{ color: up ? "#22c55e" : "#ef4444" }}>
-          {up ? "+" : ""}${fmtUsd(totalPnl)}
+
+      {/* Main info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="font-mono font-black text-xs text-foreground">{trade.symbol ?? trade.type}</span>
+          {trade.direction && (
+            <span className="font-mono text-[9px] font-bold px-1 py-0.5 rounded" style={{ background: `${dirColor}1a`, color: dirColor }}>
+              {trade.direction}{trade.leverage != null && trade.leverage > 1 ? ` ${trade.leverage}x` : ""}
+            </span>
+          )}
+          <span className="font-mono text-[9px] font-bold px-1 py-0.5 rounded" style={{ background: `${ex.color}1a`, color: ex.color }}>
+            {ex.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5 text-[10px] font-mono text-muted-foreground/70 flex-wrap">
+          {entryFmt && exitFmt && (
+            <span>{entryFmt} → {exitFmt}</span>
+          )}
+          {dur && <span className="text-muted-foreground/50">⏱ {dur}</span>}
+          <span className="text-muted-foreground/50">{timeAgo(trade.closedAt, lang)}</span>
+        </div>
+      </div>
+
+      {/* P&L */}
+      <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+        <div className="flex items-center gap-1">
+          {up && (
+            <button
+              onClick={(e) => { e.stopPropagation(); shareTrade(trade.symbol ?? t("history.assetFallback", lang), trade.pnl, toast, lang); }}
+              title={t("history.share.btnTitle", lang)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 hover:bg-emerald-500/20"
+              aria-label={t("history.share.btnAria", lang)}
+            >
+              <Share2 className="h-3 w-3 text-emerald-400" />
+            </button>
+          )}
+          <span className="font-mono font-black text-sm" style={{ color: up ? "#22c55e" : "#ef4444" }}>
+            {up ? "+" : ""}${fmtUsd(trade.pnl)}
+          </span>
         </div>
         <span className="font-mono text-[10px]" style={{ color: up ? "#22c55e" : "#ef4444" }}>
           {up ? "+" : ""}{pct.toFixed(1)}%
         </span>
       </div>
+    </div>
+  );
+}
+
+/* ─── Bot-group section header ───────────────────────────────────────────── */
+function BotGroupHeader({ label, count, net, winRate, collapsed, onToggle }: {
+  label: string; count: number; net: number; winRate: number; collapsed: boolean; onToggle: () => void;
+}) {
+  const up = net >= 0;
+  // Find matching BOT_DEF for icon
+  const botDef = BOT_DEFS.find((b) => b.title === label);
+  const Icon = botDef?.icon ?? Bot;
+
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center gap-2 px-3 py-2.5 text-left bg-secondary/20 hover:bg-secondary/35 transition-colors border-b border-border/60"
+    >
+      {collapsed
+        ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+      <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+      <span className="font-mono font-bold text-xs text-foreground flex-1 text-start">{label}</span>
+      <span className="font-mono text-[10px] text-muted-foreground">{count}×</span>
+      <span className="font-mono text-[10px]" style={{ color: winRate >= 50 ? "#22c55e" : "#f59e0b" }}>
+        {winRate.toFixed(0)}%WR
+      </span>
+      <span className="font-mono font-black text-xs" style={{ color: up ? "#22c55e" : "#ef4444" }}>
+        {up ? "+" : ""}${fmtUsd(net, 0)}
+      </span>
     </button>
   );
 }
 
+/* ─── Main trade table (grouped by bot/source, collapsible) ──────────────── */
 function ClosedTradeTable({ trades, onSelect }: { trades: ClosedTrade[]; onSelect: (t: ClosedTrade, e?: React.MouseEvent) => void }) {
-  const { lang } = useLanguage();
   const [hovered, setHovered] = useState<ClosedTrade | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const moveRef = useRef<number | null>(null);
-  const [, navigate] = useLocation();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const onMove = useCallback((e: React.MouseEvent) => {
@@ -1032,33 +1124,47 @@ function ClosedTradeTable({ trades, onSelect }: { trades: ClosedTrade[]; onSelec
     });
   }, []);
 
-  const grouped = useMemo(() => {
+  // Deduplicate by id first (guard against double-close bugs)
+  const deduped = useMemo(() => {
+    const seen = new Set<string>();
+    const out: ClosedTrade[] = [];
+    for (const tr of trades) {
+      if (!seen.has(tr.id)) { seen.add(tr.id); out.push(tr); }
+    }
+    return out;
+  }, [trades]);
+
+  // Group by bot/source
+  const groups = useMemo(() => {
     const map = new Map<string, ClosedTrade[]>();
-    for (const t of trades) {
-      const key = groupKey(t);
+    for (const tr of deduped) {
+      const key = tradeGroup(tr);
       const arr = map.get(key) ?? [];
-      arr.push(t);
+      arr.push(tr);
       map.set(key, arr);
     }
     return map;
-  }, [trades]);
+  }, [deduped]);
 
-  const groupsByType = useMemo(() => {
-    const buckets: Record<string, [string, ClosedTrade[]][]> = {};
-    for (const cat of CATEGORY_ORDER) buckets[cat] = [];
-    for (const [key, rows] of grouped.entries()) {
-      const type = rows[0].type;
-      if (!buckets[type]) buckets[type] = [];
-      buckets[type].push([key, rows]);
-    }
-    return buckets;
-  }, [grouped]);
+  // Preferred order: Manual first, then bots by their BOT_DEFS order, then anything else
+  const BOT_ORDER = ["Manual", ...BOT_DEFS.map((b) => b.title), "Auto-Trader", "Polymarket Bot", "Funding Arb", "Options Agent"];
+  const sortedGroups = useMemo(() => {
+    const entries = [...groups.entries()];
+    entries.sort(([a], [b]) => {
+      const ai = BOT_ORDER.indexOf(a);
+      const bi = BOT_ORDER.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+    return entries;
+  }, [groups]);
 
-  const toggleType = useCallback((type: string) => {
-    setCollapsed(prev => {
+  const toggle = useCallback((key: string) => {
+    setCollapsed((prev) => {
       const next = new Set(prev);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   }, []);
@@ -1066,167 +1172,39 @@ function ClosedTradeTable({ trades, onSelect }: { trades: ClosedTrade[]; onSelec
   return (
     <>
       {hovered && <TradeTooltip trade={hovered} x={mousePos.x} y={mousePos.y} />}
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-2 border-b border-border text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
-          <span>{t("history.col.trade", lang)}</span><span className="text-right">{t("history.col.exit", lang)}</span><span className="text-right">{t("history.col.margin", lang)}</span><span className="text-right">{t("history.col.pnl", lang)}</span><span className="text-right">{t("history.col.when", lang)}</span>
-        </div>
-        <div className="divide-y divide-border/60">
-          {CATEGORY_ORDER.map((type) => {
-            const entries = groupsByType[type] ?? [];
-            if (entries.length === 0) return null;
-            const isCollapsed = collapsed.has(type);
-            const catCount = entries.reduce((s, [, rows]) => s + rows.length, 0);
-            const catCost = entries.reduce((s, [, rows]) => s + rows.reduce((ss, t) => ss + t.cost, 0), 0);
-            const catPnl = entries.reduce((s, [, rows]) => s + rows.reduce((ss, t) => ss + t.pnl, 0), 0);
-
-            return (
-              <div key={type}>
-                <CategoryHeaderRow
-                  type={type}
-                  count={catCount}
-                  totalCost={catCost}
-                  totalPnl={catPnl}
-                  collapsed={isCollapsed}
-                  onToggle={() => toggleType(type)}
-                />
-                {!isCollapsed && (
-                  <div>
-                    {entries.map(([key, rows]) => {
-                      const first = rows[0];
-                      const isGroup = rows.length > 1;
-                      const totalPnl = rows.reduce((s, t) => s + t.pnl, 0);
-                      const totalCost = rows.reduce((s, t) => s + t.cost, 0);
-                      const up = totalPnl >= 0;
-                      const pct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
-                      const ex = isGroup
-                        ? { label: t("history.groupTrades", lang).replace("{n}", String(rows.length)), color: up ? "#22c55e" : "#ef4444" }
-                        : exit(first, lang);
-
-                      return (
-                        <div key={key} className="group" dir="rtl">
-                          {/* Summary row */}
-                          <div
-                            onClick={(e) => onSelect(first, e)}
-                            onMouseEnter={() => setHovered(first)}
-                            onMouseLeave={() => setHovered(null)}
-                            onMouseMove={onMove}
-                            role="button"
-                            tabIndex={0}
-                            title={t("history.tooltip.viewDetails", lang)}
-                            className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 gap-y-1 px-3 py-2.5 items-center text-xs cursor-pointer transition-colors hover:bg-secondary/30"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-secondary/60 text-foreground/80">{typeLabel(first.type, lang)}</span>
-                                <ChartIcon className="h-3 w-3 text-muted-foreground/50" />
-                                {first.symbol && <span className="font-mono text-[9px] font-bold text-primary">{first.symbol}</span>}
-                                {first.direction && (
-                                  <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: first.direction === "LONG" || first.direction === "YES" ? "#22c55e1a" : "#ef44441a", color: first.direction === "LONG" || first.direction === "YES" ? "#22c55e" : "#ef4444" }}>
-                                    {first.direction}
-                                  </span>
-                                )}
-                                {isGroup && (
-                                  <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
-                                    {rows.length}x
-                                  </span>
-                                )}
-                              </div>
-                              <div className="font-mono text-[11px] text-foreground/90 break-words line-clamp-2 mt-0.5" title={first.description}>{first.description}</div>
-                              {(first.source || first.type === "POLYMARKET" || first.type === "FUNDING" || first.type === "OPTION") && !isGroup && (
-                                <div className="mt-0.5">
-                                  {first.source ? (
-                                    <BotStatsPopover
-                                      source={first.source}
-                                      type={first.type}
-                                      label={botName(first.source) ?? first.source}
-                                      className="font-mono text-[8px] font-bold px-1 py-0.5 rounded bg-amber-400/15 text-amber-400 border border-amber-400/25 hover:bg-amber-400/30 transition-colors cursor-pointer"
-                                    />
-                                  ) : (
-                                    <BotStatsPopover
-                                      type={first.type}
-                                      label={first.type === "POLYMARKET" ? "Polymarket Bot" : "Funding Arb"}
-                                      className="font-mono text-[8px] font-bold px-1 py-0.5 rounded bg-amber-400/15 text-amber-400 border border-amber-400/25 hover:bg-amber-400/30 transition-colors cursor-pointer"
-                                    />
-                                  )}
-                                </div>
-                              )}
-                              {isGroup && (
-                                <div className="font-mono text-[9px] text-muted-foreground/60 mt-0.5">
-                                  {t("history.tradesInGroup", lang).replace("{n}", String(rows.length))}
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-right sm:order-none order-last col-span-2 sm:col-span-1">
-                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${ex.color}1a`, color: ex.color }}>{ex.label}</span>
-                            </div>
-                            <div className="hidden sm:block text-right font-mono text-[11px] text-muted-foreground">${fmtUsd(totalCost)}</div>
-                            <div className="text-right flex flex-col items-end gap-0.5">
-                              <div className="flex items-center gap-1">
-                                {up && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); shareTrade(first.symbol ?? first.description?.split(" ")[0] ?? t("history.assetFallback", lang), totalPnl, toast, lang); }}
-                                    title={t("history.share.btnTitle", lang)}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 hover:bg-emerald-500/20"
-                                    aria-label={t("history.share.btnAria", lang)}
-                                  >
-                                    <Share2 className="h-3 w-3" style={{ color: "#22c55e" }} />
-                                  </button>
-                                )}
-                                <div className="font-mono text-sm font-bold" style={{ color: up ? "#22c55e" : "#ef4444" }}>{up ? "+" : ""}${fmtUsd(totalPnl)}</div>
-                              </div>
-                              <div className="font-mono text-[10px]" style={{ color: up ? "#22c55e" : "#ef4444" }}>{up ? "+" : ""}{pct.toFixed(1)}%</div>
-                            </div>
-                            <div className="hidden sm:block text-right font-mono text-[10px] text-muted-foreground">
-                              <div>{timeAgo(first.closedAt, lang)}</div>
-                              {duration(first, lang) && <div className="text-muted-foreground/50">{duration(first, lang)}</div>}
-                            </div>
-                          </div>
-
-                          {/* Expandable detail rows for groups */}
-                          {isGroup && (
-                            <div className="bg-background/30 border-t border-border/30">
-                              {rows.map((t) => {
-                                const u = t.pnl >= 0;
-                                const p = t.cost > 0 ? (t.pnl / t.cost) * 100 : 0;
-                                const ex = exit(t, lang);
-                                return (
-                                  <div
-                                    key={t.id}
-                                    onClick={(e) => onSelect(t, e)}
-                                    onMouseEnter={() => setHovered(t)}
-                                    onMouseLeave={() => setHovered(null)}
-                                    onMouseMove={onMove}
-                                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 gap-y-1 px-3 py-1.5 items-center text-xs cursor-pointer hover:bg-secondary/20 transition-colors opacity-70"
-                                    dir="rtl"
-                                  >
-                                    <div className="min-w-0">
-                                      <span className="font-mono text-[10px] text-muted-foreground">{t.description}</span>
-                                    </div>
-                                    <div className="text-right sm:order-none order-last col-span-2 sm:col-span-1">
-                                      <span className="font-mono text-[9px] font-bold px-1 py-0.5 rounded" style={{ background: `${ex.color}1a`, color: ex.color }}>{ex.label}</span>
-                                    </div>
-                                    <div className="hidden sm:block text-right font-mono text-[10px] text-muted-foreground">${fmtUsd(t.cost)}</div>
-                                    <div className="text-right">
-                                      <div className="font-mono text-[10px] font-bold" style={{ color: u ? "#22c55e" : "#ef4444" }}>{u ? "+" : ""}${fmtUsd(t.pnl)}</div>
-                                      <div className="font-mono text-[9px]" style={{ color: u ? "#22c55e" : "#ef4444" }}>{u ? "+" : ""}{p.toFixed(1)}%</div>
-                                    </div>
-                                    <div className="hidden sm:block text-right font-mono text-[9px] text-muted-foreground">
-                                      {timeAgo(t.closedAt, lang)}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      <div className="rounded-xl border bg-card overflow-hidden">
+        {sortedGroups.map(([groupLabel, rows]) => {
+          const net = rows.reduce((s, tr) => s + tr.pnl, 0);
+          const wins = rows.filter((tr) => tr.pnl > 0).length;
+          const wr = rows.length > 0 ? (wins / rows.length) * 100 : 0;
+          const isCollapsed = collapsed.has(groupLabel);
+          return (
+            <div key={groupLabel} className="border-b border-border/60 last:border-0">
+              <BotGroupHeader
+                label={groupLabel}
+                count={rows.length}
+                net={net}
+                winRate={wr}
+                collapsed={isCollapsed}
+                onToggle={() => toggle(groupLabel)}
+              />
+              {!isCollapsed && (
+                <div>
+                  {rows.map((tr) => (
+                    <TradeRow
+                      key={tr.id}
+                      trade={tr}
+                      onSelect={onSelect}
+                      onHover={setHovered}
+                      onLeave={() => setHovered(null)}
+                      onMove={onMove}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </>
   );
