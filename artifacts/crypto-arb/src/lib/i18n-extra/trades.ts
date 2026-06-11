@@ -360,4 +360,12 @@ export const tradesStrings: Record<string, Record<"he" | "en", string>> = {
   "trade.wallet.nameTooLong": { he: "שם הארנק ארוך מדי", en: "Wallet name is too long" },
   "trade.wallet.cannotDeleteLast": { he: "לא ניתן למחוק את הארנק האחרון", en: "Cannot delete the last wallet" },
   "trade.detail.close": { he: "סגור", en: "Close" },
+
+  // Trade Feed page
+  "tradesFeed.title": { he: "עדכוני סוחרים", en: "Trade Feed" },
+  "tradesFeed.subtitle": { he: "עסקאות סגורות ששותפו על ידי סוחרים בזמן אמת", en: "Closed trades shared by traders in real time" },
+  "tradesFeed.refresh": { he: "רענן", en: "Refresh" },
+  "tradesFeed.disclaimer": { he: "הדמיה חינוכית בלבד — כל העסקאות הן נייר, ללא כסף אמיתי.", en: "Educational simulation only — all trades are paper, no real money." },
+  "tradesFeed.error": { he: "לא ניתן לטעון את העדכונים כרגע.", en: "Unable to load the feed right now." },
+  "tradesFeed.empty": { he: "אין עדיין עסקאות ששותפו. סגור פוזיציה ושתף אותה.", en: "No shared trades yet. Close a position and share it." },
 };

@@ -816,6 +816,45 @@ export interface BinanceOrders {
   orders: BinanceOrder[];
 }
 
+export interface PublicTrade {
+  id: number;
+  userId: string;
+  displayName: string;
+  symbol: string;
+  /** BINANCE | STOCK | POLYMARKET | FUNDING | OPTION */
+  type: string;
+  direction?: string | null;
+  entryPrice?: number | null;
+  exitPrice?: number | null;
+  pnl: number;
+  pct?: number | null;
+  leverage?: number | null;
+  source?: string | null;
+  closedAt: string;
+  openedAt?: string | null;
+  isPublic: boolean;
+  createdAt: string;
+}
+
+export interface PublicTradeInput {
+  displayName: string;
+  symbol: string;
+  type: string;
+  direction?: string | null;
+  entryPrice?: number | null;
+  exitPrice?: number | null;
+  pnl: number;
+  pct?: number | null;
+  leverage?: number | null;
+  source?: string | null;
+  closedAt: string;
+  openedAt?: string | null;
+}
+
+export interface PublicTrades {
+  trades: PublicTrade[];
+}
+
 export type GetBinanceDataParams = {
 /**
  * Trading symbol (e.g. BTCUSDT, ETHUSDT)
@@ -972,5 +1011,9 @@ asset: string;
  * @maximum 720
  */
 hours?: number;
+};
+
+export type GetPublicTradesParams = {
+symbol?: string;
 };
 

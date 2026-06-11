@@ -1049,6 +1049,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /social/trades:
+    get:
+      operationId: getPublicTrades
+      tags: [social]
+      summary: Recent public trades
+      description: >
+        Returns the latest public trades (is_public=true) from all users, most recent first.
+        Optionally filtered by symbol. No pagination yet.
+      parameters:
+        - name: symbol
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public trades
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicTrades"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createPublicTrade
+      tags: [social]
+      summary: Publish a closed trade
+      description: >
+        Clients POST each closed trade here so it appears in the public feed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicTradeInput"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicTrade"
+        "400":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /social/credits:
     get:
       operationId: getCredits
@@ -2539,3 +2598,108 @@ components:
           type: number
         status:
           type: string
+
+    PublicTrade:
+      type: object
+      required:
+        - id
+        - userId
+        - displayName
+        - symbol
+        - type
+        - pnl
+        - closedAt
+        - createdAt
+        - isPublic
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        displayName:
+          type: string
+        symbol:
+          type: string
+        type:
+          type: string
+          description: BINANCE | STOCK | POLYMARKET | FUNDING | OPTION
+        direction:
+          type: string
+          nullable: true
+        entryPrice:
+          type: number
+          nullable: true
+        exitPrice:
+          type: number
+          nullable: true
+        pnl:
+          type: number
+        pct:
+          type: number
+          nullable: true
+        leverage:
+          type: number
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        closedAt:
+          type: string
+        openedAt:
+          type: string
+          nullable: true
+        isPublic:
+          type: boolean
+        createdAt:
+          type: string
+
+    PublicTradeInput:
+      type: object
+      required:
+        - displayName
+        - symbol
+        - type
+        - pnl
+        - closedAt
+      properties:
+        displayName:
+          type: string
+        symbol:
+          type: string
+        type:
+          type: string
+        direction:
+          type: string
+          nullable: true
+        entryPrice:
+          type: number
+          nullable: true
+        exitPrice:
+          type: number
+          nullable: true
+        pnl:
+          type: number
+        pct:
+          type: number
+          nullable: true
+        leverage:
+          type: number
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        closedAt:
+          type: string
+        openedAt:
+          type: string
+          nullable: true
+
+    PublicTrades:
+      type: object
+      required:
+        - trades
+      properties:
+        trades:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicTrade"

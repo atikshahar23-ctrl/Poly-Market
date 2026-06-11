@@ -825,6 +825,77 @@ export const RedeemReferralResponse = zod.object({
 
 
 /**
+ * Returns the latest public trades (is_public=true) from all users, most recent first. Optionally filtered by symbol. No pagination yet.
+
+ * @summary Recent public trades
+ */
+export const GetPublicTradesQueryParams = zod.object({
+  "symbol": zod.coerce.string().optional()
+})
+
+export const GetPublicTradesResponse = zod.object({
+  "trades": zod.array(zod.object({
+  "id": zod.number(),
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "symbol": zod.string(),
+  "type": zod.string().describe('BINANCE | STOCK | POLYMARKET | FUNDING | OPTION'),
+  "direction": zod.string().nullish(),
+  "entryPrice": zod.number().nullish(),
+  "exitPrice": zod.number().nullish(),
+  "pnl": zod.number(),
+  "pct": zod.number().nullish(),
+  "leverage": zod.number().nullish(),
+  "source": zod.string().nullish(),
+  "closedAt": zod.string(),
+  "openedAt": zod.string().nullish(),
+  "isPublic": zod.boolean(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * Clients POST each closed trade here so it appears in the public feed.
+
+ * @summary Publish a closed trade
+ */
+export const CreatePublicTradeBody = zod.object({
+  "displayName": zod.string(),
+  "symbol": zod.string(),
+  "type": zod.string(),
+  "direction": zod.string().nullish(),
+  "entryPrice": zod.number().nullish(),
+  "exitPrice": zod.number().nullish(),
+  "pnl": zod.number(),
+  "pct": zod.number().nullish(),
+  "leverage": zod.number().nullish(),
+  "source": zod.string().nullish(),
+  "closedAt": zod.string(),
+  "openedAt": zod.string().nullish()
+})
+
+export const CreatePublicTradeResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "symbol": zod.string(),
+  "type": zod.string().describe('BINANCE | STOCK | POLYMARKET | FUNDING | OPTION'),
+  "direction": zod.string().nullish(),
+  "entryPrice": zod.number().nullish(),
+  "exitPrice": zod.number().nullish(),
+  "pnl": zod.number(),
+  "pct": zod.number().nullish(),
+  "leverage": zod.number().nullish(),
+  "source": zod.string().nullish(),
+  "closedAt": zod.string(),
+  "openedAt": zod.string().nullish(),
+  "isPublic": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary The caller's current unclaimed-credit balance
  */
 export const GetCreditsResponse = zod.object({

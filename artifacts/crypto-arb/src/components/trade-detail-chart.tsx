@@ -193,18 +193,30 @@ export function TradeDetailChart({ trade }: Props) {
     series.setData(candles);
 
     const won = trade.pnl >= 0;
+    // Adaptive price formatter: sub-cent coins (PEPE ~1e-6) need more precision
+    const priceFormatter = (price: number) => {
+      const d = Math.abs(price) < 0.001 ? 8 : Math.abs(price) < 1 ? 6 : 2;
+      return price.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+    };
+    chart.applyOptions({
+      localization: {
+        priceFormatter,
+      },
+    });
     if (Number.isFinite(trade.entryPrice)) {
       series.createPriceLine({
         price: trade.entryPrice as number,
         color: "#38bdf8", lineWidth: 1, lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true, title: t("tdc.entry", lang),
+        axisLabelVisible: true,
+        title: `${t("tdc.entry", lang)} ${priceFormatter(trade.entryPrice as number)}`,
       });
     }
     if (Number.isFinite(trade.exitPrice)) {
       series.createPriceLine({
         price: trade.exitPrice as number,
         color: won ? "#22c55e" : "#ef4444", lineWidth: 1, lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true, title: t("tdc.exit", lang),
+        axisLabelVisible: true,
+        title: `${t("tdc.exit", lang)} ${priceFormatter(trade.exitPrice as number)}`,
       });
     }
 

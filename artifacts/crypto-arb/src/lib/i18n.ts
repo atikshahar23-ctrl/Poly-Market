@@ -15,6 +15,7 @@ const BASE_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   "nav.advisor": { he: "היועץ הראשי", en: "Master Advisor" },
   "nav.simulator": { he: "תיק ההשקעות", en: "Portfolio" },
   "nav.leaderboard": { he: "מיטב הסוחרים", en: "Leaderboard" },
+  "nav.tradesFeed": { he: "עדכוני סוחרים", en: "Trade Feed" },
   "nav.markets": { he: "קריפטו נזיל", en: "Liquid Crypto" },
   "nav.stocks": { he: "מניות ואופציות", en: "Stocks & Options" },
   "nav.stockDesk": { he: "חדר מניות", en: "Stock Desk" },

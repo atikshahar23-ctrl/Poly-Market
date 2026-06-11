@@ -157,6 +157,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         { href: "/advisor", label: t("nav.advisor", lang), icon: Compass },
         { href: "/simulator", label: t("nav.simulator", lang), icon: Trophy, extra: <PortfolioMiniBalance /> },
         { href: "/leaderboard", label: t("nav.leaderboard", lang), icon: Crown },
+        { href: "/trades", label: t("nav.tradesFeed", lang), icon: Activity },
       ],
     },
     {

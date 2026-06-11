@@ -4,10 +4,33 @@ import { useServerSync } from "@/contexts/server-sync-context";
 import { useLanguage } from "@/contexts/language-context";
 import { t, type Lang } from "@/lib/i18n";
 import { toast } from "@/hooks/use-toast";
+import { createPublicTrade } from "@workspace/api-client-react";
 import { calcCloseFeeForBinance, calcCloseFeeForStock, calcCloseFeeForPoly, FEE_RATES, applySlippage, calcLiquidationPrice } from "@/lib/fees";
 import { optionPositionValue } from "@/lib/options-model";
 
 export const STARTING_BALANCE = 10_000;
+
+function publishTrade(trade: ClosedTrade): void {
+  if (!trade.symbol) return;
+  const pct =
+    trade.cost > 0 && Number.isFinite(trade.cost)
+      ? (trade.pnl / trade.cost) * 100
+      : undefined;
+  createPublicTrade({
+    displayName: "", // server resolves from the caller’s profile
+    symbol: trade.symbol,
+    type: trade.type,
+    direction: trade.direction,
+    entryPrice: trade.entryPrice,
+    exitPrice: trade.exitPrice,
+    pnl: trade.pnl,
+    pct: pct,
+    leverage: trade.leverage,
+    source: trade.source,
+    closedAt: trade.closedAt,
+    openedAt: trade.openedAt,
+  }).catch(() => { /* best-effort */ });
+}
 
 export interface PolyPosition {
   id: string;
@@ -634,6 +657,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         auto: pos.auto,
         source: pos.source,
       };
+      publishTrade(closed);
       return {
         ...prev,
         cash: prev.cash + proceeds,
@@ -714,6 +738,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.notional,
           source: pos.source,
         };
+        publishTrade(closed);
         return {
           ...prev,
           cash: prev.cash + proceeds,
@@ -787,6 +812,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.notionalPerLeg,
           source: pos.source,
         };
+        publishTrade(closed);
         return {
           ...prev,
           cash: prev.cash + proceeds,
@@ -891,6 +917,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.contracts,
           source: pos.source,
         };
+        publishTrade(closed);
         const next = {
           ...prev,
           cash: prev.cash + proceeds,
@@ -974,6 +1001,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         qty: pos.shares,
         source: pos.source,
       };
+      publishTrade(closed);
       return {
         ...prev,
         cash: prev.cash + proceeds,
@@ -1037,7 +1065,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.notional,
           source: pos.source,
         };
-
+        publishTrade(closed);
         binancePositions = binancePositions.filter((p) => p.id !== pos.id);
         cash = cash + proceeds;
         tradeHistory = [closed, ...tradeHistory];
@@ -1081,7 +1109,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.shares,
           source: pos.source,
         };
-
+        publishTrade(closed);
         stockPositions = stockPositions.filter((p) => p.id !== pos.id);
         cash = cash + proceeds;
         tradeHistory = [closed, ...tradeHistory];
@@ -1144,7 +1172,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.notional,
           source: pos.source,
         };
-
+        publishTrade(closed);
         binancePositions = binancePositions.filter((p) => p.id !== pos.id);
         cash = cash + proceeds;
         tradeHistory = [closed, ...tradeHistory];
@@ -1184,7 +1212,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.shares,
           source: pos.source,
         };
-
+        publishTrade(closed);
         stockPositions = stockPositions.filter((p) => p.id !== pos.id);
         cash = cash + proceeds;
         tradeHistory = [closed, ...tradeHistory];
@@ -1308,7 +1336,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.notional,
           source: pos.source,
         };
-
+        publishTrade(closed);
         binancePositions = binancePositions.filter((p) => p.id !== pos.id);
         cash = cash + proceeds;
         tradeHistory = [closed, ...tradeHistory];
@@ -1370,6 +1398,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         qty: pos.notional,
         source: pos.source,
       };
+      publishTrade(closed);
       tradeHistory = [closed, ...tradeHistory];
       cash += proceeds;
       closedCount += 1;
@@ -1404,6 +1433,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         qty: pos.shares,
         source: pos.source,
       };
+      publishTrade(closed);
       tradeHistory = [closed, ...tradeHistory];
       cash += proceeds;
       closedCount += 1;
@@ -1435,6 +1465,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         qty: pos.notionalPerLeg,
         source: pos.source,
       };
+      publishTrade(closed);
       tradeHistory = [closed, ...tradeHistory];
       cash += proceeds;
       closedCount += 1;
@@ -1468,6 +1499,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         qty: pos.contracts,
         source: pos.source,
       };
+      publishTrade(closed);
       tradeHistory = [closed, ...tradeHistory];
       cash += proceeds;
       closedCount += 1;
@@ -1534,6 +1566,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.notional,
           source: pos.source,
         };
+        publishTrade(closed);
         tradeHistory = [closed, ...tradeHistory];
         cash += proceeds;
         closedCount += 1;
@@ -1570,6 +1603,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.shares,
           source: pos.source,
         };
+        publishTrade(closed);
         tradeHistory = [closed, ...tradeHistory];
         cash += proceeds;
         closedCount += 1;
@@ -1603,6 +1637,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           auto: pos.auto,
           source: pos.source,
         };
+        publishTrade(closed);
         tradeHistory = [closed, ...tradeHistory];
         cash += proceeds;
         closedCount += 1;
@@ -1634,6 +1669,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.notionalPerLeg,
           source: pos.source,
         };
+        publishTrade(closed);
         tradeHistory = [closed, ...tradeHistory];
         cash += proceeds;
         closedCount += 1;
@@ -1668,6 +1704,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           qty: pos.contracts,
           source: pos.source,
         };
+        publishTrade(closed);
         tradeHistory = [closed, ...tradeHistory];
         cash += proceeds;
         closedCount += 1;

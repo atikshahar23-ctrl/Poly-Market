@@ -47,6 +47,7 @@ import type {
   GetFundingHistoryParams,
   GetPolymarketMarketsParams,
   GetPolymarketPriceHistoryParams,
+  GetPublicTradesParams,
   GetScanResultsParams,
   GetStockKlinesParams,
   GetStockSearchParams,
@@ -57,6 +58,9 @@ import type {
   MomentumCoin,
   PolymarketMarket,
   PolymarketPricePoint,
+  PublicTrade,
+  PublicTradeInput,
+  PublicTrades,
   Recommendation,
   RedeemReferralInput,
   RedeemReferralResult,
@@ -2853,6 +2857,165 @@ export const useRedeemReferral = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getRedeemReferralMutationOptions(options));
+    }
+
+export const getGetPublicTradesUrl = (params?: GetPublicTradesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/social/trades?${stringifiedParams}` : `/api/social/trades`
+}
+
+/**
+ * Returns the latest public trades (is_public=true) from all users, most recent first. Optionally filtered by symbol. No pagination yet.
+
+ * @summary Recent public trades
+ */
+export const getPublicTrades = async (params?: GetPublicTradesParams, options?: RequestInit): Promise<PublicTrades> => {
+
+  return customFetch<PublicTrades>(getGetPublicTradesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicTradesQueryKey = (params?: GetPublicTradesParams,) => {
+    return [
+    `/api/social/trades`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPublicTradesQueryOptions = <TData = Awaited<ReturnType<typeof getPublicTrades>>, TError = ErrorType<ErrorResponse>>(params?: GetPublicTradesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicTrades>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicTradesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicTrades>>> = ({ signal }) => getPublicTrades(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicTrades>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicTradesQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicTrades>>>
+export type GetPublicTradesQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Recent public trades
+ */
+
+export function useGetPublicTrades<TData = Awaited<ReturnType<typeof getPublicTrades>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetPublicTradesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicTrades>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicTradesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreatePublicTradeUrl = () => {
+
+
+
+
+  return `/api/social/trades`
+}
+
+/**
+ * Clients POST each closed trade here so it appears in the public feed.
+
+ * @summary Publish a closed trade
+ */
+export const createPublicTrade = async (publicTradeInput: PublicTradeInput, options?: RequestInit): Promise<PublicTrade> => {
+
+  return customFetch<PublicTrade>(getCreatePublicTradeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      publicTradeInput,)
+  }
+);}
+
+
+
+
+export const getCreatePublicTradeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPublicTrade>>, TError,{data: BodyType<PublicTradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPublicTrade>>, TError,{data: BodyType<PublicTradeInput>}, TContext> => {
+
+const mutationKey = ['createPublicTrade'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPublicTrade>>, {data: BodyType<PublicTradeInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPublicTrade(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePublicTradeMutationResult = NonNullable<Awaited<ReturnType<typeof createPublicTrade>>>
+    export type CreatePublicTradeMutationBody = BodyType<PublicTradeInput>
+    export type CreatePublicTradeMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Publish a closed trade
+ */
+export const useCreatePublicTrade = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPublicTrade>>, TError,{data: BodyType<PublicTradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPublicTrade>>,
+        TError,
+        {data: BodyType<PublicTradeInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePublicTradeMutationOptions(options));
     }
 
 export const getGetCreditsUrl = () => {

@@ -35,6 +35,7 @@ const Tools = lazy(() => import("@/pages/tools"));
 const CalendarPage = lazy(() => import("@/pages/calendar"));
 const Landing = lazy(() => import("@/pages/landing"));
 const Leaderboard = lazy(() => import("@/pages/leaderboard"));
+const TradesFeed = lazy(() => import("@/pages/trades-feed"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
 const AdminPage = lazy(() => import("@/pages/admin"));
 import Layout from "@/components/layout";
@@ -239,6 +240,7 @@ function Router() {
         <Route path="/smart-money" component={SmartMoney} />
         <Route path="/simulator" component={Simulator} />
         <Route path="/leaderboard" component={Leaderboard} />
+        <Route path="/trades" component={TradesFeed} />
         <Route path="/bots" component={Bots} />
         <Route path="/advisor" component={MasterAdvisor} />
         <Route path="/briefing" component={Briefing} />

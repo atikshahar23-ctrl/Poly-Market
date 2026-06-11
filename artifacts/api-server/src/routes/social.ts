@@ -7,7 +7,7 @@ import express, {
 } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
 import { desc, eq, sql } from "drizzle-orm";
-import { db, appUser, type AppUserRow } from "@workspace/db";
+import { db, appUser, type AppUserRow, publicTrade } from "@workspace/db";
 import {
   ReportWalletBody,
   ReportWalletResponse,
@@ -20,6 +20,9 @@ import {
   GetCreditsResponse,
   AckCreditsBody,
   AckCreditsResponse,
+  CreatePublicTradeBody,
+  CreatePublicTradeResponse,
+  GetPublicTradesResponse,
 } from "@workspace/api-zod";
 import { makeRateLimiter } from "../lib/rateLimiter";
 
@@ -496,6 +499,77 @@ router.post(
     } catch (err) {
       req.log.error({ err }, "Failed to redeem referral");
       res.status(500).json({ error: "Failed to redeem referral" });
+    }
+  },
+);
+
+/** GET /social/trades — recent public trades (optional ?symbol= filter). */
+router.get("/social/trades", async (req, res): Promise<void> => {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  try {
+    const symbol = typeof req.query.symbol === "string" ? req.query.symbol.trim() : "";
+    const q = db
+      .select()
+      .from(publicTrade)
+      .where(
+        symbol
+          ? sql`${publicTrade.isPublic} = true AND ${publicTrade.symbol} = ${symbol}`
+          : sql`${publicTrade.isPublic} = true`
+      )
+      .orderBy(desc(publicTrade.closedAt))
+      .limit(200);
+    const rows = await q;
+    res.json(GetPublicTradesResponse.parse({ trades: rows }));
+  } catch (err) {
+    req.log.error({ err }, "Failed to load public trades");
+    res.status(500).json({ error: "Failed to load public trades" });
+  }
+});
+
+/** POST /social/trades — publish a closed trade. */
+router.post(
+  "/social/trades",
+  socialWriteLimit,
+  parseSocialBody,
+  async (req, res): Promise<void> => {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    const body = CreatePublicTradeBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+    try {
+      await ensureUser(userId);
+      const [row] = await db
+        .insert(publicTrade)
+        .values({
+          userId,
+          displayName: body.data.displayName.trim().slice(0, 40) || "Trader",
+          symbol: body.data.symbol.trim().toUpperCase().slice(0, 32),
+          type: body.data.type.trim().toUpperCase(),
+          direction: body.data.direction?.trim() ?? null,
+          entryPrice: body.data.entryPrice ?? null,
+          exitPrice: body.data.exitPrice ?? null,
+          pnl: body.data.pnl,
+          pct: body.data.pct ?? null,
+          leverage: body.data.leverage ?? null,
+          source: body.data.source?.trim().slice(0, 40) ?? null,
+          closedAt: body.data.closedAt,
+          openedAt: body.data.openedAt ?? null,
+        })
+        .returning();
+      res.json(CreatePublicTradeResponse.parse(row));
+    } catch (err) {
+      req.log.error({ err }, "Failed to save public trade");
+      res.status(500).json({ error: "Failed to save public trade" });
     }
   },
 );
