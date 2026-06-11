@@ -893,6 +893,309 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /user/binance/futures/credentials:
+    get:
+      operationId: getBinanceFuturesStatus
+      tags: [binance-futures]
+      summary: Get live-trading connection status for both environments
+      description: Returns masked keys, connection state, and the per-environment liveTradingEnabled flag plus the active liveMode.
+      responses:
+        "200":
+          description: Live-trading status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesStatus"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: putBinanceFuturesCredentials
+      tags: [binance-futures]
+      summary: Save and validate Binance Futures API credentials for one environment
+      description: Encrypts the key/secret and validates them against the Binance Futures account endpoint before saving. Saving keys does not enable live trading.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BinanceFuturesCredentialsInput"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesStatus"
+        "400":
+          description: Invalid input or Binance rejected the test call
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "451":
+          description: Geo-blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteBinanceFuturesCredentials
+      tags: [binance-futures]
+      summary: Remove stored credentials for one environment
+      parameters:
+        - name: mode
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [testnet, mainnet]
+      responses:
+        "200":
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesStatus"
+        "400":
+          description: Invalid mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/futures/config:
+    patch:
+      operationId: patchBinanceFuturesConfig
+      tags: [binance-futures]
+      summary: Set the active live mode and/or toggle live trading for an environment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BinanceFuturesConfigInput"
+      responses:
+        "200":
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesStatus"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/futures/balance:
+    get:
+      operationId: getBinanceFuturesBalance
+      tags: [binance-futures]
+      summary: Get the USDT futures balance for the active live mode
+      responses:
+        "200":
+          description: Balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesBalance"
+        "400":
+          description: No credentials for the active mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "451":
+          description: Geo-blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Binance error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/futures/order:
+    post:
+      operationId: placeBinanceFuturesOrder
+      tags: [binance-futures]
+      summary: Place a market futures order (bot use only)
+      description: Sets leverage then places a MARKET order on the active live environment. Returns the resulting order id and fill.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BinanceFuturesOrderInput"
+      responses:
+        "200":
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesOrderResult"
+        "400":
+          description: Invalid input or no credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Live trading disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "451":
+          description: Geo-blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Binance rejected the order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/futures/order/close:
+    post:
+      operationId: closeBinanceFuturesOrder
+      tags: [binance-futures]
+      summary: Market-close an open futures position by symbol
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BinanceFuturesCloseInput"
+      responses:
+        "200":
+          description: Close result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesCloseResult"
+        "400":
+          description: Invalid input or no credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Binance error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/futures/close-all:
+    post:
+      operationId: closeAllBinanceFutures
+      tags: [binance-futures]
+      summary: Cancel all open orders and market-close all positions (emergency stop)
+      responses:
+        "200":
+          description: Close-all result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesCloseAllResult"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "451":
+          description: Geo-blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Binance error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /user/binance/futures/positions:
+    get:
+      operationId: getBinanceFuturesPositions
+      tags: [binance-futures]
+      summary: Get current open futures positions for the active live mode
+      responses:
+        "200":
+          description: Positions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BinanceFuturesPositions"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "451":
+          description: Geo-blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Binance error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /social/report:
     post:
       operationId: reportWallet
@@ -1289,6 +1592,43 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /account:
+    delete:
+      operationId: deleteAccount
+      tags: [account]
+      summary: Delete the caller's account and all data
+      description: Permanently deletes the user's Clerk account, all local DB rows, and signs them out.
+      responses:
+        "200":
+          description: Account deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - deleted
+                properties:
+                  deleted:
+                    type: boolean
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Deletion failed
           content:
             application/json:
               schema:
@@ -2641,6 +2981,178 @@ components:
           type: number
         status:
           type: string
+
+    BinanceFuturesEnvStatus:
+      type: object
+      required:
+        - connected
+        - liveTradingEnabled
+      properties:
+        connected:
+          type: boolean
+        liveTradingEnabled:
+          type: boolean
+        key:
+          type: string
+          nullable: true
+          description: Masked API key, or null when not connected.
+
+    BinanceFuturesStatus:
+      type: object
+      required:
+        - liveMode
+        - testnet
+        - mainnet
+      properties:
+        liveMode:
+          type: string
+          enum: [testnet, mainnet]
+        testnet:
+          $ref: "#/components/schemas/BinanceFuturesEnvStatus"
+        mainnet:
+          $ref: "#/components/schemas/BinanceFuturesEnvStatus"
+
+    BinanceFuturesCredentialsInput:
+      type: object
+      required:
+        - mode
+        - apiKey
+        - secret
+      properties:
+        mode:
+          type: string
+          enum: [testnet, mainnet]
+        apiKey:
+          type: string
+          minLength: 1
+        secret:
+          type: string
+          minLength: 1
+
+    BinanceFuturesConfigInput:
+      type: object
+      properties:
+        liveMode:
+          type: string
+          enum: [testnet, mainnet]
+        mode:
+          type: string
+          enum: [testnet, mainnet]
+          description: Which environment to toggle liveTradingEnabled for.
+        liveTradingEnabled:
+          type: boolean
+
+    BinanceFuturesBalance:
+      type: object
+      required:
+        - mode
+        - totalUsdt
+        - availableUsdt
+      properties:
+        mode:
+          type: string
+          enum: [testnet, mainnet]
+        totalUsdt:
+          type: number
+        availableUsdt:
+          type: number
+
+    BinanceFuturesOrderInput:
+      type: object
+      required:
+        - symbol
+        - side
+        - quantity
+      properties:
+        symbol:
+          type: string
+          description: Asset or pair, e.g. "BTC" or "BTCUSDT".
+        side:
+          type: string
+          enum: [BUY, SELL]
+        quantity:
+          type: number
+          description: Base-asset quantity (rounded server-side to the symbol step size).
+        leverage:
+          type: number
+          description: Optional leverage to set before the order.
+
+    BinanceFuturesOrderResult:
+      type: object
+      required:
+        - orderId
+        - fillPrice
+        - fillQty
+      properties:
+        orderId:
+          type: string
+        fillPrice:
+          type: number
+        fillQty:
+          type: number
+
+    BinanceFuturesCloseInput:
+      type: object
+      required:
+        - symbol
+      properties:
+        symbol:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+          description: Original position side (informational; server closes the actual amount).
+        quantity:
+          type: number
+
+    BinanceFuturesCloseResult:
+      type: object
+      required:
+        - closed
+      properties:
+        orderId:
+          type: string
+          nullable: true
+        closed:
+          type: boolean
+
+    BinanceFuturesCloseAllResult:
+      type: object
+      required:
+        - closed
+      properties:
+        closed:
+          type: number
+
+    BinanceFuturesPosition:
+      type: object
+      required:
+        - symbol
+        - positionAmt
+        - entryPrice
+        - unrealizedPnl
+        - leverage
+      properties:
+        symbol:
+          type: string
+        positionAmt:
+          type: number
+        entryPrice:
+          type: number
+        unrealizedPnl:
+          type: number
+        leverage:
+          type: number
+
+    BinanceFuturesPositions:
+      type: object
+      required:
+        - positions
+      properties:
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BinanceFuturesPosition"
 
     TelegramSendInput:
       type: object

@@ -31,12 +31,24 @@ import type {
   BinanceCredentialsInput,
   BinanceCredentialsStatus,
   BinanceData,
+  BinanceFuturesBalance,
+  BinanceFuturesCloseAllResult,
+  BinanceFuturesCloseInput,
+  BinanceFuturesCloseResult,
+  BinanceFuturesConfigInput,
+  BinanceFuturesCredentialsInput,
+  BinanceFuturesOrderInput,
+  BinanceFuturesOrderResult,
+  BinanceFuturesPositions,
+  BinanceFuturesStatus,
   BinanceOrders,
   CheckFundingAssetParams,
   CoinTicker,
   Credits,
   DailyRewardClaim,
   DailyRewardStatus,
+  DeleteAccount200,
+  DeleteBinanceFuturesCredentialsParams,
   ErrorResponse,
   FundingAssetCheck,
   FundingBacktest,
@@ -2408,6 +2420,671 @@ export function useGetBinanceOrders<TData = Awaited<ReturnType<typeof getBinance
 
 
 
+export const getGetBinanceFuturesStatusUrl = () => {
+
+
+
+
+  return `/api/user/binance/futures/credentials`
+}
+
+/**
+ * Returns masked keys, connection state, and the per-environment liveTradingEnabled flag plus the active liveMode.
+ * @summary Get live-trading connection status for both environments
+ */
+export const getBinanceFuturesStatus = async ( options?: RequestInit): Promise<BinanceFuturesStatus> => {
+
+  return customFetch<BinanceFuturesStatus>(getGetBinanceFuturesStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBinanceFuturesStatusQueryKey = () => {
+    return [
+    `/api/user/binance/futures/credentials`
+    ] as const;
+    }
+
+
+export const getGetBinanceFuturesStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBinanceFuturesStatus>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBinanceFuturesStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBinanceFuturesStatus>>> = ({ signal }) => getBinanceFuturesStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBinanceFuturesStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBinanceFuturesStatus>>>
+export type GetBinanceFuturesStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get live-trading connection status for both environments
+ */
+
+export function useGetBinanceFuturesStatus<TData = Awaited<ReturnType<typeof getBinanceFuturesStatus>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBinanceFuturesStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getPutBinanceFuturesCredentialsUrl = () => {
+
+
+
+
+  return `/api/user/binance/futures/credentials`
+}
+
+/**
+ * Encrypts the key/secret and validates them against the Binance Futures account endpoint before saving. Saving keys does not enable live trading.
+ * @summary Save and validate Binance Futures API credentials for one environment
+ */
+export const putBinanceFuturesCredentials = async (binanceFuturesCredentialsInput: BinanceFuturesCredentialsInput, options?: RequestInit): Promise<BinanceFuturesStatus> => {
+
+  return customFetch<BinanceFuturesStatus>(getPutBinanceFuturesCredentialsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      binanceFuturesCredentialsInput,)
+  }
+);}
+
+
+
+
+export const getPutBinanceFuturesCredentialsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putBinanceFuturesCredentials>>, TError,{data: BodyType<BinanceFuturesCredentialsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof putBinanceFuturesCredentials>>, TError,{data: BodyType<BinanceFuturesCredentialsInput>}, TContext> => {
+
+const mutationKey = ['putBinanceFuturesCredentials'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putBinanceFuturesCredentials>>, {data: BodyType<BinanceFuturesCredentialsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  putBinanceFuturesCredentials(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PutBinanceFuturesCredentialsMutationResult = NonNullable<Awaited<ReturnType<typeof putBinanceFuturesCredentials>>>
+    export type PutBinanceFuturesCredentialsMutationBody = BodyType<BinanceFuturesCredentialsInput>
+    export type PutBinanceFuturesCredentialsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save and validate Binance Futures API credentials for one environment
+ */
+export const usePutBinanceFuturesCredentials = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putBinanceFuturesCredentials>>, TError,{data: BodyType<BinanceFuturesCredentialsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof putBinanceFuturesCredentials>>,
+        TError,
+        {data: BodyType<BinanceFuturesCredentialsInput>},
+        TContext
+      > => {
+      return useMutation(getPutBinanceFuturesCredentialsMutationOptions(options));
+    }
+
+export const getDeleteBinanceFuturesCredentialsUrl = (params: DeleteBinanceFuturesCredentialsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/user/binance/futures/credentials?${stringifiedParams}` : `/api/user/binance/futures/credentials`
+}
+
+/**
+ * @summary Remove stored credentials for one environment
+ */
+export const deleteBinanceFuturesCredentials = async (params: DeleteBinanceFuturesCredentialsParams, options?: RequestInit): Promise<BinanceFuturesStatus> => {
+
+  return customFetch<BinanceFuturesStatus>(getDeleteBinanceFuturesCredentialsUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteBinanceFuturesCredentialsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBinanceFuturesCredentials>>, TError,{params: DeleteBinanceFuturesCredentialsParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBinanceFuturesCredentials>>, TError,{params: DeleteBinanceFuturesCredentialsParams}, TContext> => {
+
+const mutationKey = ['deleteBinanceFuturesCredentials'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBinanceFuturesCredentials>>, {params: DeleteBinanceFuturesCredentialsParams}> = (props) => {
+          const {params} = props ?? {};
+
+          return  deleteBinanceFuturesCredentials(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBinanceFuturesCredentialsMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBinanceFuturesCredentials>>>
+
+    export type DeleteBinanceFuturesCredentialsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove stored credentials for one environment
+ */
+export const useDeleteBinanceFuturesCredentials = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBinanceFuturesCredentials>>, TError,{params: DeleteBinanceFuturesCredentialsParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBinanceFuturesCredentials>>,
+        TError,
+        {params: DeleteBinanceFuturesCredentialsParams},
+        TContext
+      > => {
+      return useMutation(getDeleteBinanceFuturesCredentialsMutationOptions(options));
+    }
+
+export const getPatchBinanceFuturesConfigUrl = () => {
+
+
+
+
+  return `/api/user/binance/futures/config`
+}
+
+/**
+ * @summary Set the active live mode and/or toggle live trading for an environment
+ */
+export const patchBinanceFuturesConfig = async (binanceFuturesConfigInput: BinanceFuturesConfigInput, options?: RequestInit): Promise<BinanceFuturesStatus> => {
+
+  return customFetch<BinanceFuturesStatus>(getPatchBinanceFuturesConfigUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      binanceFuturesConfigInput,)
+  }
+);}
+
+
+
+
+export const getPatchBinanceFuturesConfigMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchBinanceFuturesConfig>>, TError,{data: BodyType<BinanceFuturesConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchBinanceFuturesConfig>>, TError,{data: BodyType<BinanceFuturesConfigInput>}, TContext> => {
+
+const mutationKey = ['patchBinanceFuturesConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchBinanceFuturesConfig>>, {data: BodyType<BinanceFuturesConfigInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  patchBinanceFuturesConfig(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchBinanceFuturesConfigMutationResult = NonNullable<Awaited<ReturnType<typeof patchBinanceFuturesConfig>>>
+    export type PatchBinanceFuturesConfigMutationBody = BodyType<BinanceFuturesConfigInput>
+    export type PatchBinanceFuturesConfigMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Set the active live mode and/or toggle live trading for an environment
+ */
+export const usePatchBinanceFuturesConfig = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchBinanceFuturesConfig>>, TError,{data: BodyType<BinanceFuturesConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof patchBinanceFuturesConfig>>,
+        TError,
+        {data: BodyType<BinanceFuturesConfigInput>},
+        TContext
+      > => {
+      return useMutation(getPatchBinanceFuturesConfigMutationOptions(options));
+    }
+
+export const getGetBinanceFuturesBalanceUrl = () => {
+
+
+
+
+  return `/api/user/binance/futures/balance`
+}
+
+/**
+ * @summary Get the USDT futures balance for the active live mode
+ */
+export const getBinanceFuturesBalance = async ( options?: RequestInit): Promise<BinanceFuturesBalance> => {
+
+  return customFetch<BinanceFuturesBalance>(getGetBinanceFuturesBalanceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBinanceFuturesBalanceQueryKey = () => {
+    return [
+    `/api/user/binance/futures/balance`
+    ] as const;
+    }
+
+
+export const getGetBinanceFuturesBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getBinanceFuturesBalance>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBinanceFuturesBalanceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBinanceFuturesBalance>>> = ({ signal }) => getBinanceFuturesBalance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesBalance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBinanceFuturesBalanceQueryResult = NonNullable<Awaited<ReturnType<typeof getBinanceFuturesBalance>>>
+export type GetBinanceFuturesBalanceQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the USDT futures balance for the active live mode
+ */
+
+export function useGetBinanceFuturesBalance<TData = Awaited<ReturnType<typeof getBinanceFuturesBalance>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBinanceFuturesBalanceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getPlaceBinanceFuturesOrderUrl = () => {
+
+
+
+
+  return `/api/user/binance/futures/order`
+}
+
+/**
+ * Sets leverage then places a MARKET order on the active live environment. Returns the resulting order id and fill.
+ * @summary Place a market futures order (bot use only)
+ */
+export const placeBinanceFuturesOrder = async (binanceFuturesOrderInput: BinanceFuturesOrderInput, options?: RequestInit): Promise<BinanceFuturesOrderResult> => {
+
+  return customFetch<BinanceFuturesOrderResult>(getPlaceBinanceFuturesOrderUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      binanceFuturesOrderInput,)
+  }
+);}
+
+
+
+
+export const getPlaceBinanceFuturesOrderMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof placeBinanceFuturesOrder>>, TError,{data: BodyType<BinanceFuturesOrderInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof placeBinanceFuturesOrder>>, TError,{data: BodyType<BinanceFuturesOrderInput>}, TContext> => {
+
+const mutationKey = ['placeBinanceFuturesOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof placeBinanceFuturesOrder>>, {data: BodyType<BinanceFuturesOrderInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  placeBinanceFuturesOrder(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PlaceBinanceFuturesOrderMutationResult = NonNullable<Awaited<ReturnType<typeof placeBinanceFuturesOrder>>>
+    export type PlaceBinanceFuturesOrderMutationBody = BodyType<BinanceFuturesOrderInput>
+    export type PlaceBinanceFuturesOrderMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Place a market futures order (bot use only)
+ */
+export const usePlaceBinanceFuturesOrder = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof placeBinanceFuturesOrder>>, TError,{data: BodyType<BinanceFuturesOrderInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof placeBinanceFuturesOrder>>,
+        TError,
+        {data: BodyType<BinanceFuturesOrderInput>},
+        TContext
+      > => {
+      return useMutation(getPlaceBinanceFuturesOrderMutationOptions(options));
+    }
+
+export const getCloseBinanceFuturesOrderUrl = () => {
+
+
+
+
+  return `/api/user/binance/futures/order/close`
+}
+
+/**
+ * @summary Market-close an open futures position by symbol
+ */
+export const closeBinanceFuturesOrder = async (binanceFuturesCloseInput: BinanceFuturesCloseInput, options?: RequestInit): Promise<BinanceFuturesCloseResult> => {
+
+  return customFetch<BinanceFuturesCloseResult>(getCloseBinanceFuturesOrderUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      binanceFuturesCloseInput,)
+  }
+);}
+
+
+
+
+export const getCloseBinanceFuturesOrderMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeBinanceFuturesOrder>>, TError,{data: BodyType<BinanceFuturesCloseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeBinanceFuturesOrder>>, TError,{data: BodyType<BinanceFuturesCloseInput>}, TContext> => {
+
+const mutationKey = ['closeBinanceFuturesOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeBinanceFuturesOrder>>, {data: BodyType<BinanceFuturesCloseInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  closeBinanceFuturesOrder(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseBinanceFuturesOrderMutationResult = NonNullable<Awaited<ReturnType<typeof closeBinanceFuturesOrder>>>
+    export type CloseBinanceFuturesOrderMutationBody = BodyType<BinanceFuturesCloseInput>
+    export type CloseBinanceFuturesOrderMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Market-close an open futures position by symbol
+ */
+export const useCloseBinanceFuturesOrder = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeBinanceFuturesOrder>>, TError,{data: BodyType<BinanceFuturesCloseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeBinanceFuturesOrder>>,
+        TError,
+        {data: BodyType<BinanceFuturesCloseInput>},
+        TContext
+      > => {
+      return useMutation(getCloseBinanceFuturesOrderMutationOptions(options));
+    }
+
+export const getCloseAllBinanceFuturesUrl = () => {
+
+
+
+
+  return `/api/user/binance/futures/close-all`
+}
+
+/**
+ * @summary Cancel all open orders and market-close all positions (emergency stop)
+ */
+export const closeAllBinanceFutures = async ( options?: RequestInit): Promise<BinanceFuturesCloseAllResult> => {
+
+  return customFetch<BinanceFuturesCloseAllResult>(getCloseAllBinanceFuturesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCloseAllBinanceFuturesMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeAllBinanceFutures>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeAllBinanceFutures>>, TError,void, TContext> => {
+
+const mutationKey = ['closeAllBinanceFutures'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeAllBinanceFutures>>, void> = () => {
+
+
+          return  closeAllBinanceFutures(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseAllBinanceFuturesMutationResult = NonNullable<Awaited<ReturnType<typeof closeAllBinanceFutures>>>
+
+    export type CloseAllBinanceFuturesMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Cancel all open orders and market-close all positions (emergency stop)
+ */
+export const useCloseAllBinanceFutures = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeAllBinanceFutures>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeAllBinanceFutures>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCloseAllBinanceFuturesMutationOptions(options));
+    }
+
+export const getGetBinanceFuturesPositionsUrl = () => {
+
+
+
+
+  return `/api/user/binance/futures/positions`
+}
+
+/**
+ * @summary Get current open futures positions for the active live mode
+ */
+export const getBinanceFuturesPositions = async ( options?: RequestInit): Promise<BinanceFuturesPositions> => {
+
+  return customFetch<BinanceFuturesPositions>(getGetBinanceFuturesPositionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBinanceFuturesPositionsQueryKey = () => {
+    return [
+    `/api/user/binance/futures/positions`
+    ] as const;
+    }
+
+
+export const getGetBinanceFuturesPositionsQueryOptions = <TData = Awaited<ReturnType<typeof getBinanceFuturesPositions>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesPositions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBinanceFuturesPositionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBinanceFuturesPositions>>> = ({ signal }) => getBinanceFuturesPositions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesPositions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBinanceFuturesPositionsQueryResult = NonNullable<Awaited<ReturnType<typeof getBinanceFuturesPositions>>>
+export type GetBinanceFuturesPositionsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get current open futures positions for the active live mode
+ */
+
+export function useGetBinanceFuturesPositions<TData = Awaited<ReturnType<typeof getBinanceFuturesPositions>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBinanceFuturesPositions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBinanceFuturesPositionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getReportWalletUrl = () => {
 
 
@@ -3476,6 +4153,77 @@ export const useAdminRename = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getAdminRenameMutationOptions(options));
+    }
+
+export const getDeleteAccountUrl = () => {
+
+
+
+
+  return `/api/account`
+}
+
+/**
+ * Permanently deletes the user's Clerk account, all local DB rows, and signs them out.
+ * @summary Delete the caller's account and all data
+ */
+export const deleteAccount = async ( options?: RequestInit): Promise<DeleteAccount200> => {
+
+  return customFetch<DeleteAccount200>(getDeleteAccountUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAccountMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext> => {
+
+const mutationKey = ['deleteAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, void> = () => {
+
+
+          return  deleteAccount(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>
+
+    export type DeleteAccountMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete the caller's account and all data
+ */
+export const useDeleteAccount = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAccount>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteAccountMutationOptions(options));
     }
 
 export const getSendTelegramMessageUrl = () => {

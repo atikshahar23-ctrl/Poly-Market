@@ -28,6 +28,7 @@ import {
 import { AlphaBotEmblem } from "@/components/alpha-bot-emblem";
 import { useLanguage } from "@/contexts/language-context";
 import { t, type Lang } from "@/lib/i18n";
+import { liveFuturesState } from "@/lib/live-futures";
 
 /** Preset boost durations in minutes (5 min → 5 h, the BOOST_MAX_MS ceiling). */
 const BOOST_PRESETS = [5, 15, 30, 60, 120, 180, 300] as const;
@@ -514,6 +515,9 @@ export default function Bots() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <Bot className="h-6 w-6 text-primary" /> Bot Command Center
+              {liveFuturesState.liveActive && (
+                <span className="text-[10px] font-bold font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 leading-tight">LIVE 🟢</span>
+              )}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5" dir="rtl">
               {t("bots.headerSubtitle", lang)}

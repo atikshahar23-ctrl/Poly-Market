@@ -729,6 +729,165 @@ export const GetBinanceOrdersResponse = zod.object({
 
 
 /**
+ * Returns masked keys, connection state, and the per-environment liveTradingEnabled flag plus the active liveMode.
+ * @summary Get live-trading connection status for both environments
+ */
+export const GetBinanceFuturesStatusResponse = zod.object({
+  "liveMode": zod.enum(['testnet', 'mainnet']),
+  "testnet": zod.object({
+  "connected": zod.boolean(),
+  "liveTradingEnabled": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key, or null when not connected.')
+}),
+  "mainnet": zod.object({
+  "connected": zod.boolean(),
+  "liveTradingEnabled": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key, or null when not connected.')
+})
+})
+
+
+/**
+ * Encrypts the key/secret and validates them against the Binance Futures account endpoint before saving. Saving keys does not enable live trading.
+ * @summary Save and validate Binance Futures API credentials for one environment
+ */
+
+
+
+
+export const PutBinanceFuturesCredentialsBody = zod.object({
+  "mode": zod.enum(['testnet', 'mainnet']),
+  "apiKey": zod.string().min(1),
+  "secret": zod.string().min(1)
+})
+
+export const PutBinanceFuturesCredentialsResponse = zod.object({
+  "liveMode": zod.enum(['testnet', 'mainnet']),
+  "testnet": zod.object({
+  "connected": zod.boolean(),
+  "liveTradingEnabled": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key, or null when not connected.')
+}),
+  "mainnet": zod.object({
+  "connected": zod.boolean(),
+  "liveTradingEnabled": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key, or null when not connected.')
+})
+})
+
+
+/**
+ * @summary Remove stored credentials for one environment
+ */
+export const DeleteBinanceFuturesCredentialsQueryParams = zod.object({
+  "mode": zod.enum(['testnet', 'mainnet'])
+})
+
+export const DeleteBinanceFuturesCredentialsResponse = zod.object({
+  "liveMode": zod.enum(['testnet', 'mainnet']),
+  "testnet": zod.object({
+  "connected": zod.boolean(),
+  "liveTradingEnabled": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key, or null when not connected.')
+}),
+  "mainnet": zod.object({
+  "connected": zod.boolean(),
+  "liveTradingEnabled": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key, or null when not connected.')
+})
+})
+
+
+/**
+ * @summary Set the active live mode and/or toggle live trading for an environment
+ */
+export const PatchBinanceFuturesConfigBody = zod.object({
+  "liveMode": zod.enum(['testnet', 'mainnet']).optional(),
+  "mode": zod.enum(['testnet', 'mainnet']).optional().describe('Which environment to toggle liveTradingEnabled for.'),
+  "liveTradingEnabled": zod.boolean().optional()
+})
+
+export const PatchBinanceFuturesConfigResponse = zod.object({
+  "liveMode": zod.enum(['testnet', 'mainnet']),
+  "testnet": zod.object({
+  "connected": zod.boolean(),
+  "liveTradingEnabled": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key, or null when not connected.')
+}),
+  "mainnet": zod.object({
+  "connected": zod.boolean(),
+  "liveTradingEnabled": zod.boolean(),
+  "key": zod.string().nullish().describe('Masked API key, or null when not connected.')
+})
+})
+
+
+/**
+ * @summary Get the USDT futures balance for the active live mode
+ */
+export const GetBinanceFuturesBalanceResponse = zod.object({
+  "mode": zod.enum(['testnet', 'mainnet']),
+  "totalUsdt": zod.number(),
+  "availableUsdt": zod.number()
+})
+
+
+/**
+ * Sets leverage then places a MARKET order on the active live environment. Returns the resulting order id and fill.
+ * @summary Place a market futures order (bot use only)
+ */
+export const PlaceBinanceFuturesOrderBody = zod.object({
+  "symbol": zod.string().describe('Asset or pair, e.g. \"BTC\" or \"BTCUSDT\".'),
+  "side": zod.enum(['BUY', 'SELL']),
+  "quantity": zod.number().describe('Base-asset quantity (rounded server-side to the symbol step size).'),
+  "leverage": zod.number().optional().describe('Optional leverage to set before the order.')
+})
+
+export const PlaceBinanceFuturesOrderResponse = zod.object({
+  "orderId": zod.string(),
+  "fillPrice": zod.number(),
+  "fillQty": zod.number()
+})
+
+
+/**
+ * @summary Market-close an open futures position by symbol
+ */
+export const CloseBinanceFuturesOrderBody = zod.object({
+  "symbol": zod.string(),
+  "side": zod.enum(['BUY', 'SELL']).optional().describe('Original position side (informational; server closes the actual amount).'),
+  "quantity": zod.number().optional()
+})
+
+export const CloseBinanceFuturesOrderResponse = zod.object({
+  "orderId": zod.string().nullish(),
+  "closed": zod.boolean()
+})
+
+
+/**
+ * @summary Cancel all open orders and market-close all positions (emergency stop)
+ */
+export const CloseAllBinanceFuturesResponse = zod.object({
+  "closed": zod.number()
+})
+
+
+/**
+ * @summary Get current open futures positions for the active live mode
+ */
+export const GetBinanceFuturesPositionsResponse = zod.object({
+  "positions": zod.array(zod.object({
+  "symbol": zod.string(),
+  "positionAmt": zod.number(),
+  "entryPrice": zod.number(),
+  "unrealizedPnl": zod.number(),
+  "leverage": zod.number()
+}))
+})
+
+
+/**
  * Upserts the caller's profile row with their privacy-safe display name and latest active-wallet value (cash + open position value). The user is derived from the Clerk session — never from the body. Implausible values are ignored (sane server-side bounds); the display name is still saved.
 
  * @summary Report the signed-in user's active-wallet value and display name
@@ -983,6 +1142,15 @@ export const AdminRenameResponse = zod.object({
   "displayName": zod.string(),
   "displayNameOverride": zod.string().nullish(),
   "effectiveName": zod.string()
+})
+
+
+/**
+ * Permanently deletes the user's Clerk account, all local DB rows, and signs them out.
+ * @summary Delete the caller's account and all data
+ */
+export const DeleteAccountResponse = zod.object({
+  "deleted": zod.boolean()
 })
 
 

@@ -816,6 +816,146 @@ export interface BinanceOrders {
   orders: BinanceOrder[];
 }
 
+export interface BinanceFuturesEnvStatus {
+  connected: boolean;
+  liveTradingEnabled: boolean;
+  /** Masked API key, or null when not connected. */
+  key?: string | null;
+}
+
+export type BinanceFuturesStatusLiveMode = typeof BinanceFuturesStatusLiveMode[keyof typeof BinanceFuturesStatusLiveMode];
+
+
+export const BinanceFuturesStatusLiveMode = {
+  testnet: 'testnet',
+  mainnet: 'mainnet',
+} as const;
+
+export interface BinanceFuturesStatus {
+  liveMode: BinanceFuturesStatusLiveMode;
+  testnet: BinanceFuturesEnvStatus;
+  mainnet: BinanceFuturesEnvStatus;
+}
+
+export type BinanceFuturesCredentialsInputMode = typeof BinanceFuturesCredentialsInputMode[keyof typeof BinanceFuturesCredentialsInputMode];
+
+
+export const BinanceFuturesCredentialsInputMode = {
+  testnet: 'testnet',
+  mainnet: 'mainnet',
+} as const;
+
+export interface BinanceFuturesCredentialsInput {
+  mode: BinanceFuturesCredentialsInputMode;
+  /** @minLength 1 */
+  apiKey: string;
+  /** @minLength 1 */
+  secret: string;
+}
+
+export type BinanceFuturesConfigInputLiveMode = typeof BinanceFuturesConfigInputLiveMode[keyof typeof BinanceFuturesConfigInputLiveMode];
+
+
+export const BinanceFuturesConfigInputLiveMode = {
+  testnet: 'testnet',
+  mainnet: 'mainnet',
+} as const;
+
+/**
+ * Which environment to toggle liveTradingEnabled for.
+ */
+export type BinanceFuturesConfigInputMode = typeof BinanceFuturesConfigInputMode[keyof typeof BinanceFuturesConfigInputMode];
+
+
+export const BinanceFuturesConfigInputMode = {
+  testnet: 'testnet',
+  mainnet: 'mainnet',
+} as const;
+
+export interface BinanceFuturesConfigInput {
+  liveMode?: BinanceFuturesConfigInputLiveMode;
+  /** Which environment to toggle liveTradingEnabled for. */
+  mode?: BinanceFuturesConfigInputMode;
+  liveTradingEnabled?: boolean;
+}
+
+export type BinanceFuturesBalanceMode = typeof BinanceFuturesBalanceMode[keyof typeof BinanceFuturesBalanceMode];
+
+
+export const BinanceFuturesBalanceMode = {
+  testnet: 'testnet',
+  mainnet: 'mainnet',
+} as const;
+
+export interface BinanceFuturesBalance {
+  mode: BinanceFuturesBalanceMode;
+  totalUsdt: number;
+  availableUsdt: number;
+}
+
+export type BinanceFuturesOrderInputSide = typeof BinanceFuturesOrderInputSide[keyof typeof BinanceFuturesOrderInputSide];
+
+
+export const BinanceFuturesOrderInputSide = {
+  BUY: 'BUY',
+  SELL: 'SELL',
+} as const;
+
+export interface BinanceFuturesOrderInput {
+  /** Asset or pair, e.g. "BTC" or "BTCUSDT". */
+  symbol: string;
+  side: BinanceFuturesOrderInputSide;
+  /** Base-asset quantity (rounded server-side to the symbol step size). */
+  quantity: number;
+  /** Optional leverage to set before the order. */
+  leverage?: number;
+}
+
+export interface BinanceFuturesOrderResult {
+  orderId: string;
+  fillPrice: number;
+  fillQty: number;
+}
+
+/**
+ * Original position side (informational; server closes the actual amount).
+ */
+export type BinanceFuturesCloseInputSide = typeof BinanceFuturesCloseInputSide[keyof typeof BinanceFuturesCloseInputSide];
+
+
+export const BinanceFuturesCloseInputSide = {
+  BUY: 'BUY',
+  SELL: 'SELL',
+} as const;
+
+export interface BinanceFuturesCloseInput {
+  symbol: string;
+  /** Original position side (informational; server closes the actual amount). */
+  side?: BinanceFuturesCloseInputSide;
+  quantity?: number;
+}
+
+export interface BinanceFuturesCloseResult {
+  orderId?: string | null;
+  closed: boolean;
+}
+
+export interface BinanceFuturesCloseAllResult {
+  closed: number;
+}
+
+export interface BinanceFuturesPosition {
+  symbol: string;
+  positionAmt: number;
+  entryPrice: number;
+  unrealizedPnl: number;
+  leverage: number;
+}
+
+export interface BinanceFuturesPositions {
+  positions: BinanceFuturesPosition[];
+}
+
 export interface TelegramSendInput {
   /** Telegram chat ID (numeric ID or @channel username) */
   chatId: string;
@@ -1027,7 +1167,23 @@ asset: string;
 hours?: number;
 };
 
+export type DeleteBinanceFuturesCredentialsParams = {
+mode: DeleteBinanceFuturesCredentialsMode;
+};
+
+export type DeleteBinanceFuturesCredentialsMode = typeof DeleteBinanceFuturesCredentialsMode[keyof typeof DeleteBinanceFuturesCredentialsMode];
+
+
+export const DeleteBinanceFuturesCredentialsMode = {
+  testnet: 'testnet',
+  mainnet: 'mainnet',
+} as const;
+
 export type GetPublicTradesParams = {
 symbol?: string;
+};
+
+export type DeleteAccount200 = {
+  deleted: boolean;
 };
 

@@ -289,6 +289,9 @@ function FuturesPositionsPanel({ binancePrices, posFilter, setPosFilter, onSelec
                       </span>
                       <span className="text-[11px] font-bold font-mono truncate">{pos.asset}USDT</span>
                       <span className="text-[10px] text-primary font-mono">{pos.leverage}x</span>
+                      {pos.liveBinanceOrderId && (
+                        <span className="text-[9px] font-bold font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-1 leading-tight">LIVE 🟢</span>
+                      )}
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); closeBinancePosition(pos.id, currentPrice); }}

@@ -13,6 +13,7 @@ import { usePortfolio, type TrailConfig } from "@/contexts/portfolio-context";
 import { recommendLevels } from "@/lib/recommend-levels";
 import { useAutoTrader, resolveSizing, cashReserveFloor, intensityProfile, alphaAdjust, assignScalpSquad, squadMemberBySource, getSquadMemberSourceKey, SCALP_SQUAD, NEUTRAL_ALPHA, ALPHA_COMMIT_PCT, ALPHA_STRONG_PCT, type AlphaState, type ScalpConfidence, type ScalpSquadMember } from "@/contexts/autotrader-context";
 import { useFavorites } from "@/contexts/favorites-context";
+import { useLiveFutures } from "@/hooks/use-live-futures";
 import { useLivePrices } from "@/contexts/live-price-context";
 import { pushSquadMessage, clearSquadMessages } from "@/lib/squad-comms";
 import { toast } from "@/hooks/use-toast";
@@ -115,6 +116,9 @@ export function AutoTraderEngine() {
   } = usePortfolio();
   const { settings, update, getAssetCaution, recordAssetResult, publishAlpha } = useAutoTrader();
   const { isFavorite } = useFavorites();
+  // Bridge backend live-trading status into the portfolio singleton + run the
+  // 60s position-reconciliation poll for as long as the engine is mounted.
+  useLiveFutures();
   // Boost mode: while the deadline is in the future every bot trades at maximum
   // cadence — tiny cooldowns, faster polling and fast profit-banking.
   const boostActive = settings.boostUntil > Date.now();

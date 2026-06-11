@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { createPublicTrade } from "@workspace/api-client-react";
 import { calcCloseFeeForBinance, calcCloseFeeForStock, calcCloseFeeForPoly, FEE_RATES, applySlippage, calcLiquidationPrice } from "@/lib/fees";
 import { optionPositionValue } from "@/lib/options-model";
+import { liveFuturesState, liveOpenOrder, liveCloseOrder, liveCloseAllOrders } from "@/lib/live-futures";
 
 export const STARTING_BALANCE = 10_000;
 
@@ -80,6 +81,10 @@ export interface BinancePosition {
   source?: string;
   /** Optional trailing-stop config (warrior-style ride-the-winner). */
   trail?: TrailConfig;
+  /** Set when this paper position is mirrored by a real Binance Futures order. */
+  liveBinanceOrderId?: string;
+  /** Actual fill price reported by Binance for the live order (paper entry still drives PnL). */
+  liveFillPrice?: number;
 }
 
 export interface StockPosition {
@@ -445,6 +450,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   // the right account's book.
   const { user } = useUser();
   const { lang } = useLanguage();
+  // Fresh-language ref for async live-trading toasts (helpers have empty deps).
+  const langRef = useRef<Lang>(lang);
+  langRef.current = lang;
   const userId = user?.id ?? "anon";
   const walletsKey = `${WALLETS_KEY}::${userId}`;
   const legacyKey = `${STORAGE_KEY}::${userId}`;
@@ -667,6 +675,57 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // ── Live Binance Futures bridge ─────────────────────────────────────────────
+  // Only bot (auto) positions are mirrored to a real exchange order, and only
+  // when live trading is armed. The two helpers below patch the paper position
+  // with the real order id on success, or cleanly roll it back on rejection.
+
+  /** On a confirmed live fill, tag the paper position with the real order id. */
+  const attachLiveOrder = useCallback(
+    (id: string, orderId: string, fillPrice: number) => {
+      const patch = (p: BinancePosition) =>
+        p.id === id ? { ...p, liveBinanceOrderId: orderId, liveFillPrice: fillPrice } : p;
+      stateRef.current = {
+        ...stateRef.current,
+        binancePositions: stateRef.current.binancePositions.map(patch),
+      };
+      setState((prev) => ({ ...prev, binancePositions: prev.binancePositions.map(patch) }));
+      toast({
+        title: t("live.toast.openOkTitle", langRef.current),
+        description: t("live.toast.openOkDesc", langRef.current),
+      });
+    },
+    []
+  );
+
+  /**
+   * Binance rejected the live order: remove the just-opened paper position and
+   * refund its margin + open fee so no phantom trade or PnL is recorded.
+   */
+  const rollbackLivePosition = useCallback((id: string) => {
+    const prev = stateRef.current;
+    const pos = prev.binancePositions.find((p) => p.id === id);
+    if (!pos) return; // already closed elsewhere — nothing to undo
+    const margin = pos.notional / pos.leverage;
+    const openFee = pos.notional * FEE_RATES.perp.open;
+    const refund = margin + openFee;
+    stateRef.current = {
+      ...prev,
+      cash: prev.cash + refund,
+      binancePositions: prev.binancePositions.filter((p) => p.id !== id),
+    };
+    setState((s) => ({
+      ...s,
+      cash: s.cash + refund,
+      binancePositions: s.binancePositions.filter((p) => p.id !== id),
+    }));
+    toast({
+      variant: "destructive",
+      title: t("live.toast.openFailTitle", langRef.current),
+      description: t("live.toast.openFailDesc", langRef.current),
+    });
+  }, []);
+
   const openBinancePosition = useCallback(
     (pos: Omit<BinancePosition, "id" | "openedAt">, minCashReserve = 0) => {
       if (pos.notional <= 0) return "Amount must be positive";
@@ -697,13 +756,29 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         cash: prev.cash - totalOut,
         binancePositions: [...prev.binancePositions, position],
       }));
+      // Mirror bot opens to a real Binance Futures market order when live trading
+      // is armed. Manual UI trades (auto !== true) never reach the exchange.
+      if (liveFuturesState.liveActive && position.auto) {
+        const side = position.direction === "LONG" ? "BUY" : "SELL";
+        const quantity = position.notional / position.entryPrice;
+        liveOpenOrder({ symbol: position.asset, side, quantity, leverage: position.leverage })
+          .then((r) => attachLiveOrder(position.id, r.orderId, r.fillPrice))
+          .catch(() => rollbackLivePosition(position.id));
+      }
       return null;
     },
-    []
+    [attachLiveOrder, rollbackLivePosition]
   );
 
   const closeBinancePosition = useCallback(
     (id: string, currentPrice: number, exit: ClosedTrade["exit"] = "MANUAL") => {
+      // Mirror the close to the exchange if this position has a live order.
+      const live = stateRef.current.binancePositions.find((p) => p.id === id);
+      if (live?.liveBinanceOrderId && liveFuturesState.liveActive) {
+        liveCloseOrder(live.asset).catch(() => {
+          /* position may already be flat on the exchange; paper close still proceeds */
+        });
+      }
       setState((prev) => {
         const pos = prev.binancePositions.find((p) => p.id === id);
         if (!pos) return prev;
@@ -1354,6 +1429,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * the engine's max-drawdown circuit breaker. Returns the count it flattened.
    */
   const flattenAll = useCallback((prices: Record<string, number>) => {
+    // Emergency kill-switch: cancel all open orders and market-close every real
+    // futures position alongside the paper book. Fire-and-forget — the paper
+    // state clears regardless of the exchange round-trip.
+    if (liveFuturesState.liveActive) {
+      liveCloseAllOrders().catch(() => {});
+    }
     // Compute the next book deterministically from the latest committed state
     // (stateRef) so the returned count is reliable for the caller's disarm
     // decision, then mirror it into setState.
@@ -1523,6 +1604,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       stockPrices: Record<string, number>,
       polyPrices: Record<string, number>
     ): number => {
+      // Emergency "Stop All": cancel + market-close all real futures positions
+      // alongside the paper book. Fire-and-forget — paper state clears either way.
+      if (liveFuturesState.liveActive) {
+        liveCloseAllOrders().catch(() => {});
+      }
       const prev = stateRef.current;
       let cash = prev.cash;
       let tradeHistory = prev.tradeHistory;
