@@ -403,32 +403,42 @@ function FuturesPositionsPanel({ binancePrices, posFilter, setPosFilter, onSelec
   );
 }
 
+/* ─── Mobile tab bar ─── */
+function MobileTabBar({ active, onChange, tabs }: { active: string; onChange: (v: string) => void; tabs: { id: string; label: string; icon: React.ReactNode }[] }) {
+  return (
+    <div className="lg:hidden flex items-center border-b border-border bg-card/40 shrink-0">
+      {tabs.map(t => {
+        const isActive = active === t.id;
+        return (
+          <button
+            key={t.id}
+            onClick={() => onChange(t.id)}
+            className={`flex-1 flex items-center justify-center gap-1 py-2 text-[10px] font-mono font-bold transition-all border-b-2 ${
+              isActive
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─── Professional Futures Terminal ─── */
 function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPosFilter }: { binancePrices: Record<string, number>; initialAsset?: string; posFilter: PosFilter; setPosFilter: (v: PosFilter) => void }) {
   const { cash, openBinancePosition, binancePositions, closeBinancePosition } = usePortfolio();
-  // Allow ANY asset (e.g. deep-linked from trade history), not just the strip's presets.
   const [selectedAsset, setSelectedAsset] = useState<string>(initialAsset ? initialAsset.toUpperCase() : "BTC");
   const [leverage, setLeverage] = useState<Leverage>(1);
   const [amount, setAmount] = useState("");
   const [slInput, setSlInput] = useState("");
   const [tpInput, setTpInput] = useState("");
   const [tradeError, setTradeError] = useState("");
-  // Mobile: user-adjustable chart height so the chart is always visible on small screens.
-  const [chartHeight, setChartHeight] = useState<number>(() => {
-    const saved = Number(localStorage.getItem("sim.chartHeight"));
-    return saved >= 280 && saved <= 700 ? saved : 420;
-  });
-  // Mobile: one-tap toggle to maximize chart (hide trade form) for better chart visibility.
-  const [chartMaximized, setChartMaximized] = useState(() => {
-    const saved = localStorage.getItem("sim.chartMaximized");
-    return saved === "true";
-  });
-  useEffect(() => {
-    localStorage.setItem("sim.chartHeight", String(chartHeight));
-  }, [chartHeight]);
-  useEffect(() => {
-    localStorage.setItem("sim.chartMaximized", String(chartMaximized));
-  }, [chartMaximized]);
+  // Mobile: 3 tabs — chart (default) | trade | positions
+  const [mobileTab, setMobileTab] = useState<string>("chart");
 
   const currentPrice = binancePrices[selectedAsset] ?? 0;
   const notional = parseFloat(amount) || 0;
@@ -463,6 +473,12 @@ function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPos
     setTradeError("");
   }, [currentPrice]);
 
+  const mobileTabs = [
+    { id: "chart", label: "Chart", icon: <ChartCandlestick className="h-3 w-3" /> },
+    { id: "trade", label: "Trade", icon: <TrendingUp className="h-3 w-3" /> },
+    { id: "positions", label: "Positions", icon: <BarChart3 className="h-3 w-3" /> },
+  ];
+
   return (
     <div className="flex flex-col h-full">
       {/* Asset selector strip — prepend a deep-linked asset that isn't a preset */}
@@ -490,7 +506,10 @@ function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPos
         })}
       </div>
 
-      {/* Three-panel body */}
+      {/* Mobile tab bar — only on small screens */}
+      <MobileTabBar active={mobileTab} onChange={setMobileTab} tabs={mobileTabs} />
+
+      {/* Three-panel body — desktop always shows all, mobile shows active tab only */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* LEFT: Order Book — desktop only */}
         <div className="hidden xl:flex w-[190px] border-r border-border shrink-0 overflow-hidden">
@@ -498,36 +517,9 @@ function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPos
         </div>
 
         {/* CENTER: Chart + Trade Form */}
-        <div className="flex flex-col flex-1 min-w-0 overflow-y-auto lg:overflow-hidden">
-          {/* Mobile: chart-height resizer + maximize toggle */}
-          <div className="lg:hidden flex items-center gap-2 px-3 py-1.5 border-b border-border bg-card/30 shrink-0">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground whitespace-nowrap">Chart Height</span>
-            <input
-              type="range"
-              min={280}
-              max={700}
-              step={20}
-              value={chartHeight}
-              onChange={e => setChartHeight(Number(e.target.value))}
-              aria-label="Chart height"
-              className="flex-1 h-1.5 accent-primary cursor-pointer"
-            />
-            <span className="text-[9px] font-mono text-muted-foreground w-10 text-right">{chartHeight}px</span>
-            <button
-              type="button"
-              onClick={() => setChartMaximized(v => !v)}
-              className={`text-[9px] font-mono font-bold px-2 py-1 rounded border transition-colors ${
-                chartMaximized ? "bg-primary/20 text-primary border-primary/30" : "bg-secondary/40 text-muted-foreground border-border/50"
-              }`}
-            >
-              {chartMaximized ? "Show Form" : "Maximize Chart"}
-            </button>
-          </div>
-          {/* Chart — maximizable on mobile (hides trade form when maximized), slider-controlled height, fills desktop */}
-          <div
-            className={`min-h-0 shrink-0 lg:h-auto lg:flex-1 lg:shrink ${chartMaximized ? "flex-1 h-[calc(100dvh-200px)]" : "h-[var(--chart-h)]"}`}
-            style={{ ["--chart-h" as string]: `${chartHeight}px` }}
-          >
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden lg:overflow-hidden">
+          {/* Chart — always fills center on desktop, fills entire mobile tab on chart-tab */}
+          <div className={`min-h-0 flex-1 lg:block ${mobileTab === "chart" ? "block" : "hidden lg:block"}`}>
             <CandlestickChart
               symbol={selectedAsset}
               positions={binancePositions.filter(p => p.asset === selectedAsset)}
@@ -536,8 +528,8 @@ function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPos
             />
           </div>
 
-          {/* Trade Form — hidden when chart maximized on mobile */}
-          <div className={`shrink-0 border-t border-border p-3 space-y-2 bg-card/20 ${chartMaximized ? "lg:block hidden" : ""}`}>
+          {/* Trade Form — shown on desktop + mobile trade-tab */}
+          <div className={`shrink-0 border-t border-border p-3 space-y-2 bg-card/20 overflow-y-auto ${mobileTab === "trade" ? "flex-1 block" : "hidden lg:block"}`}>
             {/* Direction buttons */}
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -644,15 +636,10 @@ function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPos
           </div>
         </div>
 
-        {/* RIGHT: Positions + History — large screens only */}
-        <div className="hidden lg:flex w-[270px] border-l border-border flex-col shrink-0 overflow-hidden">
+        {/* RIGHT: Positions + History — desktop always, mobile only on positions tab */}
+        <div className={`shrink-0 border-l border-border flex-col overflow-hidden lg:flex lg:w-[270px] ${mobileTab === "positions" ? "flex flex-1 w-full" : "hidden"}`}>
           <FuturesPositionsPanel binancePrices={binancePrices} posFilter={posFilter} setPosFilter={setPosFilter} onSelectAsset={setSelectedAsset} />
         </div>
-      </div>
-
-      {/* Mobile: resizable positions + history panel */}
-      <div className="lg:hidden border-t border-border overflow-y-auto touch-pan-y" style={{ maxHeight: "max(180px, min(40vh, 45dvh))" }}>
-        <FuturesPositionsPanel binancePrices={binancePrices} posFilter={posFilter} setPosFilter={setPosFilter} onSelectAsset={setSelectedAsset} />
       </div>
     </div>
   );
