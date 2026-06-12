@@ -35,7 +35,7 @@ import {
   TrendingUp, TrendingDown, Wallet, RotateCcw, Search,
   ChartCandlestick, BarChart3, Trophy, History, X, Plus,
   ArrowUpRight, ArrowDownRight, LineChart, Lightbulb, ExternalLink,
-  ShieldAlert, Target, Clock, Bot, Sparkles, PlayCircle, Skull, Link,
+  ShieldAlert, Target, Clock, Bot, Sparkles, PlayCircle, Skull, Link, Zap,
 } from "lucide-react";
 
 const LEVERAGE_OPTIONS = [1, 2, 3, 5, 10] as const;
@@ -429,6 +429,146 @@ function MobileTabBar({ active, onChange, tabs }: { active: string; onChange: (v
   );
 }
 
+/* ─── Quick Trade Recommendation Card ─── */
+interface QuickTradeCardProps {
+  currentPrice: number;
+  selectedAsset: string;
+  leverage: number;
+  cash: number;
+  onOpen: (direction: "LONG" | "SHORT", notionalOverride?: number) => void;
+  onApplyRec: (direction: "LONG" | "SHORT") => void;
+  className?: string;
+}
+
+function QuickTradeCard({ currentPrice, selectedAsset, leverage, cash, onOpen, onApplyRec, className }: QuickTradeCardProps) {
+  const [amount, setAmount] = useState("");
+  const [tradeError, setTradeError] = useState("");
+  const [quickDirection, setQuickDirection] = useState<"LONG" | "SHORT">("LONG");
+  const notional = parseFloat(amount) || 0;
+  const margin = leverage > 0 ? notional / leverage : notional;
+
+  const rec = useMemo(() => {
+    if (!currentPrice) return null;
+    return recommendLevels(currentPrice, quickDirection);
+  }, [currentPrice, quickDirection]);
+
+  const execute = useCallback(() => {
+    if (!notional || notional <= 0) { setTradeError("Enter notional amount"); return; }
+    if (!currentPrice) { setTradeError("Price unavailable"); return; }
+    if (margin > cash) { setTradeError("Insufficient cash"); return; }
+    setTradeError("");
+    // Apply rec first so onOpen sees the SL/TP in the parent state
+    onApplyRec(quickDirection);
+    // Slight delay to let the SL/TP propagate to the parent form
+    requestAnimationFrame(() => {
+      onOpen(quickDirection, notional);
+    });
+  }, [notional, currentPrice, margin, cash, quickDirection, onApplyRec, onOpen]);
+
+  return (
+    <div className={`bg-card/40 p-3 ${className}`}>
+      <div className="flex items-center gap-1.5 mb-2">
+        <Zap className="h-3 w-3 text-primary" />
+        <span className="text-[10px] font-bold tracking-widest uppercase text-primary font-mono">Quick Trade</span>
+        <span className="text-[9px] text-muted-foreground font-mono hidden sm:inline">{selectedAsset}USDT</span>
+        <div className="flex-1" />
+        <span className="text-[9px] text-muted-foreground font-mono">{leverage}x</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <button
+          onClick={() => setQuickDirection("LONG")}
+          className={`flex items-center justify-center gap-1 py-1.5 rounded text-[11px] font-bold font-mono border transition-all ${
+            quickDirection === "LONG"
+              ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/40"
+              : "bg-secondary/30 text-muted-foreground border-border hover:text-emerald-400"
+          }`}
+        >
+          <TrendingUp className="h-3 w-3" /> LONG
+        </button>
+        <button
+          onClick={() => setQuickDirection("SHORT")}
+          className={`flex items-center justify-center gap-1 py-1.5 rounded text-[11px] font-bold font-mono border transition-all ${
+            quickDirection === "SHORT"
+              ? "bg-red-500/15 text-red-400 border-red-500/40"
+              : "bg-secondary/30 text-muted-foreground border-border hover:text-red-400"
+          }`}
+        >
+          <TrendingDown className="h-3 w-3" /> SHORT
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex-1">
+          <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mb-0.5">Notional (USDT)</div>
+          <Input
+            type="number"
+            placeholder="e.g. 500"
+            value={amount}
+            onChange={e => { setAmount(e.target.value); setTradeError(""); }}
+            className="h-7 text-[11px] font-mono bg-secondary/30"
+          />
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mb-0.5">Margin</div>
+          <div className="text-[11px] font-mono font-bold">
+            <span className={notional > 0 && cash >= margin ? "text-emerald-400" : "text-muted-foreground"}>${margin.toFixed(1)}</span>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider mb-0.5">Available</div>
+          <div className="text-[11px] font-mono font-bold text-foreground">${cash.toFixed(0)}</div>
+        </div>
+      </div>
+
+      {/* Auto SL/TP preview */}
+      <div className="flex items-center gap-2 mb-2 rounded bg-secondary/20 border border-border/40 px-2 py-1.5">
+        <span className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider flex items-center gap-1">
+          <Lightbulb className="h-2.5 w-2.5 text-primary" />
+          Auto SL/TP
+        </span>
+        <div className="flex-1 flex items-center gap-2 justify-center">
+          {rec ? (
+            <>
+              <span className="text-[9px] font-mono text-red-400/80 flex items-center gap-0.5">
+                <ShieldAlert className="h-2.5 w-2.5" />
+                SL ${rec.sl}
+              </span>
+              <span className="text-[9px] text-muted-foreground">|</span>
+              <span className="text-[9px] font-mono text-emerald-400/80 flex items-center gap-0.5">
+                <Target className="h-2.5 w-2.5" />
+                TP ${rec.tp}
+              </span>
+              <span className="text-[9px] text-muted-foreground">|</span>
+              <span className="text-[9px] text-muted-foreground font-mono">{(rec.slPct * 100).toFixed(1)}% risk</span>
+            </>
+          ) : (
+            <span className="text-[9px] text-muted-foreground font-mono">Waiting for price...</span>
+          )}
+        </div>
+      </div>
+
+      {/* Execute button */}
+      <button
+        onClick={execute}
+        disabled={!currentPrice || notional <= 0 || margin > cash}
+        className={`w-full py-2 rounded text-[11px] font-black font-mono border transition-all active:scale-[0.98] ${
+          quickDirection === "LONG"
+            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-40"
+            : "bg-red-500/15 text-red-400 border-red-500/30 hover:bg-red-500/25 disabled:opacity-40"
+        }`}
+      >
+        <Zap className="h-3 w-3 inline mr-1" />
+        {quickDirection === "LONG" ? "BUY / LONG" : "SELL / SHORT"} {selectedAsset}USDT
+      </button>
+
+      {tradeError && (
+        <div className="text-[10px] text-red-400 font-mono mt-1">{tradeError}</div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Professional Futures Terminal ─── */
 function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPosFilter }: { binancePrices: Record<string, number>; initialAsset?: string; posFilter: PosFilter; setPosFilter: (v: PosFilter) => void }) {
   const { cash, openBinancePosition, binancePositions, closeBinancePosition } = usePortfolio();
@@ -447,13 +587,14 @@ function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPos
   const slPrice = slInput ? parseFloat(slInput) : undefined;
   const tpPrice = tpInput ? parseFloat(tpInput) : undefined;
 
-  const open = useCallback((direction: "LONG" | "SHORT") => {
-    if (!notional || notional <= 0) { setTradeError("Enter notional amount"); return; }
+  const open = useCallback((direction: "LONG" | "SHORT", notionalOverride?: number) => {
+    const n = notionalOverride ?? notional;
+    if (!n || n <= 0) { setTradeError("Enter notional amount"); return; }
     if (!currentPrice) { setTradeError("Price unavailable"); return; }
     const err = openBinancePosition({
       asset: selectedAsset,
       direction,
-      notional,
+      notional: n,
       entryPrice: currentPrice,
       leverage,
       slPrice: Number.isFinite(slPrice) ? slPrice : undefined,
@@ -528,6 +669,17 @@ function BinanceFuturesTerminal({ binancePrices, initialAsset, posFilter, setPos
               onClosePosition={(id, price) => closeBinancePosition(id, price)}
             />
           </div>
+
+          {/* Quick Trade Recommendation — below chart, above full trade form */}
+          <QuickTradeCard
+            currentPrice={currentPrice}
+            selectedAsset={selectedAsset}
+            leverage={leverage}
+            cash={cash}
+            onOpen={open}
+            onApplyRec={applyRec}
+            className={`shrink-0 border-t border-border ${mobileTab === "chart" ? "block" : "hidden lg:block"}`}
+          />
 
           {/* Trade Form — shown on desktop + mobile trade-tab */}
           <div className={`shrink-0 border-t border-border p-3 space-y-2 bg-card/20 overflow-y-auto ${mobileTab === "trade" ? "flex-1 block" : "hidden lg:block"}`}>
